@@ -2,15 +2,24 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import argparse
+import pprint
 import urllib
 import re
 import os
+import sys
 import codecs
 import json
 import yaml
 
+debug = False
+
 def make_filename(s):
     return os.path.splitext(s)[0]+'-out'+os.path.splitext(s)[1]
+
+def debug_print(s):
+    if debug == True:
+        sys.stderr.write(s+'\n')
+
 
 def chgk_parse(text):
 
@@ -71,6 +80,11 @@ def chgk_parse(text):
             chgk_parse.structure[target][1] + '\n' 
             + chgk_parse.structure.pop(index)[1])
 
+    def merge_to_next(index):
+        target = chgk_parse.structure.pop(index)
+        chgk_parse.structure[index][1] = (target[1] + '\n' 
+            + chgk_parse.structure[index][1])
+
     def find_next_specific_field(index, fieldname):
         target = index + 1
         while chgk_parse.structure[target][0] != fieldname:
@@ -129,16 +143,25 @@ def chgk_parse(text):
 
     i = 0
     while i < len(chgk_parse.structure):
-        if chgk_parse.structure[i][0] == 'answer':
-            if chgk_parse.structure[i-1][0] != 'question':
-                while chgk_parse.structure[i-1][0] == '':
-                    chgk_parse.structure[i][1] += ('\n' +
-                        chgk_parse.structure.pop(i-1)[1])
-            else:
-                swap_elements(i, i-1)
-                i = 0
+        if (chgk_parse.structure[i][0] == 'answer' 
+            and chgk_parse.structure[i-1][0] != 'question'):
+            chgk_parse.structure.insert(i,['question',''])
+            i = 0
+        i += 1
+    
+    i = 0
+    while i < len(chgk_parse.structure) - 1:
+        if (chgk_parse.structure[i][0] == ''
+            and chgk_parse.structure[i+1][0] == 'question'):
+            merge_to_next(i)
+            i = 0
         i += 1
 
+    merge_y_to_x('author','question')
+    merge_y_to_x('authors','question')
+    merge_y_to_x('comment','question')
+    merge_y_to_x('source','question')
+    merge_y_to_x('sources','question')
 
     # 4.
 
@@ -174,9 +197,17 @@ def chgk_parse(text):
 
 def main():
 
+    global debug
+
+    sys.stderr = codecs.getwriter('utf8')(sys.stderr)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('filename')
+    parser.add_argument('--debug', '-d', action='store_true')
     args = parser.parse_args()
+
+    if args.debug:
+        debug = True
 
     with codecs.open(args.filename, 'r', 'utf8') as input_file:
             input_text = input_file.read()
@@ -187,8 +218,7 @@ def main():
 
     with codecs.open(
         make_filename(args.filename), 'w', 'utf8') as output_file:
-        output_file.write(json.dumps(
-            final_structure,ensure_ascii=False).replace('], [','],\n['))
+        output_file.write(pprint.pformat(final_structure).decode('unicode_escape'))
 
 if __name__ == "__main__":
     main()
