@@ -43,16 +43,29 @@ def chgk_parse(text):
 
     """
 
-    re_tour = re.compile(r'^Тур [0-9]*[\.:]', re.I)
-    re_question = re.compile(r'^Вопрос [0-9]*[\.:]', re.I)
-    re_answer = re.compile(r'^Ответ[\.:]', re.I)
-    re_zachet = re.compile(r'^Зач[её]т[\.:]', re.I)
-    re_nezachet = re.compile(r'Незач[её]т[\.:]', re.I)
-    re_comment = re.compile(r'^Комментарий[\.:]', re.I)
-    re_author = re.compile(r'^Автор(\(ы\))?[\.:]', re.I)
-    re_authors = re.compile(r'^Авторы[\.:]', re.I)
-    re_source = re.compile(r'^Источник(\(и\))?[\.:]', re.I)
-    re_sources = re.compile(r'^Источники[\.:]', re.I)
+    BADNEXTFIELDS = set(['question', 'answer'])
+    QUESTION_LABELS = set(['question', 'answer',
+        'zachet', 'nezachet', 'comment', 'author',
+        'authors', 'source', 'sources'])
+    OPENING_QUOTES = set(['«', '„', '“', '‘'])
+    CLOSING_QUOTES = set(['»', '“', '”', '’'])
+    QUOTES = OPENING_QUOTES | CLOSING_QUOTES
+    WHITESPACE = set([' ', ' ', '\n'])
+    PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
+
+    re_tour = re.compile(r'Тур [0-9]*[\.:]')
+    re_question = re.compile(r'Вопрос [0-9]*[\.:]')
+    re_answer = re.compile(r'Ответ[\.:]')
+    re_zachet = re.compile(r'Зач[её]т[\.:]')
+    re_nezachet = re.compile(r'Незач[её]т[\.:]')
+    re_comment = re.compile(r'Комментарий[\.:]')
+    re_author = re.compile(r'Автор(\(ы\))?[\.:]')
+    re_authors = re.compile(r'Авторы[\.:]')
+    re_source = re.compile(r'Источник(\(и\))?[\.:]')
+    re_sources = re.compile(r'Источники[\.:]')
+
+    re_bad_wsp_start = re.compile(r'^[{}]+'.format(''.join(WHITESPACE)))
+    re_bad_wsp_end = re.compile(r'[{}]+$'.format(''.join(WHITESPACE)))
 
     regexes = {
         'tour' : re_tour,
@@ -68,11 +81,6 @@ def chgk_parse(text):
     }
 
     chgk_parse.structure = []
-
-    BADNEXTFIELDS = set(['question', 'answer'])
-    QUESTION_LABELS = set(['question', 'answer',
-        'zachet', 'nezachet', 'comment', 'author',
-        'authors', 'source', 'sources'])
 
     def merge_to_previous(index):
         target = index - 1
@@ -121,6 +129,56 @@ def chgk_parse(text):
         chgk_parse.structure[y] = chgk_parse.structure[x]
         chgk_parse.structure[x] = z
 
+    def remove_excessive_whitespace(s):
+        s = re_bad_wsp_start.sub('', s)
+        s = re_bad_wsp_end.sub('', s)
+        return s
+
+    def get_next_opening_quote_character(s, index):
+        i = index + 1
+        while i < len(s):
+            if s[i] in OPENING_QUOTES:
+                return s[i], i
+            i += 1
+        return '', ''
+
+    def get_next_closing_quote_character(s, index):
+        i = index + 1
+        while i < len(s):
+            if s[i] in CLOSING_QUOTES:
+                return s[i], i
+            i += 1
+        return '', ''
+
+    def get_quotes_right(s):
+        s = re.sub()
+        s = re.sub(r'(?<=(^|[{}{}{}]))["\']'.format(''.join(WHITESPACE), 
+            ''.join(CLOSING_QUOTES), ''.join(PUNCTUATION)), '«', s)
+        s = re.sub(r'["\'](?=([{}{}{}]))'.format(''.join(WHITESPACE), 
+            ''.join(OPENING_QUOTES), ''.join(PUNCTUATION)), '»', s)
+        
+        # alternate quotes
+
+        i = 0
+        s = list(s)
+        while i < len(s):
+            if (s[i] == '«' 
+                and get_next_opening_quote_character(s, i)[0] == '«'):
+                s[get_next_opening_quote_character(s, i)[1]] = '„'
+            i += 1
+        s = s[::-1]
+        i = 0
+        while i < len(s):
+            if (s[i] == '»' 
+                and get_next_closing_quote_character(s, i)[0] == '»'):
+                s[get_next_closing_quote_character(s, i)[1]] = '“'
+            i += 1
+        s = s[::-1]
+        s = ''.join(s)
+        return s
+
+
+
     # 1.
 
     for x in text.split('\n'):
@@ -146,17 +204,21 @@ def chgk_parse(text):
     while i < len(chgk_parse.structure):
         if (chgk_parse.structure[i][0] == 'answer' 
             and chgk_parse.structure[i-1][0] != 'question'):
-            chgk_parse.structure.insert(i,['question',''])
+            chgk_parse.structure.insert(i,['newquestion',''])
             i = 0
         i += 1
     
     i = 0
     while i < len(chgk_parse.structure) - 1:
         if (chgk_parse.structure[i][0] == ''
-            and chgk_parse.structure[i+1][0] == 'question'):
+            and chgk_parse.structure[i+1][0] == 'newquestion'):
             merge_to_next(i)
             i = 0
         i += 1
+
+    for element in chgk_parse.structure:
+        if element[0] == 'newquestion':
+            element[0] = 'question'
 
     # 4.
 
@@ -165,6 +227,10 @@ def chgk_parse(text):
             element[0] = 'meta'
         if element[0] in regexes:
             element[1] = regexes[element[0]].sub('', element[1])
+
+    for element in chgk_parse.structure:
+        element[1] = remove_excessive_whitespace(element[1])
+        element[1] = get_quotes_right(element[1])
 
     # 5.
 
