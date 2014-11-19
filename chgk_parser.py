@@ -38,8 +38,9 @@ def chgk_parse(text):
     2. Merge fields inside Question with '' lines between them
     3. Ensure every 'answer' has a 'question'
     4. Mark all remaining '' fields as 'meta'
-    5. Pack Questions into dicts
-    6. Return the resulting structure
+    5. Prettify input
+    6. Pack Questions into dicts
+    7. Return the resulting structure
 
     """
 
@@ -239,11 +240,13 @@ def chgk_parse(text):
         if element[0] in regexes:
             element[1] = regexes[element[0]].sub('', element[1])
 
+    # 5.
+
     for element in chgk_parse.structure:
         element[1] = remove_excessive_whitespace(element[1])
         element[1] = get_quotes_right(element[1])
 
-    # 5.
+    # 6.
 
     final_structure = []
     current_question = {}
@@ -263,7 +266,7 @@ def chgk_parse(text):
     if current_question != {}:
         final_structure.append(['Question', current_question])
 
-    # 6.
+    # 7.
 
     return final_structure
 
