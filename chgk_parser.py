@@ -136,6 +136,7 @@ def chgk_parse(text):
 
     merge_y_to_x('question','answer')
     merge_to_x_until_nextfield('source')
+    merge_to_x_until_nextfield('sources')
     merge_to_x_until_nextfield('answer')
     merge_to_x_until_nextfield('comment')
 
@@ -156,12 +157,6 @@ def chgk_parse(text):
             merge_to_next(i)
             i = 0
         i += 1
-
-    merge_y_to_x('author','question')
-    merge_y_to_x('authors','question')
-    merge_y_to_x('comment','question')
-    merge_y_to_x('source','question')
-    merge_y_to_x('sources','question')
 
     # 4.
 
