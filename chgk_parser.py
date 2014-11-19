@@ -17,7 +17,7 @@ def chgk_parse(text):
     """
     Parsing rationale: every Question has two required fields: 'question' and
     the immediately following 'answer'. All the rest are optional, as is
-    the order of these elements. On the other hand, everything
+    the order of these fields. On the other hand, everything
     except the 'question' is obligatorily marked, while the 'question' is
     optionally marked. But IF the question is not marked, 'meta' comments
     between Questions will not be parsed as 'meta' but will be merged to
