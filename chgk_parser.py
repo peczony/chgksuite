@@ -21,7 +21,7 @@ def chgk_parse(text):
     except the 'question' is obligatorily marked, while the 'question' is
     optionally marked. But IF the question is not marked, 'meta' comments
     between Questions will not be parsed as 'meta' but will be merged to
-    'questions'.
+    'question's.
     Parsing is done by regexes in the following steps:
 
     1. Identify all the fields you can, mark them with their respective
