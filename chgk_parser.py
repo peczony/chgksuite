@@ -49,7 +49,7 @@ def chgk_parse(text):
         'authors', 'source', 'sources'])
     OPENING_QUOTES = set(['«', '„', '“', '‘'])
     CLOSING_QUOTES = set(['»', '“', '”', '’'])
-    QUOTES = OPENING_QUOTES | CLOSING_QUOTES
+    QUOTES = OPENING_QUOTES | CLOSING_QUOTES | set(['"', "'"])
     WHITESPACE = set([' ', ' ', '\n'])
     PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
 
@@ -142,6 +142,14 @@ def chgk_parse(text):
             i += 1
         return '', ''
 
+    def get_next_quote_character(s, index):
+        i = index + 1
+        while i < len(s):
+            if s[i] in QUOTES:
+                return s[i], i
+            i += 1
+        return '', ''
+
     def get_next_closing_quote_character(s, index):
         i = index + 1
         while i < len(s):
@@ -151,22 +159,25 @@ def chgk_parse(text):
         return '', ''
 
     def get_quotes_right(s):
-        s = re.sub()
-        s = re.sub(r'(?<=(^|[{}{}{}]))["\']'.format(''.join(WHITESPACE), 
+        s = re.sub(r'(?<=[{}{}{}])["\']'.format(''.join(WHITESPACE), 
             ''.join(CLOSING_QUOTES), ''.join(PUNCTUATION)), '«', s)
-        s = re.sub(r'["\'](?=([{}{}{}]))'.format(''.join(WHITESPACE), 
+        s = re.sub(r'["\'](?=[{}{}{}])'.format(''.join(WHITESPACE), 
             ''.join(OPENING_QUOTES), ''.join(PUNCTUATION)), '»', s)
         
         # alternate quotes
 
         i = 0
         s = list(s)
+        if get_next_quote_character(s, -1)[0]:
+            s[get_next_quote_character(s, -1)[1]] = '«'
         while i < len(s):
             if (s[i] == '«' 
                 and get_next_opening_quote_character(s, i)[0] == '«'):
                 s[get_next_opening_quote_character(s, i)[1]] = '„'
             i += 1
         s = s[::-1]
+        if get_next_quote_character(s, -1)[0]:
+            s[get_next_quote_character(s, -1)[1]] = '»'
         i = 0
         while i < len(s):
             if (s[i] == '»' 
