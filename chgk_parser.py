@@ -10,6 +10,7 @@ import sys
 import codecs
 import json
 import yaml
+import typotools
 
 debug = False
 
@@ -48,9 +49,7 @@ def chgk_parse(text):
     QUESTION_LABELS = set(['question', 'answer',
         'zachet', 'nezachet', 'comment', 'author',
         'authors', 'source', 'sources'])
-    OPENING_QUOTES = set(['«', '„', '“', '‘'])
-    CLOSING_QUOTES = set(['»', '“', '”', '’'])
-    QUOTES = OPENING_QUOTES | CLOSING_QUOTES | set(['"', "'"])
+
     WHITESPACE = set([' ', ' ', '\n'])
     PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
 
@@ -135,59 +134,6 @@ def chgk_parse(text):
         s = re_bad_wsp_end.sub('', s)
         return s
 
-    def get_next_opening_quote_character(s, index):
-        i = index + 1
-        while i < len(s):
-            if s[i] in OPENING_QUOTES:
-                return s[i], i
-            i += 1
-        return '', ''
-
-    def get_next_quote_character(s, index):
-        i = index + 1
-        while i < len(s):
-            if s[i] in QUOTES:
-                return s[i], i
-            i += 1
-        return '', ''
-
-    def get_next_closing_quote_character(s, index):
-        i = index + 1
-        while i < len(s):
-            if s[i] in CLOSING_QUOTES:
-                return s[i], i
-            i += 1
-        return '', ''
-
-    def get_quotes_right(s):
-        s = re.sub(r'(?<=[{}{}{}])["\']'.format(''.join(WHITESPACE), 
-            ''.join(CLOSING_QUOTES), ''.join(PUNCTUATION)), '«', s)
-        s = re.sub(r'["\'](?=[{}{}{}])'.format(''.join(WHITESPACE), 
-            ''.join(OPENING_QUOTES), ''.join(PUNCTUATION)), '»', s)
-        
-        # alternate quotes
-
-        i = 0
-        s = list(s)
-        if get_next_quote_character(s, -1)[0]:
-            s[get_next_quote_character(s, -1)[1]] = '«'
-        while i < len(s):
-            if (s[i] == '«' 
-                and get_next_opening_quote_character(s, i)[0] == '«'):
-                s[get_next_opening_quote_character(s, i)[1]] = '„'
-            i += 1
-        s = s[::-1]
-        if get_next_quote_character(s, -1)[0]:
-            s[get_next_quote_character(s, -1)[1]] = '»'
-        i = 0
-        while i < len(s):
-            if (s[i] == '»' 
-                and get_next_closing_quote_character(s, i)[0] == '»'):
-                s[get_next_closing_quote_character(s, i)[1]] = '“'
-            i += 1
-        s = s[::-1]
-        s = ''.join(s)
-        return s
 
 
 
@@ -243,8 +189,7 @@ def chgk_parse(text):
     # 5.
 
     for element in chgk_parse.structure:
-        element[1] = remove_excessive_whitespace(element[1])
-        element[1] = get_quotes_right(element[1])
+        element[1] = typotools.typography(element[1])
 
     # 6.
 
