@@ -22,6 +22,8 @@ def debug_print(s):
     if debug == True:
         sys.stderr.write(s+'\n')
 
+def partition(alist, indices):
+    return [alist[i:j] for i, j in zip([0]+indices, indices+[None])]
 
 def chgk_parse(text):
 
@@ -138,12 +140,12 @@ def chgk_parse(text):
     while i < len(st):
         matching_regexes = {(regex, regexes[regex].search(st[i][1]).start(0)) 
         for regex in regexes if regexes[regex].search(st[i][1])}
-        if len(matching_regexes) == 1:
-            st[i][0] = matching_regexes.pop()[0]
         
-        """If more than one regex matches string, split it and
-        insert into structure separately."""
-
+        # If more than one regex matches string, split it and 
+        # insert into structure separately.
+        
+        if len(matching_regexes) == 1: 
+            st[i][0] = matching_regexes.pop()[0]
         elif len(matching_regexes) > 1:
             sorted_r = sorted(matching_regexes, key=lambda x: x[1])
             slices = []
@@ -177,7 +179,8 @@ def chgk_parse(text):
     i = 0
     while i < len(chgk_parse.structure):
         if (chgk_parse.structure[i][0] == 'answer' 
-            and chgk_parse.structure[i-1][0] != 'question'):
+            and chgk_parse.structure[i-1][0] not in ('question',
+                'newquestion')):
             chgk_parse.structure.insert(i,['newquestion',''])
             i = 0
         i += 1
@@ -206,6 +209,37 @@ def chgk_parse(text):
 
     for element in chgk_parse.structure:
         element[1] = typotools.typography(element[1])
+        # detect list
+
+        mo = {m for m 
+            in re.finditer(r'(\s+|^)(\d+)[\.\)]\s*(?!\d)',element[1], re.U)}
+        if len(mo) > 1:
+            sorted_up = sorted(mo, key=lambda m: int(m.group(2)))
+            j = 0
+            list_candidate = []
+            while j == int(sorted_up[j].group(2)) - 1:
+                list_candidate.append((j+1, sorted_up[j].group(0), 
+                    sorted_up[j].start()))
+                if j+1 < len(sorted_up):
+                    j += 1
+                else:
+                    break
+            if len(list_candidate) > 1:
+                if (element[0] != 'question' or 
+                    (element[0] == 'question'
+                        and 'дуплет' in element[1].lower() 
+                            or 'блиц' in element[1].lower())):
+                    part = partition(element[1], [x[2] for x in
+                        list_candidate])
+                    lc = 0
+                    while lc < len(list_candidate):
+                        part[lc+1] = part[lc+1].replace(list_candidate[lc][1], '')
+                        lc += 1
+                    element[1] = ([part[0], part[1:]] if part[0] != ''
+                                            else part[1:])
+
+
+
 
     # 6.
 
@@ -226,6 +260,7 @@ def chgk_parse(text):
             final_structure.append([element[0], element[1]])
     if current_question != {}:
         final_structure.append(['Question', current_question])
+
 
     # 7.
 
