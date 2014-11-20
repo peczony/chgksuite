@@ -12,6 +12,10 @@ PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
 OPENING_BRACKETS = ['[', '(', '{']
 CLOSING_BRACKETS = [']', ')', '}']
 BRACKETS = set(OPENING_BRACKETS) | set(CLOSING_BRACKETS)
+LOWERCASE_RUSSIAN = set(list('абвгдеёжзийклмнопрстуфхцчшщъыьэюя'))
+UPPERCASE_RUSSIAN = set(list('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'))
+POTENTIAL_ACCENTS = set(list('АОУЫЭЯЕЮИ'))
+BAD_BEGINNINGS = set(['Мак', 'мак', "О'", 'о’', 'О’', "о'"])
 
 re_bad_wsp_start = re.compile(r'^[{}]+'.format(''.join(WHITESPACE)))
 re_bad_wsp_end = re.compile(r'[{}]+$'.format(''.join(WHITESPACE)))
@@ -147,6 +151,9 @@ def get_quotes_right(s):
     #     ''.join(CLOSING_QUOTES), ''.join(PUNCTUATION)), '«', s)
     # s = re.sub(r'["\'](?=[{}{}{}])'.format(''.join(WHITESPACE), 
     #     ''.join(OPENING_QUOTES), ''.join(PUNCTUATION)), '»', s)
+    s = re.sub(r'“','"',s)
+    s = re.sub(r'[{}]'.format(''.join(OPENING_QUOTES)), '«', s)
+    s = re.sub(r'[{}]'.format(''.join(CLOSING_QUOTES)), '»', s)
     s = convert_quotes(s)
     
     # alternate quotes
@@ -179,10 +186,32 @@ def get_dashes_right(s):
     s = re.sub(r'-(?=\d)','−',s)
     return s
 
+def detect_accent(s):
+    for word in re.split(r'[^{}{}]+'.format(
+        ''.join(LOWERCASE_RUSSIAN),''.join(UPPERCASE_RUSSIAN)),s):
+        if word.upper() != word and len(word) > 1:
+            try:
+                i = 1
+                word_new = word
+                while i < len(word_new):
+                    if (word_new[i] in POTENTIAL_ACCENTS and word_new[:i] not in
+                            BAD_BEGINNINGS):
+                        word_new = word_new[:i] + '`' + word_new[i].lower() + word_new[i+1:]
+                    i += 1
+                if word != word_new:
+                    s = (s[:s.index(word)] + word_new
+                        + s[s.index(word)+len(word):])
+            except:
+                print(repr(word))
+    return s
+
+
+
 def typography(s):
     s = remove_excessive_whitespace(s)
     s = get_quotes_right(s)
     s = get_dashes_right(s)
+    s = detect_accent(s)
     return s
 
 def matching_bracket(s):
@@ -205,5 +234,6 @@ def find_matching_closing_bracket(s, index):
             counter -= 1
             if counter == 0:
                 return i
+        i += 1
     return None
 

@@ -9,11 +9,15 @@ import os
 import sys
 import codecs
 import json
-import yaml
 import typotools
 import traceback
+import datetime
+from fuzzyparsers import parse_date
 
 debug = False
+
+QUESTION_LABELS = ['directions', 'handout', 'question', 'answer',
+        'zachet', 'nezachet', 'comment', 'source', 'author']
 
 def make_filename(s):
     return os.path.splitext(s)[0]+'-out'+os.path.splitext(s)[1]
@@ -49,23 +53,21 @@ def chgk_parse(text):
     """
 
     BADNEXTFIELDS = set(['question', 'answer'])
-    QUESTION_LABELS = set(['question', 'answer',
-        'zachet', 'nezachet', 'comment', 'author',
-        'authors', 'source', 'sources'])
 
     WHITESPACE = set([' ', ' ', '\n'])
     PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
 
-    re_tour = re.compile(r'Тур [0-9]*[\.:]')
-    re_question = re.compile(r'Вопрос [0-9]*[\.:]')
-    re_answer = re.compile(r'Ответ[\.:]')
-    re_zachet = re.compile(r'Зач[её]т[\.:]')
-    re_nezachet = re.compile(r'Незач[её]т[\.:]')
-    re_comment = re.compile(r'Комментарий[\.:]')
-    re_author = re.compile(r'Автор(\(ы\))?[\.:]')
-    re_authors = re.compile(r'Авторы[\.:]')
-    re_source = re.compile(r'Источник(\(и\))?[\.:]')
-    re_sources = re.compile(r'Источники[\.:]')
+    re_tour = re.compile(r'Тур [0-9]*[\.:]', re.I)
+    re_question = re.compile(r'Вопрос [0-9]*[\.:]', re.I)
+    re_answer = re.compile(r'Ответ[\.:]', re.I)
+    re_zachet = re.compile(r'Зач[её]т[\.:]', re.I)
+    re_nezachet = re.compile(r'Незач[её]т[\.:]', re.I)
+    re_comment = re.compile(r'Комментарий[\.:]', re.I)
+    re_author = re.compile(r'Автор\(?ы?\)?[\.:]', re.I)
+    re_source = re.compile(r'Источник\(?и?\)?[\.:]', re.I)
+    re_editor = re.compile(r'Редактор(ы|ская группа)?[\.:]', re.I)
+    re_date = re.compile(r'Дата[\.:]', re.I)
+    re_handout = re.compile(r'Разда(ча|тка|точный материал)[\.:]', re.I)
 
     regexes = {
         'tour' : re_tour,
@@ -75,9 +77,9 @@ def chgk_parse(text):
         'nezachet' : re_nezachet,
         'comment' : re_comment,
         'author' : re_author,
-        'authors' : re_authors,
         'source' : re_source,
-        'sources' : re_sources,
+        'editor' : re_editor,
+        'date' : re_date,
     }
 
     chgk_parse.structure = []
@@ -200,6 +202,30 @@ def chgk_parse(text):
     # 4.
 
     for element in chgk_parse.structure:
+        if element[0] == 'question':
+            
+            handouts = []
+            while re_handout.search(element[1]):
+                handout = re_handout.search(element[1])
+                if (handout.start() > 0 and element[1][handout.start() - 1]
+                    in typotools.OPENING_BRACKETS and not
+                    typotools.find_matching_closing_bracket(element[1],
+                        handout.start()-1) is None):
+                    part = partition(element[1], [handout.start()-1, 
+                        typotools.find_matching_closing_bracket(element[1],
+                        handout.start()-1)+1])
+                else:
+                    part = partition(element[1], [handout.start(), 
+                        handout.start() 
+                        + element[1][handout.start():].index('\n')])
+                assert len(part) == 3
+                element[1] = part[0] + part[2]
+                handouts.append(part[1])
+            if len(handouts) > 0:
+                chgk_parse.structure.insert(
+                    chgk_parse.structure.index(element)+1, ['handout', 
+                    handouts[0] if len(handouts) == 1 else handouts])
+
         if element[0] == '':
             element[0] = 'meta'
         if element[0] in regexes:
@@ -208,8 +234,13 @@ def chgk_parse(text):
     # 5.
 
     for element in chgk_parse.structure:
-        element[1] = typotools.typography(element[1])
-        # detect list
+        
+        # typogrify
+
+        if element[0] != 'date':
+            element[1] = typotools.typography(element[1])
+        
+        # detect inner lists
 
         mo = {m for m 
             in re.finditer(r'(\s+|^)(\d+)[\.\)]\s*(?!\d)',element[1], re.U)}
@@ -237,6 +268,12 @@ def chgk_parse(text):
                         lc += 1
                     element[1] = ([part[0], part[1:]] if part[0] != ''
                                             else part[1:])
+
+        # turn source into list if necessary
+
+        if (element[0] == 'source' and isinstance(element[1], basestring)
+                    and len(element[1].split('\n')) > 1):
+            element[1] = element[1].split('\n')
 
 
 
@@ -266,6 +303,44 @@ def chgk_parse(text):
 
     return final_structure
 
+def compose_4s(structure):
+    types_mapping = {
+        'meta' : '# ',
+        'editor': '#EDITOR ',
+        'date': '#DATE ',
+        'question': '? ',
+        'answer': '! ',
+        'zachet': '= ',
+        'nezachet': '!= ',
+        'source': '^ ',
+        'comment': '/ ',
+        'author': '@ ',
+        'handout': '> ',
+        'Question': None,
+    }
+    def format_element(z):
+        if isinstance(z, basestring):
+            return z
+        elif isinstance(z, list):
+            if isinstance(z[1], list):
+                return z[0] + '\n- ' + '\n- '.join(z[1])
+            else:
+                return '\n- ' + '\n- '.join(z)
+    result = ''
+    for element in structure:
+        if types_mapping[element[0]]:
+            result += (types_mapping[element[0]] 
+                + format_element(element[1]) + '\n\n')
+        elif element[0] == 'Question':
+            for label in QUESTION_LABELS:
+                if label in element[1]:
+                    result += (types_mapping[label]
+                        + format_element(element[1][label]) + '\n')
+            result += '\n'
+    return result
+
+
+
 def main():
 
     global debug
@@ -290,7 +365,7 @@ def main():
     with codecs.open(
         make_filename(args.filename), 'w', 'utf8') as output_file:
         output_file.write(
-            pprint.pformat(final_structure).decode('unicode_escape'))
+            compose_4s(final_structure))
 
 if __name__ == "__main__":
     main()
