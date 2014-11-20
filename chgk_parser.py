@@ -202,6 +202,17 @@ def chgk_parse(text):
     # 4.
 
     for element in chgk_parse.structure:
+        if element[0] == '':
+            element[0] = 'meta'
+        if element[0] in regexes:
+            element[1] = regexes[element[0]].sub('', element[1])
+
+    # 5.
+
+    for element in chgk_parse.structure:
+        
+        # find handouts
+
         if element[0] == 'question':
             
             handouts = []
@@ -226,15 +237,6 @@ def chgk_parse(text):
                     chgk_parse.structure.index(element)+1, ['handout', 
                     handouts[0] if len(handouts) == 1 else handouts])
 
-        if element[0] == '':
-            element[0] = 'meta'
-        if element[0] in regexes:
-            element[1] = regexes[element[0]].sub('', element[1])
-
-    # 5.
-
-    for element in chgk_parse.structure:
-        
         # typogrify
 
         if element[0] != 'date':
