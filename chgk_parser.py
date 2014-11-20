@@ -15,7 +15,7 @@ import datetime
 
 debug = False
 
-QUESTION_LABELS = ['directions', 'handout', 'question', 'answer',
+QUESTION_LABELS = ['handout', 'question', 'answer',
         'zachet', 'nezachet', 'comment', 'source', 'author']
 
 def make_filename(s):
