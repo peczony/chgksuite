@@ -11,6 +11,7 @@ import codecs
 import json
 import yaml
 import typotools
+import traceback
 
 debug = False
 
@@ -63,9 +64,6 @@ def chgk_parse(text):
     re_authors = re.compile(r'Авторы[\.:]')
     re_source = re.compile(r'Источник(\(и\))?[\.:]')
     re_sources = re.compile(r'Источники[\.:]')
-
-    re_bad_wsp_start = re.compile(r'^[{}]+'.format(''.join(WHITESPACE)))
-    re_bad_wsp_end = re.compile(r'[{}]+$'.format(''.join(WHITESPACE)))
 
     regexes = {
         'tour' : re_tour,
@@ -129,24 +127,42 @@ def chgk_parse(text):
         chgk_parse.structure[y] = chgk_parse.structure[x]
         chgk_parse.structure[x] = z
 
-    def remove_excessive_whitespace(s):
-        s = re_bad_wsp_start.sub('', s)
-        s = re_bad_wsp_end.sub('', s)
-        return s
-
-
-
-
     # 1.
 
     for x in text.split('\n'):
         if x != '':
             chgk_parse.structure.append(['',x])
 
-    for element in chgk_parse.structure:
-        for regexp in regexes:
-            if regexes[regexp].search(element[1]):
-                element[0] = regexp
+    i = 0
+    st = chgk_parse.structure
+    while i < len(st):
+        matching_regexes = {(regex, regexes[regex].search(st[i][1]).start(0)) 
+        for regex in regexes if regexes[regex].search(st[i][1])}
+        if len(matching_regexes) == 1:
+            st[i][0] = matching_regexes.pop()[0]
+        
+        """If more than one regex matches string, split it and
+        insert into structure separately."""
+
+        elif len(matching_regexes) > 1:
+            sorted_r = sorted(matching_regexes, key=lambda x: x[1])
+            slices = []
+            for j in range(1, len(sorted_r)):
+                slices.append(
+                    [sorted_r[j][0], st[i][1][
+                        sorted_r[j][1] 
+                         : 
+                        sorted_r[j+1][1] if j+1 < len(sorted_r)
+                                                else len(st[i][1])]])
+            for slice_ in slices:
+                chgk_parse.structure.insert(
+                    i+1, slice_)
+            st[i][0] = sorted_r[0][0]
+            st[i][1] = st[i][1][:sorted_r[1][1]]
+        i += 1
+    chgk_parse.structure = st
+    i = 0
+        
 
     # 2.
 
@@ -238,7 +254,8 @@ def main():
 
     with codecs.open(
         make_filename(args.filename), 'w', 'utf8') as output_file:
-        output_file.write(pprint.pformat(final_structure).decode('unicode_escape'))
+        output_file.write(
+            pprint.pformat(final_structure).decode('unicode_escape'))
 
 if __name__ == "__main__":
     main()

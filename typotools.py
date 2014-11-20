@@ -9,6 +9,17 @@ CLOSING_QUOTES = set(['»', '“', '”', '’'])
 QUOTES = OPENING_QUOTES | CLOSING_QUOTES | set(['"', "'"])
 WHITESPACE = set([' ', ' ', '\n'])
 PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
+OPENING_BRACKETS = ['[', '(', '{']
+CLOSING_BRACKETS = [']', ')', '}']
+BRACKETS = set(OPENING_BRACKETS) | set(CLOSING_BRACKETS)
+
+re_bad_wsp_start = re.compile(r'^[{}]+'.format(''.join(WHITESPACE)))
+re_bad_wsp_end = re.compile(r'[{}]+$'.format(''.join(WHITESPACE)))
+
+def remove_excessive_whitespace(s):
+    s = re_bad_wsp_start.sub('', s)
+    s = re_bad_wsp_end.sub('', s)
+    return s
 
 
 def convert_quotes(text):
@@ -146,8 +157,8 @@ def get_quotes_right(s):
         s[get_next_quote_character(s, -1)[1]] = '«'
     while i < len(s):
         if (s[i] == '«' 
-            and get_next_opening_quote_character(s, i)[0] == '«'):
-            s[get_next_opening_quote_character(s, i)[1]] = '„'
+            and get_next_quote_character(s, i)[0] == '«'):
+            s[get_next_quote_character(s, i)[1]] = '„'
         i += 1
     s = s[::-1]
     if get_next_quote_character(s, -1)[0]:
@@ -155,8 +166,8 @@ def get_quotes_right(s):
     i = 0
     while i < len(s):
         if (s[i] == '»' 
-            and get_next_closing_quote_character(s, i)[0] == '»'):
-            s[get_next_closing_quote_character(s, i)[1]] = '“'
+            and get_next_quote_character(s, i)[0] == '»'):
+            s[get_next_quote_character(s, i)[1]] = '“'
         i += 1
     s = s[::-1]
     s = ''.join(s)
@@ -169,7 +180,30 @@ def get_dashes_right(s):
     return s
 
 def typography(s):
+    s = remove_excessive_whitespace(s)
     s = get_quotes_right(s)
     s = get_dashes_right(s)
     return s
+
+def matching_bracket(s):
+    assert s in OPENING_BRACKETS or s in CLOSING_BRACKETS
+    if s in OPENING_BRACKETS:
+        return CLOSING_BRACKETS[OPENING_BRACKETS.index(s)]
+    return OPENING_BRACKETS[CLOSING_BRACKETS.index(s)]
+
+def find_matching_closing_bracket(s, index):
+    s = list(s)
+    i = index
+    assert s[i] in OPENING_BRACKETS
+    ob = s[i]
+    cb = matching_bracket(ob)
+    counter = 0
+    while i < len(s):
+        if s[i] == ob:
+            counter += 1
+        if s[i] == cb:
+            counter -= 1
+            if counter == 0:
+                return i
+    return None
 
