@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 import re
 import traceback
 
-OPENING_QUOTES = set(['«', '„', '“', '‘'])
-CLOSING_QUOTES = set(['»', '“', '”', '’'])
+OPENING_QUOTES = set(['«', '„', '“'])
+CLOSING_QUOTES = set(['»', '“', '”'])
 QUOTES = OPENING_QUOTES | CLOSING_QUOTES | set(['"', "'"])
 WHITESPACE = set([' ', ' ', '\n'])
 PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
