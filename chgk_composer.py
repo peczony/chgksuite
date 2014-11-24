@@ -151,7 +151,7 @@ def main():
     with codecs.open(
         make_filename(args.filename), 'w', 'utf8') as output_file:
         output_file.write(
-            pprint.pformat(final_structure).decode('unicode_escape'))
+            pprint.pformat(structure).decode('unicode_escape'))
 
 if __name__ == '__main__':
     main()
