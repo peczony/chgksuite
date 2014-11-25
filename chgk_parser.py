@@ -19,7 +19,7 @@ QUESTION_LABELS = ['handout', 'question', 'answer',
         'zachet', 'nezachet', 'comment', 'source', 'author']
 
 def make_filename(s):
-    return os.path.splitext(s)[0]+'-out'+os.path.splitext(s)[1]
+    return os.path.splitext(s)[0]+'.4s'
 
 def debug_print(s):
     if debug == True:
@@ -57,16 +57,16 @@ def chgk_parse(text):
     PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
 
     re_tour = re.compile(r'Тур [0-9]*[\.:]', re.I)
-    re_question = re.compile(r'Вопрос [0-9]*[\.:]', re.I)
-    re_answer = re.compile(r'Ответ[\.:]', re.I)
-    re_zachet = re.compile(r'Зач[её]т[\.:]', re.I)
-    re_nezachet = re.compile(r'Незач[её]т[\.:]', re.I)
-    re_comment = re.compile(r'Комментарий[\.:]', re.I)
-    re_author = re.compile(r'Автор\(?ы?\)?[\.:]', re.I)
-    re_source = re.compile(r'Источник\(?и?\)?[\.:]', re.I)
-    re_editor = re.compile(r'Редактор(ы|ская группа)?[\.:]', re.I)
-    re_date = re.compile(r'Дата[\.:]', re.I)
-    re_handout = re.compile(r'Разда(ча|тка|точный материал)[\.:]', re.I)
+    re_question = re.compile(r'Вопрос [0-9]* ?[\.:]', re.I)
+    re_answer = re.compile(r'Ответы? ?[\.:]', re.I)
+    re_zachet = re.compile(r'Зач[её]т ?[\.:]', re.I)
+    re_nezachet = re.compile(r'Незач[её]т ?[\.:]', re.I)
+    re_comment = re.compile(r'Комментарий ?[\.:]', re.I)
+    re_author = re.compile(r'Автор\(?ы?\)? ?[\.:]', re.I)
+    re_source = re.compile(r'Источник\(?и?\)? ?[\.:]', re.I)
+    re_editor = re.compile(r'Редактор(ы|ская группа)? ?[\.:]', re.I)
+    re_date = re.compile(r'Дата ?[\.:]', re.I)
+    re_handout = re.compile(r'Разда(ча|тка|точный материал) ?[\.:]', re.I)
 
     regexes = {
         'tour' : re_tour,
@@ -356,12 +356,86 @@ def main():
     if args.debug:
         debug = True
 
-    with codecs.open(args.filename, 'r', 'utf8') as input_file:
-            input_text = input_file.read()
+    if os.path.splitext(args.filename)[1] == '.txt':
 
-    input_text = input_text.replace('\r','')
+        with codecs.open(args.filename, 'r', 'utf8') as input_file:
+                input_text = input_file.read()
 
-    final_structure = chgk_parse(input_text)
+        input_text = input_text.replace('\r','')
+
+        final_structure = chgk_parse(input_text)
+
+
+    elif os.path.splitext(args.filename)[1] == '.docx':
+        from pydocx import Docx2Html
+        from bs4 import BeautifulSoup
+        from parse import parse
+        import base64
+        import html2text
+        input_docx = Docx2Html(args.filename)
+        bsoup = BeautifulSoup(input_docx.parsed)
+
+        if args.debug:
+            with codecs.open('debug.pydocx', 'w', 'utf8') as dbg:
+                dbg.write(input_docx.parsed)
+        
+        def generate_imgname(ext):
+            imgcounter = 1
+            while os.path.isfile('{:03}.{}'
+                .format(imgcounter, ext)):
+                imgcounter += 1
+            return '{:03}.{}'.format(imgcounter, ext)
+
+        for tag in bsoup.find_all('style'):
+            tag.extract()
+        for tag in bsoup.find_all('p'):
+            if tag.string:
+                tag.string = tag.string + '\n'
+        for tag in bsoup.find_all('b'):
+            tag.unwrap()
+        for tag in bsoup.find_all('strong'):
+            tag.unwrap()
+        for tag in bsoup.find_all('i'):
+            tag.string = '_' + tag.string + '_'
+            tag.unwrap()
+        for tag in bsoup.find_all('em'):
+            tag.string = '_' + tag.string + '_'
+            tag.unwrap()
+        for tag in bsoup.find_all('li'):
+            tag.string = '- ' + tag.string
+        for tag in bsoup.find_all('img'):
+            imgparse = parse('data:image/{ext};base64,{b64}', tag['src'])
+            imgname = generate_imgname(imgparse['ext'])
+            tag.insert_before('(img {})'.format(imgname))
+            if not args.debug:
+                with open(imgname, 'wb') as f:
+                    f.write(base64.b64decode(imgparse['b64']))
+            tag.extract()
+        for tag in bsoup.find_all('a'):
+            tag.string = tag['href']
+            tag.unwrap()
+
+        h = html2text.HTML2Text()
+        h.body_width = 0
+        txt = (h.handle(bsoup.prettify())
+            .replace('\\.','.')
+            .replace('( ', '(')
+            .replace('[ ', '[')
+            .replace(' )', ')')
+            .replace(' ]', ']')
+            .replace(' :', ':')
+            )
+
+        if args.debug:
+            with codecs.open('debug.debug', 'w', 'utf8') as dbg:
+                dbg.write(txt)
+
+        final_structure = chgk_parse(txt)
+
+    else:
+        sys.stderr.write('Error: unsupported file format.\n')
+        sys.exit()
+
 
     with codecs.open(
         make_filename(args.filename), 'w', 'utf8') as output_file:
