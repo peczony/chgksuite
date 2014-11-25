@@ -140,7 +140,8 @@ def parse_4s(s):
                     rew(line[
                         len(line.split()[0]):])])
             else:
-                structure[len(structure)-1][1] += '\n' + line
+                if len(structure) > 1:
+                    structure[len(structure)-1][1] += '\n' + line
 
     final_structure = []
     current_question = {}
@@ -194,9 +195,6 @@ def parse_4s(s):
             else:
                 current_question[element[0]] = element[1]
         
-        elif element[0] == 'meta':
-            final_structure.append(['meta', element[1]])
-        
         elif element[0] == '':
             
             if current_question != {}:
@@ -205,6 +203,9 @@ def parse_4s(s):
                 final_structure.append(['Question', current_question])
             
             current_question = {}
+
+        else:
+            final_structure.append([element[0], element[1]])
     
     if current_question != {}:
         assert all(True for label in REQUIRED_LABELS 
@@ -298,11 +299,13 @@ def main():
         outfilename = make_filename(args.filename, 'docx')
         main.doc = Document('template.docx')
         qcount = 0
+        debug_print(pprint.pformat(structure).decode('unicode_escape'))
         for element in structure:
             if element[0] == 'meta':
                 p = main.doc.add_paragraph()
                 p.add_run(element[1])
             if element[0] == 'heading':
+                debug_print('adding heading {}'.format(element[1]))
                 main.doc.add_heading(element[1], 0)
             if element[0] == 'section':
                 main.doc.add_heading(element[1], 1)
