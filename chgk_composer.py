@@ -20,6 +20,12 @@ from chgk_parser import QUESTION_LABELS
 # TODO: allow to select images width/height
 
 debug = False
+re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
+"""|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
+"""(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""", re.DOTALL) 
+re_perc = re.compile(r'(%[0-9a-fA-F]{2})+')
+re_scaps = re.compile(r'[A-ZА-Я]{2,}')
+re_em = re.compile(r'_.+?_')
 
 REQUIRED_LABELS = set(['question', 'answer'])
 
@@ -61,7 +67,19 @@ def parse_4s_elem(s):
             j += 1
         return -1
 
+    for gr in re_url.finditer(s):
+        gr0 = gr.group(0)
+        s = s.replace(gr0, gr0.replace('_', '\\_'))
 
+    # for gr in re_scaps.finditer(s):
+    #     gr0 = gr.group(0)
+    #     s = s.replace(gr0, '(sc '+gr0.lower()+')')
+
+    grs = sorted([match.group(0) 
+        for match in re_perc.finditer(s)], key=len, reverse=True)
+    for gr in grs:
+        s = s.replace(gr,urllib.unquote(gr.encode('utf8')).decode('utf8'))
+    
     s = list(s)
     i = 0
     topart = []
@@ -81,6 +99,14 @@ def parse_4s_elem(s):
                 topart.append(
                     typotools.find_matching_closing_bracket(s, i)+1)
                 i = typotools.find_matching_closing_bracket(s, i)+2
+        # if (s[i] == '(' and i + len('(sc') < len(s) and ''.join(s[i:
+        #                     i+len('(sc')])=='(sc'):
+        #     debug_print('sc candidate')
+        #     topart.append(i)
+        #     if not typotools.find_matching_closing_bracket(s, i) is None:
+        #         topart.append(
+        #             typotools.find_matching_closing_bracket(s, i)+1)
+        #         i = typotools.find_matching_closing_bracket(s, i)+2
         i += 1
 
     topart = sorted(topart)
@@ -104,6 +130,15 @@ def parse_4s_elem(s):
                 part[0] = 'img'
                 debug_print('found img at {}'
                     .format(pprint.pformat(part[1])))
+            if len(part[1]) > 3 and part[1][:4] == '(sc':
+                if part[1][-1] != ')':
+                    part[1] = part[1] + ')'
+                part[1] = typotools.remove_excessive_whitespace(
+                    part[1][3:-1])
+                part[0] = 'sc'
+                debug_print('found img at {}'
+                    .format(pprint.pformat(part[1])))
+            part[1] = part[1].replace('\\_', '_')
         except:
             sys.stderr.write('Error on part {}: {}'
                 .format(pprint.pformat(part).decode('unicode_escape'),
@@ -228,6 +263,8 @@ def main():
     parser.add_argument('filetype', nargs='?', default='docx')
     parser.add_argument('--debug', '-d', action='store_true')
     parser.add_argument('--nospoilers', '-n', action='store_true')
+    parser.add_argument('--login', '-l')
+    parser.add_argument('--community', '-c')
     args = parser.parse_args()
 
     if args.debug:
@@ -254,11 +291,13 @@ def main():
         
         def docx_format(el, para, whiten):
             if isinstance(el, list):
+                
                 if isinstance(el[1], list):
                     docx_format(el[0], para, whiten)
                     licount = 0
                     for li in el[1]:
                         licount += 1
+                        
                         p = main.doc.add_paragraph('{}. '
                             .format(licount))
                         docx_format(li, p, whiten)
@@ -266,17 +305,21 @@ def main():
                     licount = 0
                     for li in el:
                         licount += 1
+                        
                         p = main.doc.add_paragraph('{}. '
                             .format(licount))
                         docx_format(li, p, whiten)
+
             if isinstance(el, basestring):
                 debug_print('parsing element {}:'
                     .format(pprint.pformat(el).decode('unicode_escape')))
                 parsed = parse_4s_elem(el)
                 images_exist = False
+                
                 for run in parsed:
                     if run[0] == 'img':
                         images_exist = True
+                
                 for run in parse_4s_elem(el):
                     if run[0] == '':
                         r = para.add_run(run[1])
@@ -284,6 +327,7 @@ def main():
                             r.style = 'Whitened'
                         if images_exist:
                             para = main.doc.add_paragraph()
+                    
                     elif run[0] == 'em':
                         r = para.add_run(run[1])
                         r.italic = True
@@ -291,8 +335,39 @@ def main():
                             r.style = 'Whitened'
                         if images_exist:
                             para = main.doc.add_paragraph()
+
+                    elif run[0] == 'sc':
+                        r = para.add_run(run[1])
+                        r.small_caps = True
+                        if whiten and not args.nospoilers:
+                            r.style = 'Whitened'
+                        if images_exist:
+                            para = main.doc.add_paragraph()
+                    
                     elif run[0] == 'img':
-                        main.doc.add_picture(run[1], width=Inches(4))
+                        width = -1
+                        height = -1
+                        sp = run[1].split()
+                        if len(sp) == 1:
+                            main.doc.add_picture(run[1], width=Inches(4))
+                        else:
+                            for spsp in sp[:-1]:
+                                spspsp = spsp.split('=')
+                                if spspsp[0] == 'w':
+                                    width = spspsp[1]
+                                if spspsp[0] == 'h':
+                                    height = spspsp[1]
+                            
+                            if width == -1 and height == -1:
+                                main.doc.add_picture(sp[-1], width=Inches(4))
+                            elif width != -1 and height == -1:
+                                main.doc.add_picture(sp[-1], width=width)
+                            elif width == -1 and height != -1:
+                                main.doc.add_picture(sp[-1], height=height)
+                            elif width != -1 and height != -1:
+                                main.doc.add_picture(sp[-1], width=width, 
+                                    height=height)
+                        
                         para = main.doc.add_paragraph()
 
 
@@ -300,22 +375,22 @@ def main():
         main.doc = Document('template.docx')
         qcount = 0
         debug_print(pprint.pformat(structure).decode('unicode_escape'))
+        
         for element in structure:
             if element[0] == 'meta':
                 p = main.doc.add_paragraph()
                 p.add_run(element[1])
-            if element[0] == 'heading':
-                debug_print('adding heading {}'.format(element[1]))
-                main.doc.add_heading(element[1], 0)
-            if element[0] == 'section':
-                main.doc.add_heading(element[1], 1)
-            if element[0] in ['editor', 'date']:
-                main.doc.add_paragraph(element[1]).alignment = 2
+            
+            if element[0] in ['editor', 'date', 'heading', 'section']:
+                main.doc.add_paragraph(element[1]).alignment = 1
+                main.doc.add_paragraph()
+            
             if element[0] == 'Question':
                 q = element[1]
                 p = main.doc.add_paragraph()
                 qcount += 1
                 p.add_run('Вопрос {}. '.format(qcount)).bold = True
+                
                 if 'handout' in q:
                     p = main.doc.add_paragraph()
                     p.add_run('[Раздаточный материал: ')
@@ -323,19 +398,43 @@ def main():
                     p = main.doc.add_paragraph()
                     p.add_run(']')
                 p = main.doc.add_paragraph()
+                
                 docx_format(q['question'], p, False)
                 p = main.doc.add_paragraph()
+                
                 p.add_run('Ответ: ').bold = True
                 docx_format(q['answer'], p, True)
+                
                 for field in ['zachet', 'nezachet',
                                 'comment', 'source', 'author']:
                     if field in q:
                         p = main.doc.add_paragraph()
                         p.add_run(FIELDS[field]).bold = True
                         docx_format(q[field], p, WHITEN[field])
+                
                 main.doc.add_paragraph()
 
         main.doc.save(outfilename)
+
+    if args.filetype == 'lj':
+        if not args.login:
+            sys.stderr.write('You must specify login with -l'
+                ' to export to lj\n')
+            sys.exit()
+
+        def html_format(s):
+
+
+        final_structure = []
+
+        i = 0
+        header = []
+        while structure[i][0] != 'Question':
+            if structure[i][0] == 'heading':
+
+            i += 1
+
+
 
 
 
