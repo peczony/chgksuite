@@ -16,7 +16,28 @@ import traceback
 import datetime
 from chgk_parser import QUESTION_LABELS
 
+# TODO: handle urls correctly (escape _ in urls, percent decode)
+# TODO: allow to select images width/height
+
+debug = False
+
 REQUIRED_LABELS = set(['question', 'answer'])
+
+FIELDS = {
+    'zachet': 'Зачёт: ',
+    'nezachet': 'Незачёт: ',
+    'comment': 'Комментарий: ',
+    'source': 'Источник: ',
+    'author': 'Автор: ',
+}
+
+WHITEN = {
+    'zachet': True,
+    'nezachet': True,
+    'comment': True,
+    'source': True,
+    'author': False,
+}
 
 def make_filename(s, ext):
     return os.path.splitext(s)[0]+'.'+ext
@@ -31,8 +52,8 @@ def partition(alist, indices):
 def parse_4s_elem(s):
     
     def find_next_unescaped(ss, index):
-        j = index
-        while index < len(ss):
+        j = index + 1
+        while j < len(ss):
             if ss[j] == '\\' and j+2 < len(ss):
                 j += 2
             if ss[j] == ss[index]:
@@ -45,33 +66,48 @@ def parse_4s_elem(s):
     i = 0
     topart = []
     while i < len(s):
-        if i == '_' and (i == 0 or s[i-1] != '\\'):
+        if s[i] == '_' and (i == 0 or s[i-1] != '\\'):
+            debug_print('found _ at {} of line {}'
+                .format(i, s))
             topart.append(i)
             if find_next_unescaped(s, i) != -1:
-                topart.append(find_next_unescaped(s, i))
-        if i == '(' and i + len('(img') < len(s):
+                topart.append(find_next_unescaped(s, i)+1)
+                i = find_next_unescaped(s, i) + 2
+        if (s[i] == '(' and i + len('(img') < len(s) and ''.join(s[i:
+                            i+len('(img')])=='(img'):
+            debug_print('img candidate')
             topart.append(i)
             if not typotools.find_matching_closing_bracket(s, i) is None:
                 topart.append(
-                    typotools.find_matching_closing_bracket(s, i))
+                    typotools.find_matching_closing_bracket(s, i)+1)
+                i = typotools.find_matching_closing_bracket(s, i)+2
         i += 1
 
     topart = sorted(topart)
 
-    parts = [['', str(x)] for x in partition(s, topart)]
+    parts = [['', ''.join(x)] for x in partition(s, topart)]
+    debug_print(pprint.pformat(parts).decode('unicode_escape'))
 
     for part in parts:
-        if part[1][-1] == '_':
-            part[1] = part[1][1:]
-            part[0] = 'em'
-        if part[1][-1] == '_':
-            part[1] = part[1][:-1]
-            part[0] = 'em'
-        if len(part[1]) > 4 and part[1][:4] == '(img':
-            if part[1][-1] != ')':
-                part[1] = part[1] + ')'
-            part[1] = part[1][3:-1]
-            part[0] = 'img'
+        try:
+            if part[1][-1] == '_':
+                part[1] = part[1][1:]
+                part[0] = 'em'
+            if part[1][-1] == '_':
+                part[1] = part[1][:-1]
+                part[0] = 'em'
+            if len(part[1]) > 4 and part[1][:4] == '(img':
+                if part[1][-1] != ')':
+                    part[1] = part[1] + ')'
+                part[1] = typotools.remove_excessive_whitespace(
+                    part[1][4:-1])
+                part[0] = 'img'
+                debug_print('found img at {}'
+                    .format(pprint.pformat(part[1])))
+        except:
+            sys.stderr.write('Error on part {}: {}'
+                .format(pprint.pformat(part).decode('unicode_escape'),
+                traceback.format_exc() ))
 
     return parts
 
@@ -213,25 +249,50 @@ def main():
         import docx
         from docx import Document
         from parse import parse
+        from docx.shared import Inches
         
-        def docx_format(el, para):
+        def docx_format(el, para, whiten):
             if isinstance(el, list):
-                docx_format(el[0], para)
-                for li in el[1]:
-                    p = main.doc.add_paragraph('', style='ListNumber')
-                    docx_format(li, p)
+                if isinstance(el[1], list):
+                    docx_format(el[0], para, whiten)
+                    licount = 0
+                    for li in el[1]:
+                        licount += 1
+                        p = main.doc.add_paragraph('{}. '
+                            .format(licount))
+                        docx_format(li, p, whiten)
+                else:
+                    licount = 0
+                    for li in el:
+                        licount += 1
+                        p = main.doc.add_paragraph('{}. '
+                            .format(licount))
+                        docx_format(li, p, whiten)
             if isinstance(el, basestring):
+                debug_print('parsing element {}:'
+                    .format(pprint.pformat(el).decode('unicode_escape')))
+                parsed = parse_4s_elem(el)
+                images_exist = False
+                for run in parsed:
+                    if run[0] == 'img':
+                        images_exist = True
                 for run in parse_4s_elem(el):
                     if run[0] == '':
                         r = para.add_run(run[1])
-                        if not args.nospoilers:
+                        if whiten and not args.nospoilers:
                             r.style = 'Whitened'
+                        if images_exist:
+                            para = main.doc.add_paragraph()
                     elif run[0] == 'em':
-                        r = para.add_run(run[1]).italic = True
-                        if not args.nospoilers:
+                        r = para.add_run(run[1])
+                        r.italic = True
+                        if whiten and not args.nospoilers:
                             r.style = 'Whitened'
+                        if images_exist:
+                            para = main.doc.add_paragraph()
                     elif run[0] == 'img':
-                        main.doc.add_picture(run[1])
+                        main.doc.add_picture(run[1], width=Inches(4))
+                        para = main.doc.add_paragraph()
 
 
         outfilename = make_filename(args.filename, 'docx')
@@ -253,19 +314,23 @@ def main():
                 qcount += 1
                 p.add_run('Вопрос {}. '.format(qcount)).bold = True
                 if 'handout' in q:
+                    p = main.doc.add_paragraph()
                     p.add_run('[Раздаточный материал: ')
-                    if isinstance(q['handout'], list):
-                        for hand in q['handout']:
-                            p.add_run(hand)
-                    else:
-                        p.add_run(q['handout'])
+                    docx.format(q['handout'])
+                    p = main.doc.add_paragraph()
                     p.add_run(']')
-                docx_format(q['question'], p)
-                docx_format(q['answer'], p)
+                p = main.doc.add_paragraph()
+                docx_format(q['question'], p, False)
+                p = main.doc.add_paragraph()
+                p.add_run('Ответ: ').bold = True
+                docx_format(q['answer'], p, True)
                 for field in ['zachet', 'nezachet',
                                 'comment', 'source', 'author']:
                     if field in q:
-                        docx_format(q[field], p)
+                        p = main.doc.add_paragraph()
+                        p.add_run(FIELDS[field]).bold = True
+                        docx_format(q[field], p, WHITEN[field])
+                main.doc.add_paragraph()
 
         main.doc.save(outfilename)
 
