@@ -67,6 +67,7 @@ def chgk_parse(text):
     re_editor = re.compile(r'Редактор(ы|ская группа)? ?[\.:]', re.I)
     re_date = re.compile(r'Дата ?[\.:]', re.I)
     re_handout = re.compile(r'Разда(ча|тка|точный материал) ?[\.:]', re.I)
+    re_number = re.compile(r'^[0-9]+[\.\)] *')
 
     regexes = {
         'tour' : re_tour,
@@ -102,9 +103,13 @@ def chgk_parse(text):
 
     def find_next_fieldname(index):
         target = index + 1
-        while chgk_parse.structure[target][0] == '':
-            target += 1
-        return chgk_parse.structure[target][0]
+        if target < len(chgk_parse.structure):
+            sys.stderr.write(pprint.pformat(
+                chgk_parse.structure[target]))
+            while (target < len(chgk_parse.structure)-1
+                and chgk_parse.structure[target][0] == ''):
+                target += 1
+            return chgk_parse.structure[target][0]
 
     def merge_y_to_x(x, y):
         i = 0
@@ -170,8 +175,6 @@ def chgk_parse(text):
     # 2.
 
     merge_y_to_x('question','answer')
-    merge_to_x_until_nextfield('source')
-    merge_to_x_until_nextfield('sources')
     merge_to_x_until_nextfield('answer')
     merge_to_x_until_nextfield('comment')
 
@@ -198,7 +201,18 @@ def chgk_parse(text):
         if element[0] == 'newquestion':
             element[0] = 'question'
 
+    merge_to_x_until_nextfield('source')
+    
     # 4.
+
+    if debug:
+        with codecs.open('debug.structure', 'w', 'utf-8') as f:
+            f.write(pprint.pformat(chgk_parse.structure).decode(
+                'unicode_escape'))
+
+    if chgk_parse.structure[0][0] == '' and re_number.search(
+        chgk_parse.structure[0][1]):
+        merge_to_next(0)
 
     for element in chgk_parse.structure:
         if element[0] == '':
@@ -208,38 +222,18 @@ def chgk_parse(text):
 
     # 5.
 
+
     for element in chgk_parse.structure:
         
-        # find handouts
-
-        if element[0] == 'question':
-            
-            handouts = []
-            while re_handout.search(element[1]):
-                handout = re_handout.search(element[1])
-                if (handout.start() > 0 and element[1][handout.start() - 1]
-                    in typotools.OPENING_BRACKETS and not
-                    typotools.find_matching_closing_bracket(element[1],
-                        handout.start()-1) is None):
-                    part = partition(element[1], [handout.start()-1, 
-                        typotools.find_matching_closing_bracket(element[1],
-                        handout.start()-1)+1])
-                else:
-                    part = partition(element[1], [handout.start(), 
-                        handout.start() 
-                        + element[1][handout.start():].index('\n')])
-                assert len(part) == 3
-                element[1] = part[0] + part[2]
-                handouts.append(part[1])
-            if len(handouts) > 0:
-                chgk_parse.structure.insert(
-                    chgk_parse.structure.index(element)+1, ['handout', 
-                    handouts[0] if len(handouts) == 1 else handouts])
-
         # typogrify
 
         if element[0] != 'date':
             element[1] = typotools.typography(element[1])
+
+        # remove question numbers
+
+        if element[0] == 'question' and re_number.search(element[1]):
+            element[1] = re_number.sub('', element[1])
         
         # detect inner lists
 
@@ -402,7 +396,8 @@ def main():
             tag.string = '_' + tag.string + '_'
             tag.unwrap()
         for tag in bsoup.find_all('li'):
-            tag.string = '- ' + tag.string
+            if tag.string:
+                tag.string = '- ' + tag.string
         for tag in bsoup.find_all('img'):
             imgparse = parse('data:image/{ext};base64,{b64}', tag['src'])
             imgname = generate_imgname(imgparse['ext'])

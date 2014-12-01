@@ -38,6 +38,7 @@ FIELDS = {
 }
 
 WHITEN = {
+    'handout': False,
     'zachet': True,
     'nezachet': True,
     'comment': True,
@@ -292,7 +293,7 @@ def main():
         def docx_format(el, para, whiten):
             if isinstance(el, list):
                 
-                if isinstance(el[1], list):
+                if len(el) > 1 and isinstance(el[1], list):
                     docx_format(el[0], para, whiten)
                     licount = 0
                     for li in el[1]:
@@ -349,7 +350,10 @@ def main():
                         height = -1
                         sp = run[1].split()
                         if len(sp) == 1:
-                            main.doc.add_picture(run[1], width=Inches(4))
+                            try:
+                                main.doc.add_picture(run[1], width=Inches(4))
+                            except:
+                                sys.stderr.write(traceback.format_exc())
                         else:
                             for spsp in sp[:-1]:
                                 spspsp = spsp.split('=')
@@ -358,15 +362,18 @@ def main():
                                 if spspsp[0] == 'h':
                                     height = spspsp[1]
                             
-                            if width == -1 and height == -1:
-                                main.doc.add_picture(sp[-1], width=Inches(4))
-                            elif width != -1 and height == -1:
-                                main.doc.add_picture(sp[-1], width=width)
-                            elif width == -1 and height != -1:
-                                main.doc.add_picture(sp[-1], height=height)
-                            elif width != -1 and height != -1:
-                                main.doc.add_picture(sp[-1], width=width, 
-                                    height=height)
+                            try:
+                                if width == -1 and height == -1:
+                                    main.doc.add_picture(sp[-1], width=Inches(4))
+                                elif width != -1 and height == -1:
+                                    main.doc.add_picture(sp[-1], width=width)
+                                elif width == -1 and height != -1:
+                                    main.doc.add_picture(sp[-1], height=height)
+                                elif width != -1 and height != -1:
+                                    main.doc.add_picture(sp[-1], width=width, 
+                                        height=height)
+                            except:
+                                sys.stderr.write(traceback.format_exc())
                         
                         para = main.doc.add_paragraph()
 
@@ -394,7 +401,7 @@ def main():
                 if 'handout' in q:
                     p = main.doc.add_paragraph()
                     p.add_run('[Раздаточный материал: ')
-                    docx.format(q['handout'])
+                    docx_format(q['handout'], p, WHITEN['handout'])
                     p = main.doc.add_paragraph()
                     p.add_run(']')
                 p = main.doc.add_paragraph()
@@ -416,23 +423,23 @@ def main():
 
         main.doc.save(outfilename)
 
-    if args.filetype == 'lj':
-        if not args.login:
-            sys.stderr.write('You must specify login with -l'
-                ' to export to lj\n')
-            sys.exit()
+    # if args.filetype == 'lj':
+    #     if not args.login:
+    #         sys.stderr.write('You must specify login with -l'
+    #             ' to export to lj\n')
+    #         sys.exit()
 
-        def html_format(s):
+    #     def html_format(s):
 
 
-        final_structure = []
+    #     final_structure = []
 
-        i = 0
-        header = []
-        while structure[i][0] != 'Question':
-            if structure[i][0] == 'heading':
+    #     i = 0
+    #     header = []
+    #     while structure[i][0] != 'Question':
+    #         if structure[i][0] == 'heading':
 
-            i += 1
+    #         i += 1
 
 
 

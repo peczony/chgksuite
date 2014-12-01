@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 import re
 import traceback
+import urllib
 
 OPENING_QUOTES = set(['«', '„', '“'])
 CLOSING_QUOTES = set(['»', '“', '”'])
@@ -19,6 +20,10 @@ BAD_BEGINNINGS = set(['Мак', 'мак', "О'", 'о’', 'О’', "о'"])
 
 re_bad_wsp_start = re.compile(r'^[{}]+'.format(''.join(WHITESPACE)))
 re_bad_wsp_end = re.compile(r'[{}]+$'.format(''.join(WHITESPACE)))
+re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
+"""|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
+"""(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""", re.DOTALL) 
+re_percent = re.compile(ur"(%[0-9a-fA-F]{2})+")
 
 def remove_excessive_whitespace(s):
     s = re_bad_wsp_start.sub('', s)
@@ -205,6 +210,16 @@ def detect_accent(s):
                 print(repr(word))
     return s
 
+def percent_decode(s):
+    grs = sorted([match.group(0) 
+        for match in re_percent.finditer(s)], key=len, reverse=True)
+    for gr in grs:
+        try:
+            s = s.replace(gr,urllib.unquote(gr.encode('utf8')).decode('utf8'))
+        except:
+            pass
+    return s
+
 
 
 def typography(s):
@@ -212,6 +227,7 @@ def typography(s):
     s = get_quotes_right(s)
     s = get_dashes_right(s)
     s = detect_accent(s)
+    s = percent_decode(s)
     return s
 
 def matching_bracket(s):
