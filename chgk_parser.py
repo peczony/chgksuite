@@ -12,6 +12,7 @@ import json
 import typotools
 import traceback
 import datetime
+from typotools import remove_excessive_whitespace as rew
 
 debug = False
 
@@ -104,7 +105,7 @@ def chgk_parse(text):
     def find_next_fieldname(index):
         target = index + 1
         if target < len(chgk_parse.structure):
-            sys.stderr.write(pprint.pformat(
+            debug_print(pprint.pformat(
                 chgk_parse.structure[target]))
             while (target < len(chgk_parse.structure)-1
                 and chgk_parse.structure[target][0] == ''):
@@ -127,6 +128,15 @@ def chgk_parse(text):
                 while (i+1 < len(chgk_parse.structure) 
                     and chgk_parse.structure[i+1][0] == ''
                     and find_next_fieldname(i) not in BADNEXTFIELDS):
+                    merge_to_previous(i+1)
+            i += 1
+
+    def dirty_merge_to_x_until_nextfield(x):
+        i = 0
+        while i < len(chgk_parse.structure):
+            if chgk_parse.structure[i][0] == x:
+                while (i+1 < len(chgk_parse.structure) 
+                    and chgk_parse.structure[i+1][0] == ''):
                     merge_to_previous(i+1)
             i += 1
 
@@ -194,6 +204,13 @@ def chgk_parse(text):
         if (chgk_parse.structure[i][0] == ''
             and chgk_parse.structure[i+1][0] == 'newquestion'):
             merge_to_next(i)
+            if (re_number.search(
+                            rew(chgk_parse.structure[i][1])) and
+            not re_number.search(
+                rew(chgk_parse.structure[i-1][1]))):
+                chgk_parse.structure[i][0] = 'question'
+                chgk_parse.structure[i][1] = re_number.sub('',rew(
+                    chgk_parse.structure[i][1]))
             i = 0
         i += 1
 
@@ -201,7 +218,7 @@ def chgk_parse(text):
         if element[0] == 'newquestion':
             element[0] = 'question'
 
-    merge_to_x_until_nextfield('source')
+    dirty_merge_to_x_until_nextfield('source')
     
     # 4.
 
@@ -211,7 +228,7 @@ def chgk_parse(text):
                 'unicode_escape'))
 
     if chgk_parse.structure[0][0] == '' and re_number.search(
-        chgk_parse.structure[0][1]):
+        rew(chgk_parse.structure[0][1])):
         merge_to_next(0)
 
     for element in chgk_parse.structure:
@@ -222,13 +239,12 @@ def chgk_parse(text):
 
     # 5.
 
-
     for element in chgk_parse.structure:
         
         # typogrify
 
         if element[0] != 'date':
-            element[1] = typotools.typography(element[1])
+            element[1] = typotools.recursive_typography(element[1])
 
         # remove question numbers
 
@@ -268,7 +284,8 @@ def chgk_parse(text):
 
         if (element[0] == 'source' and isinstance(element[1], basestring)
                     and len(element[1].split('\n')) > 1):
-            element[1] = element[1].split('\n')
+            element[1] = [re_number.sub('', rew(x)) 
+                for x in element[1].split('\n')]
 
 
 
@@ -413,6 +430,7 @@ def main():
         h = html2text.HTML2Text()
         h.body_width = 0
         txt = (h.handle(bsoup.prettify())
+            .replace('\\-','')
             .replace('\\.','.')
             .replace('( ', '(')
             .replace('[ ', '[')

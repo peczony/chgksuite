@@ -24,8 +24,10 @@ re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
 """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
 """(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""", re.DOTALL) 
 re_perc = re.compile(r'(%[0-9a-fA-F]{2})+')
-re_scaps = re.compile(r'[A-ZА-Я]{2,}')
-re_em = re.compile(r'_.+?_')
+re_scaps = re.compile(r'\s([А-Я`Ё]{2,})[\s,!\.;:-]')
+re_em = re.compile(r'_(.+?)_')
+re_lowercase = re.compile(r'[а-яё]')
+re_uppercase = re.compile(r'[А-ЯЁ]')
 
 REQUIRED_LABELS = set(['question', 'answer'])
 
@@ -48,6 +50,21 @@ WHITEN = {
 
 def make_filename(s, ext):
     return os.path.splitext(s)[0]+'.'+ext
+
+def parseimg(s):
+    width = -1
+    height = -1
+    sp = s.split()
+    if len(sp) == 1:
+        return sp[0], -1, -1
+    else:
+        for spsp in sp[:-1]:
+            spspsp = spsp.split('=')
+            if spspsp[0] == 'w':
+                width = spspsp[1]
+            if spspsp[0] == 'h':
+                height = spspsp[1]
+        return sp[-1], width, height
 
 def debug_print(s):
     if debug == True:
@@ -395,8 +412,10 @@ def main():
             if element[0] == 'Question':
                 q = element[1]
                 p = main.doc.add_paragraph()
-                qcount += 1
-                p.add_run('Вопрос {}. '.format(qcount)).bold = True
+                if not 'number' in q:
+                    qcount += 1
+                p.add_run('Вопрос {}. '.format(qcount
+                    if not 'number' in q else q['number'])).bold = True
                 
                 if 'handout' in q:
                     p = main.doc.add_paragraph()
@@ -422,6 +441,147 @@ def main():
                 main.doc.add_paragraph()
 
         main.doc.save(outfilename)
+
+    if args.filetype == 'tex':
+
+        outfilename = make_filename(args.filename, 'tex')
+
+        def texrepl(zz):
+            zz = re.sub(r"{",r"\{",zz) 
+            zz = re.sub(r"}",r"\}",zz)
+            zz = re.sub("_",r"\_",zz) 
+            zz = re.sub(r"\^",r"{\\textasciicircum}",zz) 
+            zz = re.sub(r"\~",r"{\\textasciitilde}",zz) 
+            zz = re.sub(r"%",r"\%",zz) 
+            zz = re.sub(r"\$",r"\$",zz) 
+            zz = re.sub(r"#",r"\#",zz) 
+            zz = re.sub(r"&",r"\&",zz) 
+            zz = re.sub(r"\\",r"\\",zz) 
+            zz = re.sub(r'((\"(?=[ \.\,;\:\?!\)\]]))|("(?=\Z)))',u'»',zz)
+            zz = re.sub(r'(((?<=[ \.\,;\:\?!\(\[)])")|((?<=\A)"))',u'«',zz)
+            zz = re.sub('"',"''",zz)
+            
+            while re_scaps.search(zz):
+                zz = zz.replace(re_scaps.search(zz).group(1),
+                    '\\tsc{'+re_scaps.search(zz).group(1).lower()+'}')
+            
+            while '`' in zz:
+                if zz.index('`') + 1 >= len(zz):
+                    zz = zz.replace('`', '')
+                else:
+                    if (zz.index('`')+2 < len(zz) 
+                        and re.search(r'\s', zz[zz.index('`')+2])):
+                        zz = zz[:zz.index('`')+2]+'\\'+zz[zz.index('`')+2:]
+                    if (zz.index('`')+1 < len(zz) 
+                        and re_lowercase.search(zz[zz.index('`')+1])):
+                        zz = (zz[:zz.index('`')+1]+'\\acc{'
+                            +zz[zz.index('`')+1]+'}'+zz[zz.index('`')+2:])
+                    elif (zz.index('`')+1 < len(zz) 
+                        and re_uppercase.search(zz[zz.index('`')+1])):
+                        zz = (zz[:zz.index('`')+1]+'\\cacc{'
+                            +zz[zz.index('`')+1]+'}'+zz[zz.index('`')+2:])
+                    zz = zz[:zz.index('`')]+zz[zz.index('`')+1:]
+
+            return zz
+
+        def texformat(s):
+            res = ''
+            for run in parse_4s_elem(s):
+                if run[0] == '':
+                    res += texrepl(run[1])
+                if run[0] == 'em':
+                    res += '\\emph{'+texrepl(run[1])+'}'
+                if run[0] == 'img':
+                    imgfile, w, h = parseimg(run[1])
+                    res += ('\\includegraphics'+
+                        '[width={}{}]'.format(
+                            '10em' if w==-1 else w,
+                            ', height={}'.format(h) if h!=-1 else ''
+                            )+
+                        '{'+texrepl(run[1])+'}')
+            return res
+
+        def yapper(e):
+            if isinstance(e, basestring):
+                return tex_element_layout(e)
+            elif isinstance(e, list):
+                return '\n'.join([tex_element_layout(x) for x in e])
+
+        def tex_element_layout(e):
+            res = ''
+            if isinstance(e, basestring):
+                res = texformat(e)
+                return res
+            if isinstance(e, list):
+                res = """
+\\begin{{enumerate}}
+{}
+\\end{{enumerate}}
+""".format('\n'.join(
+    ['\\item {}'.format(tex_element_layout(x)) for x in e]))
+                return res
+
+        main.counter = 1
+
+        def tex_format_question(q):
+            res = ('\n\n\\begin{{samepage}}\n'
+            '\\textbf{{Вопрос {}.}} {}'.format(main.counter 
+                if not 'number' in q else q['number'], yapper
+                (q['question'])))
+            if not 'number' in q:
+                main.counter += 1
+            res += '\n\\textbf{{Ответ: }}{}'.format(yapper
+                (q['answer']))
+            if 'zachet' in q:
+                res += '\n\\textbf{{Зачёт: }}{}'.format(yapper
+                (q['zachet']))
+            if 'nezachet' in q:
+                res += '\n\\textbf{{Незачёт: }}{}'.format(yapper
+                (q['nezachet']))
+            if 'comment' in q:
+                res += '\n\\textbf{{Комментарий: }}{}'.format(yapper
+                (q['comment']))
+            if 'author' in q:
+                res += '\n\\textbf{{Автор: }}{}'.format(yapper
+                (q['author']))
+            res += '\n\\end{samepage}\\vspace{0.8em}\n'
+            return res
+
+            
+
+        title = 'Title'
+        author = 'Author'
+        date = '1970-01-01'
+        for element in structure:
+            if element[0] == 'heading':
+                title = element[1]
+            if element[0] == 'editor':
+                author = element[1]
+            if element[0] == 'date':
+                date = element[1]
+        main.tex = """\\input{{cheader.tex}}
+\\title{{{title}}}
+\\date{{{date}}}
+\\author{{{author}}}
+\\begin{{document}}
+\\maketitle
+\\obeylines
+\\parskip=0pt
+""".format(date=date, author=author, title=title)
+
+        for element in structure:
+            if element[0] == 'meta':
+                debug_print('chlen')
+                main.tex += '\n{}\n'.format(tex_element_layout
+                    (element[1]))
+            if element[0] == 'Question':
+                debug_print('anus')
+                main.tex += tex_format_question(element[1])
+
+        main.tex += '\\end{document}'
+
+        with codecs.open(outfilename, 'w', 'utf8') as outfile:
+            outfile.write(main.tex)
 
     # if args.filetype == 'lj':
     #     if not args.login:

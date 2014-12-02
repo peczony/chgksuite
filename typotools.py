@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import re
 import traceback
 import urllib
+import pprint
 
 OPENING_QUOTES = set(['«', '„', '“'])
 CLOSING_QUOTES = set(['»', '“', '”'])
@@ -187,7 +188,7 @@ def get_quotes_right(s):
 
 def get_dashes_right(s):
     s = re.sub(r'(?<=\s)-+(?=\s)','—',s)
-    s = re.sub(r'(?<=\d)-','–',s)
+    s = re.sub(r'(?<=\d)-(?<=\d)','–',s)
     s = re.sub(r'-(?=\d)','−',s)
     return s
 
@@ -220,7 +221,15 @@ def percent_decode(s):
             pass
     return s
 
-
+def recursive_typography(s):
+    if isinstance(s, basestring):
+        s = typography(s)
+        return s
+    elif isinstance(s, list):
+        new_s = []
+        for element in s:
+            new_s.append(recursive_typography(element))
+        return new_s
 
 def typography(s):
     s = remove_excessive_whitespace(s)
