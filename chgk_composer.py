@@ -465,6 +465,8 @@ def main():
 
             for match in re.finditer(re_url, zz):
                 zz = zz.replace(match.group(0), '\\url{'+match.group(0)+'}')
+
+            zz = zz.replace(' — ', '{\\hair}—{\\hair}')
             
             while '`' in zz:
                 if zz.index('`') + 1 >= len(zz):
