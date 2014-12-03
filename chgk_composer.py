@@ -786,8 +786,9 @@ def main():
                     .format(yapper(structure[i][1])))
             i += 1
 
-        for element in [x for x in structure if x[0] == 'Question']:
-            final_structure.append(html_format_question(x[1]))
+        for element in structure:
+            if element[0] == 'Question':
+                final_structure.append(html_format_question(element[1]))
 
         lj_post(final_structure)
 
