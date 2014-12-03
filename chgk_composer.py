@@ -21,7 +21,7 @@ re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
 """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
 """(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""", re.DOTALL) 
 re_perc = re.compile(r'(%[0-9a-fA-F]{2})+')
-re_scaps = re.compile(r'(^|[\s«“])([А-Я`ЁA-Z]{2,})([\s,!\.;:”»-\?]|$)')
+re_scaps = re.compile(r'(^|[\s«])([А-Я`ЁA-Z]{2,})([»\s,!\.;:-\?]|$)')
 re_em = re.compile(r'_(.+?)_')
 re_lowercase = re.compile(r'[а-яё]')
 re_uppercase = re.compile(r'[А-ЯЁ]')
@@ -459,11 +459,18 @@ def main():
             zz = re.sub(r'(((?<=[ \.\,;\:\?!\(\[)])")|((?<=\A)"))',u'«',zz)
             zz = re.sub('"',"''",zz)
             
-            while re_scaps.search(zz):
-                zz = zz.replace(re_scaps.search(zz).group(2),
-                    '\\tsc{'+re_scaps.search(zz).group(2).lower()+'}')
+            for match in sorted([x for x in re_scaps.finditer(zz)],
+                key=lambda x: len(x.group(2)), reverse=True):
+                zz = zz.replace(match.group(2),
+                    '\\tsc{'+match.group(2).lower()+'}')
 
-            for match in re.finditer(re_url, zz):
+
+            # while re_scaps.search(zz):
+            #     zz = zz.replace(re_scaps.search(zz).group(2),
+            #         '\\tsc{'+re_scaps.search(zz).group(2).lower()+'}')
+
+            for match in sorted([x for x in re.finditer(re_url, zz)],
+                key=lambda x: len(x.group(0)), reverse=True):
                 zz = zz.replace(match.group(0), '\\url{'+match.group(0)+'}')
 
             zz = zz.replace(' — ', '{\\hair}—{\\hair}')
@@ -501,7 +508,7 @@ def main():
                             '10em' if w==-1 else w,
                             ', height={}'.format(h) if h!=-1 else ''
                             )+
-                        '{'+texrepl(run[1])+'}')
+                        '{'+texrepl(imgfile)+'}')
             return res
 
         def yapper(e):
