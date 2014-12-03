@@ -502,7 +502,10 @@ def main():
             if isinstance(e, basestring):
                 return tex_element_layout(e)
             elif isinstance(e, list):
-                return '\n'.join([tex_element_layout(x) for x in e])
+                if not any(isinstance(x, list) for x in e):
+                    return tex_element_layout(e)
+                else:
+                    return '\n'.join([tex_element_layout(x) for x in e])
 
         def tex_element_layout(e):
             res = ''
@@ -711,7 +714,10 @@ def main():
             if isinstance(e, basestring):
                 return html_element_layout(e)
             elif isinstance(e, list):
-                return '\n'.join([html_element_layout(x) for x in e])
+                if not any(isinstance(x, list) for x in e):
+                    return html_element_layout(e)
+                else:
+                    return '\n'.join([html_element_layout(x) for x in e])
 
         def html_element_layout(e):
             res = ''
