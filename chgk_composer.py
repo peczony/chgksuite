@@ -16,9 +16,6 @@ import traceback
 import datetime
 from chgk_parser import QUESTION_LABELS
 
-# TODO: handle urls correctly (escape _ in urls, percent decode)
-# TODO: allow to select images width/height
-
 debug = False
 re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
 """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
@@ -541,6 +538,10 @@ def main():
             if 'comment' in q:
                 res += '\n\\textbf{{Комментарий: }}{}'.format(yapper
                 (q['comment']))
+            if 'source' in q:
+                res += '\n\\textbf{{Источник{}: }}{}'.format(
+                'и' if isinstance(q['source'], list) else '',
+                yapper(q['source']))
             if 'author' in q:
                 res += '\n\\textbf{{Автор: }}{}'.format(yapper
                 (q['author']))
@@ -583,23 +584,216 @@ def main():
         with codecs.open(outfilename, 'w', 'utf8') as outfile:
             outfile.write(main.tex)
 
-    # if args.filetype == 'lj':
-    #     if not args.login:
-    #         sys.stderr.write('You must specify login with -l'
-    #             ' to export to lj\n')
-    #         sys.exit()
+    if args.filetype == 'lj':
+        if not args.login:
+            sys.stderr.write('You must specify login with -l'
+                ' to export to lj\n')
+            sys.exit()
+        from xmlrpclib import ServerProxy as s
+        import getpass
+        import urllib
+        import hashlib
 
-    #     def html_format(s):
+        def lj_post(stru):
+            def md5(s):
+                return hashlib.md5(s).hexdigest()
+
+            def get_chal():
+                chal = lj.getchallenge()['challenge']
+                response = md5(chal + md5(passwd))
+                return (chal,response)
+             
+            lj = s('http://www.livejournal.com/interface/xmlrpc').LJ.XMLRPC
+             
+            passwd = getpass.getpass()
+
+            chal, response = get_chal()
+
+            now = datetime.datetime.now()
+            year = now.strftime('%Y')
+            month = now.strftime('%m')
+            day = now.strftime('%d')
+            hour = now.strftime('%H')
+            minute = now.strftime('%M')
 
 
-    #     final_structure = []
+            params = {
+                'username' : 'pecheny',
+                'auth_method' : 'challenge',
+                'auth_challenge' : chal,
+                'auth_response' : response,
+                'subject' : 'Test post',
+                'event' : stru[0].encode('utf8'),
+                'security': 'private',
 
-    #     i = 0
-    #     header = []
-    #     while structure[i][0] != 'Question':
-    #         if structure[i][0] == 'heading':
+                'year': year,
+                'mon': month,
+                'day': day,
+                'hour': hour,
+                'min': minute,
+            }
 
-    #         i += 1
+            if args.community == '':
+                params['security'] = 'private'
+
+            journal = args.community if args.community else args.login
+
+            try:
+                post = lj.postevent(params)
+                ditemid = post['ditemid']
+                print post
+
+                for x in stru[1:]:
+                    chal, response = get_chal()
+                    params = {
+                        'username' : args.login,
+                        'auth_method' : 'challenge',
+                        'auth_challenge' : chal,
+                        'auth_response' : response,
+                        'journal' : journal,
+                        'ditemid' : ditemid,
+                        'parenttalkid' : 0,
+                        'body' : x.encode('utf8'),
+                        'subject' : ''
+                        }
+                    print lj.addcomment(params)
+            except:
+                sys.stderr.write('Error issued by LJ API: {}'.format(
+                    traceback.format_exc()))
+                sys.exit()
+
+        def htmlrepl(zz):
+            zz = zz.replace('&','&amp;')
+            zz = zz.replace('<','&lt;')
+            zz = zz.replace('>','&gt;')
+            
+            # while re_scaps.search(zz):
+            #     zz = zz.replace(re_scaps.search(zz).group(1),
+            #         '\\tsc{'+re_scaps.search(zz).group(1).lower()+'}')
+            
+            while '`' in zz:
+                if zz.index('`') + 1 >= len(zz):
+                    zz = zz.replace('`', '')
+                else:
+                    if (zz.index('`')+2 < len(zz) 
+                        and re.search(r'\s', zz[zz.index('`')+2])):
+                        zz = zz[:zz.index('`')+2]+''+zz[zz.index('`')+2:]
+                    if (zz.index('`')+1 < len(zz) 
+                        and re_lowercase.search(zz[zz.index('`')+1])):
+                        zz = (zz[:zz.index('`')+1]+''
+                            +zz[zz.index('`')+1]+'&#x0301;'+zz[zz.index('`')+2:])
+                    elif (zz.index('`')+1 < len(zz) 
+                        and re_uppercase.search(zz[zz.index('`')+1])):
+                        zz = (zz[:zz.index('`')+1]+''
+                            +zz[zz.index('`')+1]+'&#x0301;'+zz[zz.index('`')+2:])
+                    zz = zz[:zz.index('`')]+zz[zz.index('`')+1:]
+
+            return zz
+
+        def htmlformat(s):
+            res = ''
+            for run in parse_4s_elem(s):
+                if run[0] == '':
+                    res += htmlrepl(run[1])
+                if run[0] == 'em':
+                    res += '<em>'+htmlrepl(run[1])+'</em>'
+                if run[0] == 'img':
+                    imgfile, w, h = parseimg(run[1])
+                    res += ('<img '+
+                        'width={}{}'.format(
+                            '10em' if w==-1 else w,
+                            ' height={}'.format(h) if h!=-1 else ''
+                            )+
+                        ' src="'+run[1]+'" />')
+            return res
+
+        def yapper(e):
+            if isinstance(e, basestring):
+                return html_element_layout(e)
+            elif isinstance(e, list):
+                return '\n'.join([html_element_layout(x) for x in e])
+
+        def html_element_layout(e):
+            res = ''
+            if isinstance(e, basestring):
+                res = htmlformat(e)
+                return res
+            if isinstance(e, list):
+                res = """
+<ol>
+{}
+</ol>
+""".format('\n'.join(
+    ['<li>{}</li>'.format(html_element_layout(x)) for x in e]))
+                return res
+
+        main.counter = 1
+
+        def html_format_question(q):
+            res = (
+            '<strong>Вопрос {}.</strong> {}'.format(main.counter 
+                if not 'number' in q else q['number'], yapper
+                (q['question'])))
+            if not 'number' in q:
+                main.counter += 1
+            res += '\n<strong>Ответ: </strong>{}{}{}'.format(
+                '' if args.nospoilers else '<lj-spoiler>',
+                yapper(q['answer']),
+                '' if args.nospoilers else '</lj-spoiler>')
+            if 'zachet' in q:
+                res += '\n<strong>Зачёт: </strong>{}{}{}'.format(
+                '' if args.nospoilers else '<lj-spoiler>',
+                yapper(q['zachet']),
+                '' if args.nospoilers else '</lj-spoiler>')
+            if 'nezachet' in q:
+                res += '\n<strong>Незачёт: </strong>{}{}{}'.format(
+                '' if args.nospoilers else '<lj-spoiler>',
+                yapper(q['nezachet']),
+                '' if args.nospoilers else '</lj-spoiler>')
+            if 'source' in q:
+                res += '\n<strong>Источник{}: </strong>{}{}{}'.format(
+                'и' if isinstance(q['source'], list) else '',
+                '' if args.nospoilers else '<lj-spoiler>',
+                yapper(q['source']),
+                '' if args.nospoilers else '</lj-spoiler>')
+            if 'comment' in q:
+                res += '\n<strong>Комментарий: </strong>{}{}{}'.format(
+                '' if args.nospoilers else '<lj-spoiler>',
+                yapper(q['comment']),
+                '' if args.nospoilers else '</lj-spoiler>')
+            if 'author' in q:
+                res += '\n<strong>Автор{}: </strong>{}'.format(
+                'ы' if isinstance(q['author'], list) else '',
+                yapper(q['author']))
+            return res
+
+        final_structure = ['']
+
+        i = 0
+        header = []
+        while structure[i][0] != 'Question':
+            if structure[i][0] == 'heading':
+                final_structure[0] += ('<h1>{}</h1>'
+                    .format(yapper(structure[i][1])))
+            if structure[i][0] == 'date':
+                final_structure[0] += ('\n<center>{}</center>'
+                    .format(yapper(structure[i][1])))
+            if structure[i][0] == 'editor':
+                final_structure[0] += ('\n<center>{}</center>'
+                    .format(yapper(structure[i][1])))
+            if structure[i][0] == 'meta':
+                final_structure[0] += ('\n{}'
+                    .format(yapper(structure[i][1])))
+            i += 1
+
+        for element in [x for x in structure if x[0] == 'Question']:
+            final_structure.append(html_format_question(x[1]))
+
+        lj_post(final_structure)
+
+
+
+
 
 
 
