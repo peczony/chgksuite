@@ -21,7 +21,7 @@ re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
 """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
 """(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""", re.DOTALL) 
 re_perc = re.compile(r'(%[0-9a-fA-F]{2})+')
-re_scaps = re.compile(r'\s([А-Я`Ё]{2,})[\s,!\.;:-]')
+re_scaps = re.compile(r'(^|\s)([А-Я`Ё]{2,})([\s,!\.;:-]|$)')
 re_em = re.compile(r'_(.+?)_')
 re_lowercase = re.compile(r'[а-яё]')
 re_uppercase = re.compile(r'[А-ЯЁ]')
@@ -106,6 +106,7 @@ def parse_4s_elem(s):
             if find_next_unescaped(s, i) != -1:
                 topart.append(find_next_unescaped(s, i)+1)
                 i = find_next_unescaped(s, i) + 2
+                continue
         if (s[i] == '(' and i + len('(img') < len(s) and ''.join(s[i:
                             i+len('(img')])=='(img'):
             debug_print('img candidate')
@@ -459,8 +460,11 @@ def main():
             zz = re.sub('"',"''",zz)
             
             while re_scaps.search(zz):
-                zz = zz.replace(re_scaps.search(zz).group(1),
-                    '\\tsc{'+re_scaps.search(zz).group(1).lower()+'}')
+                zz = zz.replace(re_scaps.search(zz).group(2),
+                    '\\tsc{'+re_scaps.search(zz).group(2).lower()+'}')
+
+            for match in re.finditer(re_url, zz):
+                zz = zz.replace(match.group(0), '\\url{'+match.group(0)+'}')
             
             while '`' in zz:
                 if zz.index('`') + 1 >= len(zz):
