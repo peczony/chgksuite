@@ -46,7 +46,11 @@ WHITEN = {
 }
 
 def make_filename(s, ext):
-    return os.path.splitext(s)[0]+'.'+ext
+    now = datetime.datetime.now()
+    return (os.path.splitext(s)[0]+'-{}-{}.'
+        .format(now.strftime('%Y%m%d'),
+            now.strftime('%H%M'))
+        +ext)
 
 def parseimg(s):
     width = -1
