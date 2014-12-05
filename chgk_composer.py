@@ -18,8 +18,8 @@ from chgk_parser import QUESTION_LABELS
 
 debug = False
 re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
-"""|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
-"""(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""", re.DOTALL) 
+"""|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s<>]+|(([^\s()<>]+|(([^\s<>]+)))*))+"""
+"""(?:(([^\s<>]+|(‌​([^\s<>]+)))*)|[^\s`!\[\]{};:'".,<>?«»“”‘’]))""", re.DOTALL) 
 re_perc = re.compile(r'(%[0-9a-fA-F]{2})+')
 re_scaps = re.compile(r'(^|[\s«])([А-Я`ЁA-Z]{2,})([»\s,!\.;:-\?]|$)')
 re_em = re.compile(r'_(.+?)_')
@@ -592,11 +592,9 @@ def main():
 
         for element in structure:
             if element[0] == 'meta':
-                debug_print('chlen')
-                main.tex += '\n{}\n'.format(tex_element_layout
-                    (element[1]))
+                main.tex += '\n{}\n\\vspace{{0.8em}}\n'.format(
+                    tex_element_layout(element[1]))
             if element[0] == 'Question':
-                debug_print('anus')
                 main.tex += tex_format_question(element[1])
 
         main.tex += '\\end{document}'
