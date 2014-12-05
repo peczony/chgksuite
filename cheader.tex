@@ -1,0 +1,87 @@
+\documentclass[11pt,a4paper]{scrartcl}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{polyglossia}
+\usepackage{fontspec}
+% \usepackage[xetex,colorlinks=false,pagebackref=false]{hyperref}
+\usepackage[colorlinks=false,pagebackref=false]{hyperref}
+\hypersetup{unicode=true}
+\usepackage{url}
+\urlstyle{sf}
+\usepackage{amsmath}
+\usepackage{calc}
+\usepackage{parskip}
+\raggedright
+%\parindent=1em
+\usepackage{mdwlist}
+\usepackage{datetime}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{changepage}
+\usepackage{paralist}
+\usepackage{fix-unnumbered-sections}
+\setlength{\pltopsep}{0em}
+\setlength{\plpartopsep}{0em}
+\setlength{\plitemsep}{0em}
+%\usepackage[russian]{babel}
+\newenvironment{myfigure}[1][tbp]{%
+  \begin{figure}[#1]\begin{adjustwidth}{-2cm}{}}
+  {\end{adjustwidth}\end{figure}}
+\usepackage{microtype}
+\newcommand{\lspace}[1]{{\addfontfeature{LetterSpace=6.0}#1}}
+%\setdefaultlanguage{russian}
+\yyyymmdddate
+\usepackage{embrac}
+\usepackage{textcomp}
+\setmainfont[Renderer=Basic,Numbers={OldStyle,Lining}, Ligatures=Common, SmallCapsFont={Playfair Display SC}]{Playfair Display}
+\defaultfontfeatures[Playfair Display SC]{Scale=0.9}
+% \setmainfont[Renderer=Basic,Numbers={OldStyle,Lining}, Ligatures=Common]{Lato}
+% \newfontfamily{\ipaf}[Scale=1.1]{Gentium Plus}
+% \newfontfamily{\ipaf}[Scale=1.15]{Linux Libertine O}
+\newfontfamily{\ipaf}[Scale=1.27,FakeStretch=.97]{Junicode}
+\newfontfamily{\fontsc}{Playfair Display SC}
+\newcommand{\tsc}[1]{{\fontsc\lspace{#1}}}
+\setsansfont[Numbers={OldStyle}]{Fira Sans Light}
+\DeclareTextFontCommand{\tipaf}{\ipaf}
+%\pagestyle{empty}
+\setlength{\tabcolsep}{0em}
+\newcommand{\Hair}{\ifmmode\mskip1mu\else\kern0.08em\fi}
+\newcommand{\hair}{\hspace{0.08em}}
+\newcounter{Questions}
+\setcounter{Questions}{1}
+\newcounter{Tours}
+\setcounter{Tours}{1}
+\newcommand{\ZeroQuestions}{0}
+\newcommand{\AppendZero}{\expandafter\renewcommand\expandafter\ZeroQuestions\expandafter{\ZeroQuestions 0}}
+\newcommand{\qu}[1]{\textbf{Вопрос \arabic{Questions}.}\;\stepcounter{Questions} #1\\*}
+\newcommand{\zqu}[1]{\textbf{Вопрос \ZeroQuestions.}\;\AppendZero #1\\*}
+\newcommand{\tour}{\section*{Тур \arabic{Tours}}\stepcounter{Tours}}
+\newcommand{\an}[1]{\textbf{Ответ:}\; #1\\*}
+\newcommand{\za}[1]{\textbf{Зачёт:}\; #1 \\*}
+\newcommand{\nza}[1]{\textbf{Незачёт:}\; #1 \\*}
+\newcommand{\co}[1]{\textbf{Комментарий:}\; #1 \\*}
+\newcommand{\so}[1]{\textbf{Источник:}\; #1 \\*}
+\newcommand{\sos}[1]{\textbf{Источники:}\; \parskip=0pt #1 \hspace{0em}\\*}
+\newcommand{\au}[1]{\textbf{Автор:}\; #1 \\[10 pt]}
+\newcommand{\aus}[1]{\textbf{Авторы:}\; #1 \hspace{0em} \\[10 pt plus 1pt minus 1pt]}
+%\newcommand{\acc}[1]{#1\kern-0.08em\tipaf{\char"0301}}
+\newdimen{\KernAmount}
+% \newcommand{\acc}[1]{#1\setlength{\KernAmount}{\widthof{#1} * \real{-0.03}}\kern\KernAmount\tipaf{\char"0301}\kern0.03em}
+% \newcommand{\cacc}[1]{#1\setlength{\KernAmount}{\widthof{#1} * \real{-0.2}}\kern\KernAmount\lower-.45ex\hbox{\tipaf{\char"0301}}\kern0.18em}
+% \newcommand{\facc}[1]{#1\setlength{\KernAmount}{\widthof{#1} * \real{-0.2}}\kern\KernAmount\lower-.45ex\hbox{\tipaf{\char"0301}}\kern0.1em}
+\usepackage{ipa}
+\newcommand{\acc}[1]{\diatop[´|#1]}
+\newcommand{\cacc}[1]{\diatop[´|#1]}
+\newcommand{\facc}[1]{\diatop[´|#1]}
+\SetProtrusion
+{encoding= *}
+{091 = {500,},
+« = {500,},
+( = {500,},
+‘= {500,}}
+\EmbracOn
+\clubpenalty=9996
+\widowpenalty=9999
+\brokenpenalty=4991
+\predisplaypenalty=10000
+\postdisplaypenalty=1549
+\displaywidowpenalty=1602

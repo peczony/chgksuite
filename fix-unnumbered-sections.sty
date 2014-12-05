@@ -1,0 +1,17 @@
+% save this as fix-unnumbered-sections.sty
+\ProvidesPackage{fix-unnumbered-sections}
+
+% This package is available at http://tex.stackexchange.com/q/33696/
+% It patches the standard classes so that they treat unnumbered and numbered sections equally! (At least, I've tested it with the article class.)
+% As a result, even the unnumbered sections gets entries in the TOC and, when hyperref is loaded, they also get bookmarks as per the default hyperref setting for bookmarks.
+% Unnumbered sections can also have short titles for TOC and bookmark purposes, just like numbered sections.
+%
+% It works by pretending the unnumbered sections are deeper than \c@secnumdepth (in fact, just by assuming that they are 1000 (\@m) levels deep).
+% I believe there are no side effects to this...
+
+% We just pretend that \@ssect, which LaTeX uses to treat unnumbered [sub*]sections differently to (maybe) numbered ones (if they are no deeper than \c@secnumdepth levels), doesn't exist.
+% Instead, we always use \@sect, which LaTeX uses for numbered sections, and sections which would otherwise be numbered if they weren't deeper than \c@secnumdepth levels.
+
+
+\RequirePackage{etoolbox}
+\patchcmd{\@startsection}{\@ssect{#3}{#4}{#5}{#6}}{\@dblarg{\@sect{#1}{\@m}{#3}{#4}{#5}{#6}}}{}{\PackageError{fix-unnumbered-sections}{Unable to patch \string\@startsection; are you using a non-standard document class?}\@ehd}
