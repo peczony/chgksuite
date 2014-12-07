@@ -16,6 +16,12 @@ import traceback
 import datetime
 from chgk_parser import QUESTION_LABELS
 
+try:
+    from Tkinter import *
+except:
+    from tkinter import *
+import tkFileDialog
+
 debug = False
 re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
 """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s<>]+|(([^\s()<>]+|(([^\s<>]+)))*))+"""
@@ -279,12 +285,15 @@ def parse_4s(s):
 def main():
     
     global debug
+    
+    root = Tk()
+    root.withdraw()
 
     sys.stderr = codecs.getwriter('utf8')(sys.stderr)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename')
-    parser.add_argument('filetype', nargs='?', default='docx')
+    parser.add_argument('filename', nargs='?')
+    parser.add_argument('filetype', nargs='?')
     parser.add_argument('--debug', '-d', action='store_true')
     parser.add_argument('--nospoilers', '-n', action='store_true')
     parser.add_argument('--login', '-l')
@@ -293,6 +302,14 @@ def main():
 
     if args.debug:
         debug = True
+    
+    argsdict = vars(args)
+    
+    debug_print(pprint.pformat(argsdict))
+
+    if args.filename==None:
+        args.filename = tkFileDialog.askopenfilename(
+            filetypes=[('chgksuite markup files','*.4s')])
 
     with codecs.open(args.filename, 'r', 'utf8') as input_file:
             input_text = input_file.read()
@@ -306,6 +323,33 @@ def main():
             make_filename(args.filename, 'dbg'), 'w', 'utf8') as output_file:
             output_file.write(
                 pprint.pformat(structure).decode('unicode_escape'))
+
+    def gui_get_filetype():
+        root = Tk()
+        def docxreturn():
+            root.ret = 'docx'
+            root.quit()
+            root.destroy()
+        def texreturn():
+            root.ret = 'tex'
+            root.quit()
+            root.destroy()
+        def ljreturn():
+            root.ret = 'lj'
+            root.quit()
+            root.destroy()
+        Button(root, command=
+            docxreturn, text = 'docx').pack(side = 'left')
+        Button(root, command=
+            texreturn, text = 'tex').pack(side = 'left')
+        Button(root, command=
+            ljreturn, text = 'LJ').pack(side = 'left')
+        root.mainloop()
+        return root.ret
+
+    if args.filetype == None:
+        args.filetype = gui_get_filetype()
+        print args.filetype
 
     if args.filetype == 'docx':
         import docx
@@ -607,12 +651,51 @@ def main():
             outfile.write(main.tex)
 
     if args.filetype == 'lj':
+
+        def lj_post_getdata():
+
+            root = Tk()
+            
+            loginbox = Entry(root)
+            pwdbox = Entry(root, show = '*')
+            communitybox = Entry(root)
+            
+            def onpwdentry(evt):
+                root.login = loginbox.get()
+                root.password = pwdbox.get()
+                root.community = communitybox.get()
+                root.quit()
+                root.destroy()
+            def onokclick():
+                root.login = loginbox.get()
+                root.password = pwdbox.get()
+                root.community = communitybox.get()
+                root.quit()
+                root.destroy()
+            
+            Label(root, text='Login').pack(side = 'top')
+            loginbox.pack(side = 'top')
+            Label(root, text = 'Password').pack(side = 'top')
+            pwdbox.pack(side = 'top')
+            Label(root, text='Community (may be blank)').pack(side = 'top')
+            communitybox.pack(side = 'top')
+
+            pwdbox.bind('<Return>', onpwdentry)
+            loginbox.bind('<Return>', onpwdentry)
+            communitybox.bind('<Return>', onpwdentry)
+
+            Button(root, command=onokclick, text = 'OK').pack(side = 'top')
+
+            root.mainloop()
+            return root.login, root.password, root.community
+
         if not args.login:
-            sys.stderr.write('You must specify login with -l'
-                ' to export to lj\n')
-            sys.exit()
+            args.login, passwd, args.community = lj_post_getdata()
+        else:
+            import getpass
+            passwd = getpass.getpass()
+        
         from xmlrpclib import ServerProxy as s
-        import getpass
         import urllib
         import hashlib
 
@@ -627,8 +710,6 @@ def main():
              
             lj = s('http://www.livejournal.com/interface/xmlrpc').LJ.XMLRPC
              
-            passwd = getpass.getpass()
-
             chal, response = get_chal()
 
             now = datetime.datetime.now()
@@ -815,6 +896,8 @@ def main():
                 final_structure.append(html_format_question(element[1]))
 
         lj_post(final_structure)
+
+    os.system('pause')
 
 
 
