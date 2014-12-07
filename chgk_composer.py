@@ -97,7 +97,11 @@ def parse_4s_elem(s):
     grs = sorted([match.group(0) 
         for match in re_perc.finditer(s)], key=len, reverse=True)
     for gr in grs:
-        s = s.replace(gr,urllib.unquote(gr.encode('utf8')).decode('utf8'))
+        try:
+            s = s.replace(gr,urllib.unquote(gr.encode('utf8')).decode('utf8'))
+        except:
+            debug_print('error decoding on line {}: {}\n'
+                .format(gr, traceback.format_exc()))
     
     s = list(s)
     i = 0
@@ -636,7 +640,7 @@ def main():
 
 
             params = {
-                'username' : 'pecheny',
+                'username' : args.login,
                 'auth_method' : 'challenge',
                 'auth_challenge' : chal,
                 'auth_response' : response,
@@ -661,7 +665,7 @@ def main():
                 ditemid = post['ditemid']
                 print post
 
-                for x in stru[1:]:
+                for id, x in enumerate(stru[1:], start=1):
                     chal, response = get_chal()
                     params = {
                         'username' : args.login,
@@ -672,7 +676,7 @@ def main():
                         'ditemid' : ditemid,
                         'parenttalkid' : 0,
                         'body' : x.encode('utf8'),
-                        'subject' : ''
+                        'subject' : 'Вопрос {}'.format(id).encode('utf8')
                         }
                     print lj.addcomment(params)
             except:
@@ -717,12 +721,11 @@ def main():
                     res += '<em>'+htmlrepl(run[1])+'</em>'
                 if run[0] == 'img':
                     imgfile, w, h = parseimg(run[1])
-                    res += ('<img '+
-                        'width={}{}'.format(
-                            '10em' if w==-1 else w,
-                            ' height={}'.format(h) if h!=-1 else ''
-                            )+
-                        ' src="'+run[1]+'" />')
+                    res += '<img{}{} src="{}"/>'.format(
+                        '' if w==-1 else ' width={}'.format(w),
+                        '' if h==-1 else ' height={}'.format(h),
+                        run[1]
+                         )
             return res
 
         def yapper(e):
