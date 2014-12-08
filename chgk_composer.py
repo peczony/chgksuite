@@ -147,6 +147,8 @@ def parse_4s_elem(s):
     debug_print(pprint.pformat(parts).decode('unicode_escape'))
 
     for part in parts:
+        if part == ['', '']:
+            continue
         try:
             if part[1][-1] == '_':
                 part[1] = part[1][1:]
@@ -312,6 +314,7 @@ def main():
     debug_print(pprint.pformat(argsdict))
 
     if args.filename is None:
+        print('Choose .4s file to load:')
         args.filename = tkFileDialog.askopenfilename(
             filetypes=[('chgksuite markup files','*.4s')])
 
@@ -374,8 +377,8 @@ def main():
         return root.ret
 
     if args.filetype is None:
+        print('Choose type of export:')
         args.filetype, spoil = gui_get_filetype()
-        print('spoil is {}'.format(repr(spoil)))
         if spoil:
             args.nospoilers = False
         else:
