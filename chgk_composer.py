@@ -184,9 +184,11 @@ def parse_4s(s):
         '#' : 'meta',
         '##' : 'section',
         '###' : 'heading',
+        '###LJ': 'ljheading',
         '#EDITOR': 'editor',
         '#DATE': 'date',
         '?': 'question',
+        '№': 'number',
         '!': 'answer',
         '=': 'zachet',
         '!=': 'nezachet',
@@ -758,8 +760,8 @@ def main():
                 'auth_method' : 'challenge',
                 'auth_challenge' : chal,
                 'auth_response' : response,
-                'subject' : 'Test post',
-                'event' : stru[0].encode('utf8'),
+                'subject' : stru[0]['header'],
+                'event' : stru[0]['content'].encode('utf8'),
                 'security': 'private',
 
                 'year': year,
@@ -789,8 +791,8 @@ def main():
                         'journal' : journal,
                         'ditemid' : ditemid,
                         'parenttalkid' : 0,
-                        'body' : x.encode('utf8'),
-                        'subject' : 'Вопрос {}'.format(id).encode('utf8')
+                        'body' : x['content'].encode('utf8'),
+                        'subject' : x['header']
                         }
                     print lj.addcomment(params)
             except:
@@ -913,30 +915,47 @@ def main():
                 res += '</lj-spoiler>'
             return res
 
-        final_structure = ['']
+        final_structure = [{'header': '',
+        'content':''}]
 
         i = 0
-        header = []
+
+        heading = ''
+        ljheading = ''
         while structure[i][0] != 'Question':
             if structure[i][0] == 'heading':
-                final_structure[0] += ('<h1>{}</h1>'
+                final_structure[0]['content'] += ('<h1>{}</h1>'
                     .format(yapper(structure[i][1])))
+                heading = yapper(structure[i][1])
+            if structure[i][0] == 'ljheading':
+                final_structure[0]['header'] = structure[i][1]
+                ljheading = yapper(structure[i][1])
             if structure[i][0] == 'date':
-                final_structure[0] += ('\n<center>{}</center>'
+                final_structure[0]['content'] += ('\n<center>{}</center>'
                     .format(yapper(structure[i][1])))
             if structure[i][0] == 'editor':
-                final_structure[0] += ('\n<center>{}</center>'
+                final_structure[0]['content'] += ('\n<center>{}</center>'
                     .format(yapper(structure[i][1])))
             if structure[i][0] == 'meta':
-                final_structure[0] += ('\n{}'
+                final_structure[0]['content'] += ('\n{}'
                     .format(yapper(structure[i][1])))
             i += 1
 
+        if ljheading != '':
+            final_structure[0]['header'] = ljheading
+        else:
+            final_structure[0]['header'] = heading
+
+
         for element in structure[i:]:
             if element[0] == 'Question':
-                final_structure.append(html_format_question(element[1]))
+                final_structure.append({'header': 'Вопрос {}'
+                    .format(element[1]['number'] if 'number' in
+                        element[1] else main.counter),
+                    'content': html_format_question(element[1])})
             if element[0] == 'meta':
-                final_structure.append(yapper(element[1]))
+                final_structure.append({'header': '',
+                    'content': yapper(element[1])})
 
         if debug:
             with codecs.open('lj.debug', 'w', 'utf8') as f:
