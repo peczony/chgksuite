@@ -15,6 +15,8 @@ from typotools import remove_excessive_whitespace as rew
 import traceback
 import datetime
 from chgk_parser import QUESTION_LABELS
+import base64
+import pyimgur
 
 try:
     from Tkinter import *
@@ -311,6 +313,8 @@ def main():
         args.filename = tkFileDialog.askopenfilename(
             filetypes=[('chgksuite markup files','*.4s')])
 
+    os.chdir(os.path.dirname(os.path.abspath(args.filename)))
+
     with codecs.open(args.filename, 'r', 'utf8') as input_file:
             input_text = input_file.read()
 
@@ -325,24 +329,34 @@ def main():
                 pprint.pformat(structure).decode('unicode_escape'))
 
     def gui_get_filetype():
-        ch_spoilers = False if args.nospoilers else True
+        ch_spoilers = IntVar()
+        if args.nospoilers:
+            ch_spoilers.set(0)
+        else:
+            ch_spoilers.set(1)
         root = Tk()
         frame = Frame(root)
         frame.pack()
         bottomframe = Frame(root)
         bottomframe.pack(side = 'bottom')
         def docxreturn():
-            root.ret = 'docx', ch_spoilers
+            root.ret = 'docx', ch_spoilers.get()
             root.quit()
             root.destroy()
         def texreturn():
-            root.ret = 'tex', ch_spoilers
+            root.ret = 'tex', ch_spoilers.get()
             root.quit()
             root.destroy()
         def ljreturn():
-            root.ret = 'lj', ch_spoilers
+            root.ret = 'lj', ch_spoilers.get()
             root.quit()
             root.destroy()
+        def chtoggle():
+            if ch_spoilers.get() == 0:
+                ch_spoilers.set(1)
+            else:
+                ch_spoilers.set(0)
+
         Button(frame, command=
             docxreturn, text = 'docx').pack(side = 'left')
         Button(frame, command=
@@ -350,8 +364,8 @@ def main():
         Button(frame, command=
             ljreturn, text = 'LJ').pack(side = 'left')
         ch = Checkbutton(bottomframe, text='Spoilers',
-            variable=ch_spoilers)
-        if ch_spoilers:
+            variable=ch_spoilers, command=chtoggle)
+        if ch_spoilers.get() == 1:
             ch.select()
         ch.pack(side = 'bottom')
         root.mainloop()
@@ -359,12 +373,13 @@ def main():
 
     if args.filetype == None:
         args.filetype, spoil = gui_get_filetype()
-        print('Exporting to {}, spoilers are {}...\n'
-            .format(args.filetype, 'off' if args.nospoilers else 'on'))
+        print('spoil is {}'.format(repr(spoil)))
         if spoil:
             args.nospoilers = False
         else:
             args.nospoilers = True
+        print('Exporting to {}, spoilers are {}...\n'
+            .format(args.filetype, 'off' if args.nospoilers else 'on'))
 
     if args.filetype == 'docx':
         import docx
@@ -714,6 +729,9 @@ def main():
         import urllib
         import hashlib
 
+        CLIENT_ID = '8da1bd97da30ac1'
+        im = pyimgur.Imgur(CLIENT_ID)
+
         def lj_post(stru):
             def md5(s):
                 return hashlib.md5(s).hexdigest()
@@ -817,10 +835,20 @@ def main():
                     res += '<em>'+htmlrepl(run[1])+'</em>'
                 if run[0] == 'img':
                     imgfile, w, h = parseimg(run[1])
+                    if os.path.isfile(imgfile):
+                        # with open(imgfile, 'rb') as f:
+                        #     imgdata = f.read()
+                        # imgfile = 'data:image/{ext};base64,{b64}'.format(
+                        #     ext=os.path.splitext(imgfile)[-1][1:], 
+                        #     b64=base64.b64encode(imgdata))
+                        uploaded_image = im.upload_image(imgfile, 
+                            title=imgfile)
+                        imgfile = uploaded_image.link
+
                     res += '<img{}{} src="{}"/>'.format(
                         '' if w==-1 else ' width={}'.format(w),
                         '' if h==-1 else ' height={}'.format(h),
-                        run[1]
+                        imgfile
                          )
             return res
 
@@ -854,7 +882,7 @@ def main():
             '<strong>Вопрос {}.</strong> {}'.format(main.counter 
                 if not 'number' in q else q['number'], yapper
                 (q['question'])
-                +'\n<lj-spoiler>' if not args.nospoilers else ''))
+                +('\n<lj-spoiler>' if not args.nospoilers else '')))
             if not 'number' in q:
                 main.counter += 1
             res += '\n<strong>Ответ: </strong>{}'.format(
@@ -904,11 +932,16 @@ def main():
                     .format(yapper(structure[i][1])))
             i += 1
 
-        for element in structure:
+        for element in structure[i:]:
             if element[0] == 'Question':
                 final_structure.append(html_format_question(element[1]))
             if element[0] == 'meta':
                 final_structure.append(yapper(element[1]))
+
+        if debug:
+            with codecs.open('lj.debug', 'w', 'utf8') as f:
+                f.write(pprint.pformat(final_structure)
+                    .decode('unicode_escape'))
 
         lj_post(final_structure)
 
