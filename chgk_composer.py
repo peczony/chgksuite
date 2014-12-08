@@ -309,7 +309,7 @@ def main():
     
     debug_print(pprint.pformat(argsdict))
 
-    if args.filename==None:
+    if args.filename is None:
         args.filename = tkFileDialog.askopenfilename(
             filetypes=[('chgksuite markup files','*.4s')])
 
@@ -371,7 +371,7 @@ def main():
         root.mainloop()
         return root.ret
 
-    if args.filetype == None:
+    if args.filetype is None:
         args.filetype, spoil = gui_get_filetype()
         print('spoil is {}'.format(repr(spoil)))
         if spoil:
