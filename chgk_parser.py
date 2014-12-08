@@ -233,6 +233,9 @@ def chgk_parse(text):
             f.write(pprint.pformat(chgk_parse.structure).decode(
                 'unicode_escape'))
 
+    chgk_parse.structure = [x for x in chgk_parse.structure if [x[0], rew(x[1])]
+        != ['', '']]
+
     if chgk_parse.structure[0][0] == '' and re_number.search(
         rew(chgk_parse.structure[0][1])):
         merge_to_next(0)
