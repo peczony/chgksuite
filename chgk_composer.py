@@ -853,38 +853,36 @@ def main():
             res = (
             '<strong>Вопрос {}.</strong> {}'.format(main.counter 
                 if not 'number' in q else q['number'], yapper
-                (q['question'])))
+                (q['question'])
+                +'\n<lj-spoiler>' if not args.nospoilers else ''))
             if not 'number' in q:
                 main.counter += 1
-            res += '\n<strong>Ответ: </strong>{}{}{}'.format(
-                '' if args.nospoilers else '<lj-spoiler>',
+            res += '\n<strong>Ответ: </strong>{}'.format(
                 yapper(q['answer']),
-                '' if args.nospoilers else '</lj-spoiler>')
+                )
             if 'zachet' in q:
-                res += '\n<strong>Зачёт: </strong>{}{}{}'.format(
-                '' if args.nospoilers else '<lj-spoiler>',
+                res += '\n<strong>Зачёт: </strong>{}'.format(
                 yapper(q['zachet']),
-                '' if args.nospoilers else '</lj-spoiler>')
+                )
             if 'nezachet' in q:
-                res += '\n<strong>Незачёт: </strong>{}{}{}'.format(
-                '' if args.nospoilers else '<lj-spoiler>',
+                res += '\n<strong>Незачёт: </strong>{}'.format(
                 yapper(q['nezachet']),
-                '' if args.nospoilers else '</lj-spoiler>')
+                )
             if 'source' in q:
-                res += '\n<strong>Источник{}: </strong>{}{}{}'.format(
+                res += '\n<strong>Источник{}: </strong>{}'.format(
                 'и' if isinstance(q['source'], list) else '',
-                '' if args.nospoilers else '<lj-spoiler>',
                 yapper(q['source']),
-                '' if args.nospoilers else '</lj-spoiler>')
+                )
             if 'comment' in q:
-                res += '\n<strong>Комментарий: </strong>{}{}{}'.format(
-                '' if args.nospoilers else '<lj-spoiler>',
+                res += '\n<strong>Комментарий: </strong>{}'.format(
                 yapper(q['comment']),
-                '' if args.nospoilers else '</lj-spoiler>')
+                )
             if 'author' in q:
                 res += '\n<strong>Автор{}: </strong>{}'.format(
                 'ы' if isinstance(q['author'], list) else '',
                 yapper(q['author']))
+            if not args.nospoilers:
+                res += '</lj-spoiler>'
             return res
 
         final_structure = ['']
@@ -909,6 +907,8 @@ def main():
         for element in structure:
             if element[0] == 'Question':
                 final_structure.append(html_format_question(element[1]))
+            if element[0] == 'meta':
+                final_structure.append(yapper(element[1]))
 
         lj_post(final_structure)
 
