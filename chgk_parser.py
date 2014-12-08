@@ -14,6 +14,12 @@ import traceback
 import datetime
 from typotools import remove_excessive_whitespace as rew
 
+try:
+    from Tkinter import *
+except:
+    from tkinter import *
+import tkFileDialog
+
 debug = False
 
 QUESTION_LABELS = ['handout', 'question', 'answer',
@@ -357,15 +363,27 @@ def main():
 
     global debug
 
+    root = Tk()
+    root.withdraw()
+
     sys.stderr = codecs.getwriter('utf8')(sys.stderr)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename')
+    parser.add_argument('filename', nargs='?')
     parser.add_argument('--debug', '-d', action='store_true')
     args = parser.parse_args()
 
     if args.debug:
         debug = True
+
+    if args.filename is None:
+        args.filename = tkFileDialog.askopenfilename(
+            filetypes=[
+            ('Word 2007+','*.docx'),
+            ('Plain text','*.txt'),
+            ])
+
+    os.chdir(os.path.dirname(os.path.abspath(args.filename)))
 
     if os.path.splitext(args.filename)[1] == '.txt':
 
