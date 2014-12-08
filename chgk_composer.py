@@ -325,31 +325,46 @@ def main():
                 pprint.pformat(structure).decode('unicode_escape'))
 
     def gui_get_filetype():
+        ch_spoilers = False if args.nospoilers else True
         root = Tk()
+        frame = Frame(root)
+        frame.pack()
+        bottomframe = Frame(root)
+        bottomframe.pack(side = 'bottom')
         def docxreturn():
-            root.ret = 'docx'
+            root.ret = 'docx', ch_spoilers
             root.quit()
             root.destroy()
         def texreturn():
-            root.ret = 'tex'
+            root.ret = 'tex', ch_spoilers
             root.quit()
             root.destroy()
         def ljreturn():
-            root.ret = 'lj'
+            root.ret = 'lj', ch_spoilers
             root.quit()
             root.destroy()
-        Button(root, command=
+        Button(frame, command=
             docxreturn, text = 'docx').pack(side = 'left')
-        Button(root, command=
+        Button(frame, command=
             texreturn, text = 'tex').pack(side = 'left')
-        Button(root, command=
+        Button(frame, command=
             ljreturn, text = 'LJ').pack(side = 'left')
+        ch = Checkbutton(bottomframe, text='Spoilers',
+            variable=ch_spoilers)
+        if ch_spoilers:
+            ch.select()
+        ch.pack(side = 'bottom')
         root.mainloop()
         return root.ret
 
     if args.filetype == None:
-        args.filetype = gui_get_filetype()
-        print args.filetype
+        args.filetype, spoil = gui_get_filetype()
+        print('Exporting to {}, spoilers are {}...\n'
+            .format(args.filetype, 'off' if args.nospoilers else 'on'))
+        if spoil:
+            args.nospoilers = False
+        else:
+            args.nospoilers = True
 
     if args.filetype == 'docx':
         import docx
