@@ -27,7 +27,13 @@
 
 Вы можете скачать [последнюю версию репозитория](https://bitbucket.org/pecheny/chgksuite/get/tip.zip). Если у вас есть _Python_, вы можете воспользоваться `.py`-скриптами из архива, удовлетворив все зависимости через `pip install`. Если вы пользуетесь _Mercurial_, можете также клонировать репозиторий, скопировав ссылку из интерфейса _Bitbucket_.
 
-Если у вас _Windows_ и нет _Python_, качайте дополнительно к репозиторию `.exe`-файлы [chgk_parser](https://dl.dropboxusercontent.com/u/24653887/chgk/chgk_parser.exe) и [chgk_composer](https://dl.dropboxusercontent.com/u/24653887/chgk/chgk_composer.exe). Остальное берите из архива по ссылке выше. Файлы с расширением `.py` можете удалить.
+Если у вас нет _Python_, качайте дополнительно к репозиторию бинарные файлы:
+
+- Windows: [chgk_parser](https://dl.dropboxusercontent.com/u/24653887/chgk/chgk_parser.exe), [chgk_composer](https://dl.dropboxusercontent.com/u/24653887/chgk/chgk_composer.exe). 
+- OS X: [chgk_parser](https://dl.dropboxusercontent.com/u/24653887/chgk/osx/chgk_parser), [chgk_composer](https://dl.dropboxusercontent.com/u/24653887/chgk/osx/chgk_composer).
+- Ubuntu: [chgk_parser](https://dl.dropboxusercontent.com/u/24653887/chgk/ubuntu/chgk_parser), [chgk_composer](https://dl.dropboxusercontent.com/u/24653887/chgk/ubuntu/chgk_composer).
+
+Остальное берите из архива по ссылке выше. Файлы с расширением `.py` можете удалить.
 
 Для экспорта в _Word_ необходим файл `template.docx`, присутствующий в архиве. Для экспорта в _LaTeX_ необходимы `cheader.tex` и `fix-unnumbered-sections.sty`, также присутствующие в архиве, однако вы можете использовать собственную преамбулу, если пожелаете. Подробности экспорта в _LaTeX_ будут изложены в соответствующем разделе документации.
 
