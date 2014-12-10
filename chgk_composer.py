@@ -765,8 +765,6 @@ def main():
                 'auth_response' : response,
                 'subject' : stru[0]['header'],
                 'event' : stru[0]['content'].encode('utf8'),
-                'security': 'private',
-
                 'year': year,
                 'mon': month,
                 'day': day,
@@ -776,6 +774,8 @@ def main():
 
             if args.community == '':
                 params['security'] = 'private'
+            else:
+                params['usejournal'] = args.community
 
             journal = args.community if args.community else args.login
 
