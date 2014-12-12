@@ -32,15 +32,11 @@
 \yyyymmdddate
 \usepackage{embrac}
 \usepackage{textcomp}
-\setmainfont[Renderer=Basic,Numbers={OldStyle,Lining}, Ligatures=Common, SmallCapsFont={Playfair Display SC}]{Playfair Display}
-\defaultfontfeatures[Playfair Display SC]{Scale=0.9}
-% \setmainfont[Renderer=Basic,Numbers={OldStyle,Lining}, Ligatures=Common]{Lato}
-% \newfontfamily{\ipaf}[Scale=1.1]{Gentium Plus}
-% \newfontfamily{\ipaf}[Scale=1.15]{Linux Libertine O}
+\setmainfont[Renderer=Basic,Numbers={OldStyle}]{Brill}
 \newfontfamily{\ipaf}[Scale=1.27,FakeStretch=.97]{Junicode}
 \newfontfamily{\fontsc}{Playfair Display SC}
-\newcommand{\tsc}[1]{{\fontsc\lspace{#1}}}
-\setsansfont[Numbers={OldStyle}]{Fira Sans Light}
+\newcommand{\tsc}[1]{\textsc{\lspace{#1}}}
+\setsansfont[Numbers={OldStyle},Scale=0.75]{Fira Sans Light}
 \DeclareTextFontCommand{\tipaf}{\ipaf}
 %\pagestyle{empty}
 \setlength{\tabcolsep}{0em}
@@ -69,9 +65,11 @@
 % \newcommand{\cacc}[1]{#1\setlength{\KernAmount}{\widthof{#1} * \real{-0.2}}\kern\KernAmount\lower-.45ex\hbox{\tipaf{\char"0301}}\kern0.18em}
 % \newcommand{\facc}[1]{#1\setlength{\KernAmount}{\widthof{#1} * \real{-0.2}}\kern\KernAmount\lower-.45ex\hbox{\tipaf{\char"0301}}\kern0.1em}
 \usepackage{ipa}
-\newcommand{\acc}[1]{\diatop[´|#1]}
-\newcommand{\cacc}[1]{\diatop[´|#1]}
-\newcommand{\facc}[1]{\diatop[´|#1]}
+\newcommand{\acc}[1]{#1́}
+\newcommand{\cacc}[1]{#1́}
+\newcommand{\facc}[2]{#1́}
+% \newcommand{\cacc}[1]{\diatop[´|#1]}
+% \newcommand{\facc}[1]{\diatop[´|#1]}
 \SetProtrusion
 {encoding= *}
 {091 = {500,},
