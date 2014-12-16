@@ -288,6 +288,11 @@ def parse_4s(s):
     if current_question != {}:
         assert all(True for label in REQUIRED_LABELS 
                 if label in current_question)
+        if 'setcounter' in current_question:
+            counter = int(current_question['setcounter'])
+        if not 'number' in current_question:
+            current_question['number'] = counter
+            counter += 1
         final_structure.append(['Question', current_question])
 
     return final_structure
