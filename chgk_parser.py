@@ -23,7 +23,8 @@ import tkFileDialog
 debug = False
 
 QUESTION_LABELS = ['handout', 'question', 'answer',
-        'zachet', 'nezachet', 'comment', 'source', 'author', 'number']
+        'zachet', 'nezachet', 'comment', 'source', 'author', 'number',
+        'setcounter']
 
 def make_filename(s):
     return os.path.splitext(s)[0]+'.4s'

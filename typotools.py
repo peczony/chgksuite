@@ -45,7 +45,6 @@ def convert_quotes(text):
     # Special case if the very first character is a quote
     # followed by punctuation at a non-word-break. Close the quotes by brute
     # force:
-    text = re.sub(r"""^'(?=%s\\B)""" % (punct_class,), '«', text)
     text = re.sub(r"""^"(?=%s\\B)""" % (punct_class,), '«', text)
 
     # Special case for double sets of quotes, e.g.:
@@ -87,9 +86,6 @@ def convert_quotes(text):
             (\s | s\b)
             """ % (close_class,), re.VERBOSE)
     text = closing_single_quotes_regex.sub(r'\1»\2', text)
-
-    # Any remaining single quotes should be opening ones:
-    text = re.sub("'", '«', text)
 
     # Get most opening double quotes:
     opening_double_quotes_regex = re.compile(r"""

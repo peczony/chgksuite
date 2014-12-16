@@ -191,6 +191,7 @@ def parse_4s(s):
         '#DATE': 'date',
         '?': 'question',
         '№': 'number',
+        '№№': 'setcounter',
         '!': 'answer',
         '=': 'zachet',
         '!=': 'nezachet',
@@ -499,6 +500,8 @@ def main():
                 p = main.doc.add_paragraph()
                 if not 'number' in q:
                     qcount += 1
+                if 'setcounter' in q:
+                    qcount = int(q['setcounter'])
                 p.add_run('Вопрос {}. '.format(qcount
                     if not 'number' in q else q['number'])).bold = True
                 
@@ -624,6 +627,8 @@ def main():
         main.counter = 1
 
         def tex_format_question(q):
+            if 'setcounter' in q:
+                main.counter = int(q['setcounter'])
             res = ('\n\n\\begin{{samepage}}\n'
             '\\textbf{{Вопрос {}.}} {}'.format(main.counter 
                 if not 'number' in q else q['number'], yapper
@@ -875,14 +880,15 @@ def main():
                 res = """
 <ol>
 {}
-</ol>
-""".format('\n'.join(
+</ol>""".format('\n'.join(
     ['<li>{}</li>'.format(html_element_layout(x)) for x in e]))
                 return res
 
         main.counter = 1
 
         def html_format_question(q):
+            if 'setcounter' in q:
+                main.counter = int(q['setcounter'])
             res = (
             '<strong>Вопрос {}.</strong> {}'.format(main.counter 
                 if not 'number' in q else q['number'], yapper
