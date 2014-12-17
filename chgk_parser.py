@@ -64,12 +64,12 @@ def chgk_parse(text):
     WHITESPACE = set([' ', ' ', '\n'])
     PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
 
-    re_tour = re.compile(r'Тур [0-9]*[\.:]', re.I)
+    re_tour = re.compile(r'Тур [0-9]*([\.:])?', re.I)
     re_question = re.compile(r'Вопрос [0-9]* ?[\.:]', re.I)
-    re_answer = re.compile(r'Ответы? ?[\.:]', re.I)
+    re_answer = re.compile(r'Ответы? ?([0-9]+)? ?[\.:]', re.I)
     re_zachet = re.compile(r'Зач[её]т ?[\.:]', re.I)
     re_nezachet = re.compile(r'Незач[её]т ?[\.:]', re.I)
-    re_comment = re.compile(r'Комментарий ?[\.:]', re.I)
+    re_comment = re.compile(r'Комментари[ий] ?([0-9]+)? ?[\.:]', re.I)
     re_author = re.compile(r'Автор\(?ы?\)? ?[\.:]', re.I)
     re_source = re.compile(r'Источник\(?и?\)? ?[\.:]', re.I)
     re_editor = re.compile(r'Редактор(ы|ская группа)? ?[\.:]', re.I)
@@ -78,7 +78,7 @@ def chgk_parse(text):
     re_number = re.compile(r'^[0-9]+[\.\)] *')
 
     regexes = {
-        'tour' : re_tour,
+        # 'tour' : re_tour,
         'question' : re_question,
         'answer' : re_answer,
         'zachet' : re_zachet,
@@ -226,13 +226,18 @@ def chgk_parse(text):
             element[0] = 'question'
 
     dirty_merge_to_x_until_nextfield('source')
+
+    for id, element in enumerate(chgk_parse.structure):
+        if (element[0] == 'author' and re.search(r'^{}$'.format(re_author.
+            pattern),
+            rew(element[1]))
+            and id + 1 < len(chgk_parse.structure)):
+            merge_to_previous(id+1)
+    
+    merge_to_x_until_nextfield('zachet')
+    merge_to_x_until_nextfield('nezachet')
     
     # 4.
-
-    if debug:
-        with codecs.open('debug.structure', 'w', 'utf-8') as f:
-            f.write(pprint.pformat(chgk_parse.structure).decode(
-                'unicode_escape'))
 
     chgk_parse.structure = [x for x in chgk_parse.structure if [x[0], rew(x[1])]
         != ['', '']]
