@@ -29,6 +29,7 @@ re_percent = re.compile(ur"(%[0-9a-fA-F]{2})+")
 def remove_excessive_whitespace(s):
     s = re_bad_wsp_start.sub('', s)
     s = re_bad_wsp_end.sub('', s)
+    s = re.sub(r'\s+\n\s+', '\n', s)
     return s
 
 
