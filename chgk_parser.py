@@ -446,8 +446,11 @@ def main():
                     f.write(base64.b64decode(imgparse['b64']))
             tag.extract()
         for tag in bsoup.find_all('a'):
-            tag.string = tag['href']
-            tag.unwrap()
+            if rew(tag.string) == '':
+                tag.extract()
+            else:
+                tag.string = tag['href']
+                tag.unwrap()
 
         h = html2text.HTML2Text()
         h.body_width = 0
