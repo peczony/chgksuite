@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 import sys
 import argparse
+import hashlib
 import pprint
 import urllib
 import re
@@ -27,7 +28,7 @@ import tkFileDialog
 debug = False
 re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
 """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s<>]+|(([^\s()<>]+|(([^\s<>]+)))*))+"""
-"""(?:(([^\s<>]+|(‌​([^\s<>]+)))*)|[^\s`!\[\]{};:'".,<>?«»“”‘’]))""", re.DOTALL) 
+"""(?:(([^\s<>]+|(‌​([^\s<>]+)))*)|[^\s`!\[\]{};:'".,<>?«»“”‘’]))""", re.DOTALL)
 re_perc = re.compile(r'(%[0-9a-fA-F]{2})+')
 re_scaps = re.compile(r'(^|[\s])([«»А-Я `ЁA-Z]{2,})([\s,!\.;:-\?]|$)')
 re_em = re.compile(r'_(.+?)_')
@@ -570,9 +571,36 @@ def main():
             #     zz = zz.replace(re_scaps.search(zz).group(2),
             #         '\\tsc{'+re_scaps.search(zz).group(2).lower()+'}')
 
-            for match in sorted([x for x in re.finditer(re_url, zz)],
-                key=lambda x: len(x.group(0)), reverse=True):
-                zz = zz.replace(match.group(0), '\\url{'+match.group(0)+'}')
+            torepl = [x.group(0) for x in re.finditer(re_url, zz)]
+            for s in range(len(torepl)):
+                item = torepl[s]
+                while item[-1] in typotools.PUNCTUATION:
+                    item = item[:-1]
+                while (item[-1] in typotools.CLOSING_BRACKETS and
+                    typotools.find_matching_opening_bracket(item, -1) is None):
+                    item = item[:-1]
+                while item[-1] in typotools.PUNCTUATION:
+                    item = item[:-1]
+                torepl[s] = item
+            torepl = sorted(set(torepl), key=len, reverse=True)
+            hashurls = {}
+            for s in torepl:
+                hashurls[s] = hashlib.md5(
+                    s.encode('utf8')).hexdigest().decode('utf8')
+            for s in sorted(hashurls, key=len, reverse=True):
+                zz = zz.replace(s, hashurls[s])
+            hashurls = {v: k for k, v in hashurls.items()}
+            for s in sorted(hashurls):
+                zz = zz.replace(s, '\\url{{{}}}'.format(
+                    hashurls[s]))
+
+            # debug_print('URLS FOR REPLACING: ' +pprint.pformat(torepl).decode('unicode_escape'))
+            # while len(torepl)>0:
+            #     s = torepl[0]
+            #     debug_print('STRING BEFORE REPLACEMENT: {}'.format(zz))
+            #     zz = zz.replace(s, '\\url{'+s+'}')
+            #     debug_print('STRING AFTER REPLACEMENT: {}'.format(zz))
+            #     torepl.pop(0)
 
             zz = zz.replace(' — ', '{\\hair}—{\\hair}')
             
@@ -748,7 +776,6 @@ def main():
         
         from xmlrpclib import ServerProxy as s
         import urllib
-        import hashlib
 
         CLIENT_ID = '8da1bd97da30ac1'
         im = pyimgur.Imgur(CLIENT_ID)
