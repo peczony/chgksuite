@@ -64,8 +64,10 @@ def chgk_parse(text):
     WHITESPACE = set([' ', ' ', '\n'])
     PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
 
-    re_tour = re.compile(r'Тур [0-9]*([\.:])?', re.I)
-    re_question = re.compile(r'Вопрос [0-9]* ?[\.:]', re.I)
+    re_tourdb = re.compile(r'^Тур:')
+    re_tour = re.compile(r'^Тур ([0-9]*)([\.:])?$')
+    re_tourrev = re.compile(r'^([0-9]+) тур([\.:])?$')
+    re_question = re.compile(r'Вопрос ([0-9]*) ?[\.:]', re.I)
     re_answer = re.compile(r'Ответы? ?([0-9]+)? ?[\.:]', re.I)
     re_zachet = re.compile(r'Зач[её]т ?[\.:]', re.I)
     re_nezachet = re.compile(r'Незач[её]т ?[\.:]', re.I)
@@ -78,7 +80,9 @@ def chgk_parse(text):
     re_number = re.compile(r'^[0-9]+[\.\)] *')
 
     regexes = {
-        # 'tour' : re_tour,
+        'tour' : re_tour,
+        'tourrev' : re_tourrev,
+        'tourdb' : re_tourdb,
         'question' : re_question,
         'answer' : re_answer,
         'zachet' : re_zachet,
@@ -218,6 +222,11 @@ def chgk_parse(text):
                 chgk_parse.structure[i][0] = 'question'
                 chgk_parse.structure[i][1] = re_number.sub('',rew(
                     chgk_parse.structure[i][1]))
+                try:
+                    chgk_parse.structure.insert(i, ['number', int(re_number.search(
+                            rew(chgk_parse.structure[i][1])).group(0))])
+                except:
+                    pass
             i = 0
         i += 1
 
@@ -246,15 +255,21 @@ def chgk_parse(text):
         rew(chgk_parse.structure[0][1])):
         merge_to_next(0)
 
-    for element in chgk_parse.structure:
+    for id, element in enumerate(chgk_parse.structure):
         if element[0] == '':
             element[0] = 'meta'
-        if element[0] in regexes:
+        if element[0] in regexes and element[0] not in ['tour', 'tourrev']:
+            if element[0] == 'question':
+                try:
+                    num = re_question.search(element[1]).group(1)
+                    chgk_parse.structure.insert(id, ['number', num])
+                except:
+                    pass
             element[1] = regexes[element[0]].sub('', element[1])
 
     # 5.
 
-    for element in chgk_parse.structure:
+    for id, element in enumerate(chgk_parse.structure):
         
         # typogrify
 
@@ -263,7 +278,12 @@ def chgk_parse(text):
 
         # remove question numbers
 
-        if element[0] == 'question' and re_number.search(element[1]):
+        if element[0] == 'question':
+            try:
+                num = re_question.search(element[1]).group(1)
+                chgk_parse.structure.insert(id, ['number', num])
+            except:
+                pass
             element[1] = re_number.sub('', element[1])
         
         # detect inner lists
@@ -311,7 +331,7 @@ def chgk_parse(text):
     current_question = {}
 
     for element in chgk_parse.structure:
-        if element[0] in set(['question', 'meta']): 
+        if element[0] in set(['tour', 'question', 'meta']): 
             if current_question != {}:
                 final_structure.append(['Question', current_question])
                 current_question = {}
@@ -328,11 +348,14 @@ def chgk_parse(text):
 
     # 7.
 
+    debug_print(pprint.pformat(final_structure).decode('unicode_escape'))
     return final_structure
 
 def compose_4s(structure):
     types_mapping = {
         'meta' : '# ',
+        'tour' : '## ',
+        'tourrev' : '## ',
         'editor': '#EDITOR ',
         'date': '#DATE ',
         'question': '? ',
@@ -355,12 +378,19 @@ def compose_4s(structure):
                 return '\n- ' + '\n- '.join(z)
     result = ''
     for element in structure:
-        if types_mapping[element[0]]:
+        if element[0] in ['tour', 'tourrev']:
+            checkNumber = True
+        if element[0] == 'number' and checkNumber and int(element[1])!=0:
+            checkNumber = False
+            result += '№№ '+element[1]+'\n'
+        if element[0] == 'number' and int(element[1])==0:
+            result += '№ '+element[1]+'\n'
+        if element[0] in types_mapping and types_mapping[element[0]]:
             result += (types_mapping[element[0]] 
                 + format_element(element[1]) + '\n\n')
         elif element[0] == 'Question':
             for label in QUESTION_LABELS:
-                if label in element[1]:
+                if label in element[1] and label in types_mapping:
                     result += (types_mapping[label]
                         + format_element(element[1][label]) + '\n')
             result += '\n'
