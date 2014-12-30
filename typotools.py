@@ -259,3 +259,22 @@ def find_matching_closing_bracket(s, index):
         i += 1
     return None
 
+def find_matching_opening_bracket(s, index):
+    s = list(s)
+    i = index
+    assert s[i] in CLOSING_BRACKETS
+    cb = s[i]
+    ob = matching_bracket(cb)
+    counter = 0
+    if i < 0:
+        i = len(s) - abs(i)
+    while i < len(s) and i >= 0:
+        if s[i] == cb:
+            counter += 1
+        if s[i] == ob:
+            counter -= 1
+            if counter == 0:
+                return i
+        i -= 1
+    return None
+
