@@ -67,7 +67,7 @@ def chgk_parse(text):
     re_tourdb = re.compile(r'^Тур:')
     re_tour = re.compile(r'^Тур ([0-9]*)([\.:])?$')
     re_tourrev = re.compile(r'^([0-9]+) тур([\.:])?$')
-    re_question = re.compile(r'Вопрос ([0-9]*) ?[\.:]', re.I)
+    re_question = re.compile(r'Вопрос? ([0-9]*) ?[\.:]', re.I)
     re_answer = re.compile(r'Ответы? ?([0-9]+)? ?[\.:]', re.I)
     re_zachet = re.compile(r'Зач[её]т ?[\.:]', re.I)
     re_nezachet = re.compile(r'Незач[её]т ?[\.:]', re.I)
