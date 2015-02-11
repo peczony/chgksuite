@@ -203,6 +203,12 @@ def parse_4s(s):
     }
 
     structure = []
+
+    if s[0] == '\ufeff' and len(s) > 1:
+        s = s[1:]
+
+    with codecs.open('raw.debug', 'w', 'utf8') as debugf:
+        debugf.write(pprint.pformat(s.split('\n')).decode('unicode_escape'))
     
     for line in s.split('\n'):
         if rew(line) == '':
@@ -219,6 +225,10 @@ def parse_4s(s):
     final_structure = []
     current_question = {}
     counter = 1
+
+    if debug:
+        with codecs.open('debug1st.debug', 'w', 'utf8') as debugf:
+            debugf.write(pprint.pformat(structure).decode('unicode_escape'))
 
     for element in structure:
         
@@ -295,6 +305,10 @@ def parse_4s(s):
             current_question['number'] = counter
             counter += 1
         final_structure.append(['Question', current_question])
+
+    if debug:
+        with codecs.open('debug.debug', 'w', 'utf8') as debugf:
+            debugf.write(pprint.pformat(final_structure))
 
     return final_structure
 
@@ -975,7 +989,7 @@ def main():
                     .format(yapper(structure[i][1])))
                 heading = yapper(structure[i][1])
             if structure[i][0] == 'ljheading':
-                final_structure[0]['header'] = structure[i][1]
+                # final_structure[0]['header'] = structure[i][1]
                 ljheading = yapper(structure[i][1])
             if structure[i][0] == 'date':
                 final_structure[0]['content'] += ('\n<center>{}</center>'
