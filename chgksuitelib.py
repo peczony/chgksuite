@@ -211,7 +211,8 @@ class ParsingStructure(object):
         
         # 4.
 
-        self.structure = [x for x in self.structure if [x[0], remove_excessive_whitespace(x[1])]
+        self.structure = [x for x in self.structure 
+            if [x[0], remove_excessive_whitespace(x[1])]
             != ['', '']]
 
         if self.structure[0][0] == '' and re_number.search(
@@ -221,7 +222,8 @@ class ParsingStructure(object):
         for id, element in enumerate(self.structure):
             if element[0] == '':
                 element[0] = 'meta'
-            if element[0] in self.regexes and element[0] not in ['tour', 'tourrev']:
+            if (element[0] in self.regexes 
+                and element[0] not in ['tour', 'tourrev']):
                 if element[0] == 'question':
                     try:
                         num = re_question.search(element[1]).group(1)
@@ -252,7 +254,8 @@ class ParsingStructure(object):
             # detect inner lists
 
             mo = {m for m 
-                in re.finditer(r'(\s+|^)(\d+)[\.\)]\s*(?!\d)',element[1], re.U)}
+                in re.finditer(r'(\s+|^)(\d+)[\.\)]\s*(?!\d)',
+                element[1], re.U)}
             if len(mo) > 1:
                 sorted_up = sorted(mo, key=lambda m: int(m.group(2)))
                 j = 0
@@ -300,7 +303,8 @@ class ParsingStructure(object):
                     try:
                         current_question[element[0]] += SEP + element[1]
                     except:
-                        print('{}'.format(current_question).decode('unicode_escape'))
+                        print('{}'.format(
+                            current_question).decode('unicode_escape'))
                         pdb.set_trace()
                 else:
                     current_question[element[0]] = element[1]
