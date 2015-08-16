@@ -62,6 +62,9 @@ sys.excepthook = info
 class WrongFormattingLevelException(Exception):
     pass
 
+class WrongPackageInitException(Exception):
+    pass
+
 # End of exceptions
 
 def partition(alist, indices):
@@ -420,7 +423,7 @@ class ParsingStructure(object):
 class Package(object):
     def __init__(self, file=None, string=None):
         if not file is None and not string is None:
-            raise Exception('You must specify either '
+            raise WrongPackageInitException('You must specify either '
                 'a file or a string, not both.')
         if not string is None:
             '...'
