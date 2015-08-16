@@ -57,6 +57,13 @@ def info(type, value, tb):
 sys.excepthook = info
 ##### END DEBUGGING
 
+# Exceptions
+
+class WrongFormattingLevelException(Exception):
+    pass
+
+# End of exceptions
+
 def partition(alist, indices):
     return [alist[i:j] for i, j in zip([0]+indices, indices+[None])]
 
@@ -67,6 +74,25 @@ class Question(object):
                 setattr(self, k, v)
             else:
                 raise Exception('Unexpected argument: {}'.format(k))
+    def format(self, format='4s'):
+        if format == 'docx':
+            raise WrongFormattingLevelException(
+                "Sorry, questions are not meant to be "
+                "formatted individually in docx.")
+        elif format == '4s':
+            return self._format_4s()
+        elif format == 'tex':
+            return self._format_tex()
+        elif format == 'lj':
+            return self._format_lj()
+    def _format_docx(self): # needs special treatment
+        return ''
+    def _format_4s(self):
+        return ''
+    def _format_tex(self):
+        return ''
+    def _format_lj(self):
+        return ''
     def __repr__(self):
         return "Question('{}{}')".format(
             self.question[:100], 
