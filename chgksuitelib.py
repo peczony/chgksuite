@@ -70,6 +70,17 @@ class WrongPackageInitException(Exception):
 def partition(alist, indices):
     return [alist[i:j] for i, j in zip([0]+indices, indices+[None])]
 
+def check_question(question):
+    warnings = []
+    for el in {'question', 'answer', 'source', 'author'}:
+        if el not in question:
+            warnings.append(el)
+    if len(warnings) > 1:
+        print('WARNING: question {} lacks the following fields: {}{}'
+            .format(question, ', '.join(warnings), SEP)
+            .decode('unicode_escape')
+            .encode(ENC, errors='replace'))
+
 class Question(object):
     def __init__(self, *args, **kwargs):
         for k, v in kwargs.items():
@@ -324,7 +335,7 @@ class ParsingStructure(object):
         for element in self.structure:
             if element[0] in set(['tour', 'question', 'meta']): 
                 if current_question != {}:
-                    self.check_question(current_question)
+                    check_question(current_question)
                     final_structure.append(Question(**current_question))
                     current_question = {}
             if element[0] in QUESTION_LABELS:
@@ -340,7 +351,7 @@ class ParsingStructure(object):
             else:
                 final_structure.append([element[0], element[1]])
         if current_question != {}:
-            self.check_question(current_question)
+            check_question(current_question)
             final_structure.append(Question(**current_question))
 
         # 7.
@@ -404,17 +415,6 @@ class ParsingStructure(object):
         z = self.structure[y]
         self.structure[y] = self.structure[x]
         self.structure[x] = z
-
-    def check_question(self, question):
-        warnings = []
-        for el in {'question', 'answer', 'source', 'author'}:
-            if el not in question:
-                warnings.append(el)
-        if len(warnings) > 1:
-            print('WARNING: question {} lacks the following fields: {}{}'
-                .format(question, ', '.join(warnings), SEP)
-                .decode('unicode_escape')
-                .encode(ENC, errors='replace'))
 
     def __repr__(self):
         '...'
