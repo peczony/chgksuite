@@ -24,7 +24,7 @@ re_bad_wsp_end = re.compile(r'[{}]+$'.format(''.join(WHITESPACE)))
 re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
 """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
 """(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""", re.DOTALL) 
-re_percent = re.compile(ur"(%[0-9a-fA-F]{2})+")
+re_percent = re.compile(r"(%[0-9a-fA-F]{2})+")
 
 def remove_excessive_whitespace(s):
     s = re_bad_wsp_start.sub('', s)

@@ -5,6 +5,10 @@ import sys
 import argparse
 import hashlib
 import pprint
+import random
+import shutil
+import subprocess
+import shlex
 import urllib
 import re
 import os
@@ -36,6 +40,8 @@ re_lowercase = re.compile(r'[а-яё]')
 re_uppercase = re.compile(r'[А-ЯЁ]')
 
 REQUIRED_LABELS = set(['question', 'answer'])
+SOURCEDIR = os.getcwd()
+TARGETDIR = os.getcwd()
 
 FIELDS = {
     'zachet': 'Зачёт: ',
@@ -182,7 +188,7 @@ def parse_4s_elem(s):
     return parts
 
 
-def parse_4s(s):
+def parse_4s(s, randomize=False):
     mapping = {
         '#' : 'meta',
         '##' : 'section',
@@ -306,6 +312,14 @@ def parse_4s(s):
             counter += 1
         final_structure.append(['Question', current_question])
 
+    if randomize:
+        random.shuffle(final_structure, lambda: 0.3)
+        i = 1
+        for element in final_structure:
+            if element[0] == 'Question':
+                element[1]['number'] = i
+                i += 1
+
     if debug:
         with codecs.open('debug.debug', 'w', 'utf8') as debugf:
             debugf.write(pprint.pformat(final_structure))
@@ -315,9 +329,14 @@ def parse_4s(s):
 
 
 
-def main():
+def gui_compose():
     
+    global __file__                         # to fix stupid
+    __file__ = os.path.abspath(__file__)    # __file__ handling
+    _file_ = os.path.basename(__file__)     # in python 2
+
     global debug
+    global TARGETDIR
     
     root = Tk()
     root.withdraw()
@@ -329,6 +348,8 @@ def main():
     parser.add_argument('filetype', nargs='?')
     parser.add_argument('--debug', '-d', action='store_true')
     parser.add_argument('--nospoilers', '-n', action='store_true')
+    parser.add_argument('--noparagraph', action='store_true')
+    parser.add_argument('--randomize', action='store_true')
     parser.add_argument('--login', '-l')
     parser.add_argument('--community', '-c')
     args = parser.parse_args()
@@ -345,23 +366,30 @@ def main():
         args.filename = tkFileDialog.askopenfilename(
             filetypes=[('chgksuite markup files','*.4s')])
 
-    os.chdir(os.path.dirname(os.path.abspath(args.filename)))
+    TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
+    filename = os.path.basename(os.path.abspath(args.filename))
+    shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
+    os.chdir(SOURCEDIR)
 
-    with codecs.open(args.filename, 'r', 'utf8') as input_file:
+    with codecs.open(filename, 'r', 'utf8') as input_file:
             input_text = input_file.read()
 
     input_text = input_text.replace('\r','')
 
-    structure = parse_4s(input_text)
+    structure = parse_4s(input_text, randomize=args.randomize)
+
+    # os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 
     if args.debug:
         with codecs.open(
-            make_filename(args.filename, 'dbg'), 'w', 'utf8') as output_file:
+            make_filename(filename, 'dbg'), 'w', 'utf8') as output_file:
             output_file.write(
                 pprint.pformat(structure).decode('unicode_escape'))
 
     def gui_get_filetype():
         ch_spoilers = IntVar()
+        ch_answers = IntVar()
         if args.nospoilers:
             ch_spoilers.set(0)
         else:
@@ -372,15 +400,15 @@ def main():
         bottomframe = Frame(root)
         bottomframe.pack(side = 'bottom')
         def docxreturn():
-            root.ret = 'docx', ch_spoilers.get()
+            root.ret = 'docx', ch_spoilers.get(), ch_answers.get()
             root.quit()
             root.destroy()
         def texreturn():
-            root.ret = 'tex', ch_spoilers.get()
+            root.ret = 'tex', ch_spoilers.get(), ch_answers.get()
             root.quit()
             root.destroy()
         def ljreturn():
-            root.ret = 'lj', ch_spoilers.get()
+            root.ret = 'lj', ch_spoilers.get(), ch_answers.get()
             root.quit()
             root.destroy()
         def chtoggle():
@@ -388,6 +416,11 @@ def main():
                 ch_spoilers.set(1)
             else:
                 ch_spoilers.set(0)
+        def antoggle():
+            if ch_answers.get() == 0:
+                ch_answers.set(1)
+            else:
+                ch_answers.set(0)
 
         Button(frame, command=
             docxreturn, text = 'docx').pack(side = 'left')
@@ -397,15 +430,20 @@ def main():
             ljreturn, text = 'LJ').pack(side = 'left')
         ch = Checkbutton(bottomframe, text='Spoilers',
             variable=ch_spoilers, command=chtoggle)
+        ans = Checkbutton(bottomframe, text='No answers',
+            variable=ch_answers, command=antoggle)
         if ch_spoilers.get() == 1:
             ch.select()
+        if ch_answers.get() == 1:
+            ans.select()
         ch.pack(side = 'bottom')
+        ans.pack(side = 'bottom')
         root.mainloop()
         return root.ret
 
     if args.filetype is None:
         print('Choose type of export:')
-        args.filetype, spoil = gui_get_filetype()
+        args.filetype, spoil, noanswers = gui_get_filetype()
         if spoil:
             args.nospoilers = False
         else:
@@ -428,7 +466,7 @@ def main():
                     for li in el[1]:
                         licount += 1
                         
-                        p = main.doc.add_paragraph('{}. '
+                        p = gui_compose.doc.add_paragraph('{}. '
                             .format(licount))
                         docx_format(li, p, whiten)
                 else:
@@ -436,13 +474,30 @@ def main():
                     for li in el:
                         licount += 1
                         
-                        p = main.doc.add_paragraph('{}. '
+                        p = gui_compose.doc.add_paragraph('{}. '
                             .format(licount))
                         docx_format(li, p, whiten)
 
             if isinstance(el, basestring):
                 debug_print('parsing element {}:'
                     .format(pprint.pformat(el).decode('unicode_escape')))
+
+                while '`' in el:
+                    if el.index('`') + 1 >= len(el):
+                        el = el.replace('`', '')
+                    else:
+                        if (el.index('`')+2 < len(el) 
+                            and re.search(r'\s', el[el.index('`')+2])):
+                            el = el[:el.index('`')+2]+''+el[el.index('`')+2:]
+                        if (el.index('`')+1 < len(el) 
+                            and re_lowercase.search(el[el.index('`')+1])):
+                            el = (el[:el.index('`')+1]+''
+                                +el[el.index('`')+1]+'\u0301'+el[el.index('`')+2:])
+                        elif (el.index('`')+1 < len(el) 
+                            and re_uppercase.search(el[el.index('`')+1])):
+                            el = (el[:el.index('`')+1]+''
+                                +el[el.index('`')+1]+'\u0301'+el[el.index('`')+2:])
+                        el = el[:el.index('`')]+el[el.index('`')+1:]
                 parsed = parse_4s_elem(el)
                 images_exist = False
                 
@@ -456,7 +511,7 @@ def main():
                         if whiten and not args.nospoilers:
                             r.style = 'Whitened'
                         if images_exist:
-                            para = main.doc.add_paragraph()
+                            para = gui_compose.doc.add_paragraph()
                     
                     elif run[0] == 'em':
                         r = para.add_run(run[1])
@@ -464,7 +519,7 @@ def main():
                         if whiten and not args.nospoilers:
                             r.style = 'Whitened'
                         if images_exist:
-                            para = main.doc.add_paragraph()
+                            para = gui_compose.doc.add_paragraph()
 
                     elif run[0] == 'sc':
                         r = para.add_run(run[1])
@@ -472,7 +527,7 @@ def main():
                         if whiten and not args.nospoilers:
                             r.style = 'Whitened'
                         if images_exist:
-                            para = main.doc.add_paragraph()
+                            para = gui_compose.doc.add_paragraph()
                     
                     elif run[0] == 'img':
                         width = -1
@@ -480,7 +535,7 @@ def main():
                         sp = run[1].split()
                         if len(sp) == 1:
                             try:
-                                main.doc.add_picture(run[1], width=Inches(4))
+                                gui_compose.doc.add_picture(run[1], width=Inches(4))
                             except:
                                 sys.stderr.write(traceback.format_exc())
                         else:
@@ -493,37 +548,38 @@ def main():
                             
                             try:
                                 if width == -1 and height == -1:
-                                    main.doc.add_picture(sp[-1], width=Inches(4))
+                                    gui_compose.doc.add_picture(sp[-1], width=Inches(4))
                                 elif width != -1 and height == -1:
-                                    main.doc.add_picture(sp[-1], width=width)
+                                    gui_compose.doc.add_picture(sp[-1], width=width)
                                 elif width == -1 and height != -1:
-                                    main.doc.add_picture(sp[-1], height=height)
+                                    gui_compose.doc.add_picture(sp[-1], height=height)
                                 elif width != -1 and height != -1:
-                                    main.doc.add_picture(sp[-1], width=width, 
+                                    gui_compose.doc.add_picture(sp[-1], width=width, 
                                         height=height)
                             except:
                                 sys.stderr.write(traceback.format_exc())
                         
-                        para = main.doc.add_paragraph()
+                        para = gui_compose.doc.add_paragraph()
 
 
-        outfilename = make_filename(args.filename, 'docx')
-        main.doc = Document('template.docx')
+        outfilename = make_filename(filename, 'docx')
+        gui_compose.doc = Document('template.docx')
         qcount = 0
         debug_print(pprint.pformat(structure).decode('unicode_escape'))
         
         for element in structure:
             if element[0] == 'meta':
-                p = main.doc.add_paragraph()
-                p.add_run(element[1])
+                p = gui_compose.doc.add_paragraph()
+                docx_format(element[1], p, False)
+                gui_compose.doc.add_paragraph()
             
             if element[0] in ['editor', 'date', 'heading', 'section']:
-                main.doc.add_paragraph(element[1]).alignment = 1
-                main.doc.add_paragraph()
+                gui_compose.doc.add_paragraph(element[1]).alignment = 1
+                gui_compose.doc.add_paragraph()
             
             if element[0] == 'Question':
                 q = element[1]
-                p = main.doc.add_paragraph()
+                p = gui_compose.doc.add_paragraph()
                 if not 'number' in q:
                     qcount += 1
                 if 'setcounter' in q:
@@ -532,33 +588,36 @@ def main():
                     if not 'number' in q else q['number'])).bold = True
                 
                 if 'handout' in q:
-                    p = main.doc.add_paragraph()
+                    p = gui_compose.doc.add_paragraph()
                     p.add_run('[Раздаточный материал: ')
                     docx_format(q['handout'], p, WHITEN['handout'])
-                    p = main.doc.add_paragraph()
+                    p = gui_compose.doc.add_paragraph()
                     p.add_run(']')
-                p = main.doc.add_paragraph()
+                if not args.noparagraph:
+                    p = gui_compose.doc.add_paragraph()
                 
                 docx_format(q['question'], p, False)
-                p = main.doc.add_paragraph()
+                p = gui_compose.doc.add_paragraph()
                 
-                p.add_run('Ответ: ').bold = True
-                docx_format(q['answer'], p, True)
+                if not noanswers:
+                    p.add_run('Ответ: ').bold = True
+                    docx_format(q['answer'], p, True)
+                    
+                    for field in ['zachet', 'nezachet',
+                                    'comment', 'source', 'author']:
+                        if field in q:
+                            p = gui_compose.doc.add_paragraph()
+                            p.add_run(FIELDS[field]).bold = True
+                            docx_format(q[field], p, WHITEN[field])
                 
-                for field in ['zachet', 'nezachet',
-                                'comment', 'source', 'author']:
-                    if field in q:
-                        p = main.doc.add_paragraph()
-                        p.add_run(FIELDS[field]).bold = True
-                        docx_format(q[field], p, WHITEN[field])
-                
-                main.doc.add_paragraph()
+                gui_compose.doc.add_paragraph()
 
-        main.doc.save(outfilename)
+        gui_compose.doc.save(outfilename)
+        shutil.copy(outfilename, TARGETDIR)
 
     if args.filetype == 'tex':
 
-        outfilename = make_filename(args.filename, 'tex')
+        outfilename = make_filename(filename, 'tex')
 
         def texrepl(zz):
             zz = re.sub(r"{",r"\{",zz) 
@@ -677,17 +736,17 @@ def main():
     ['\\item {}'.format(tex_element_layout(x)) for x in e]))
                 return res
 
-        main.counter = 1
+        gui_compose.counter = 1
 
         def tex_format_question(q):
             if 'setcounter' in q:
-                main.counter = int(q['setcounter'])
+                gui_compose.counter = int(q['setcounter'])
             res = ('\n\n\\begin{{samepage}}\n'
-            '\\textbf{{Вопрос {}.}} {}'.format(main.counter 
+            '\\textbf{{Вопрос {}.}} {}'.format(gui_compose.counter 
                 if not 'number' in q else q['number'], yapper
                 (q['question'])))
             if not 'number' in q:
-                main.counter += 1
+                gui_compose.counter += 1
             res += '\n\\textbf{{Ответ: }}{}'.format(yapper
                 (q['answer']))
             if 'zachet' in q:
@@ -721,7 +780,7 @@ def main():
                 author = element[1]
             if element[0] == 'date':
                 date = element[1]
-        main.tex = """\\input{{cheader.tex}}
+        gui_compose.tex = """\\input{{cheader.tex}}
 \\title{{{title}}}
 \\date{{{date}}}
 \\author{{{author}}}
@@ -733,15 +792,19 @@ def main():
 
         for element in structure:
             if element[0] == 'meta':
-                main.tex += '\n{}\n\\vspace{{0.8em}}\n'.format(
+                gui_compose.tex += '\n{}\n\\vspace{{0.8em}}\n'.format(
                     tex_element_layout(element[1]))
             if element[0] == 'Question':
-                main.tex += tex_format_question(element[1])
+                gui_compose.tex += tex_format_question(element[1])
 
-        main.tex += '\\end{document}'
+        gui_compose.tex += '\\end{document}'
 
         with codecs.open(outfilename, 'w', 'utf8') as outfile:
-            outfile.write(main.tex)
+            outfile.write(gui_compose.tex)
+        subprocess.call(shlex.split(
+            'xelatex.exe -synctex=1 -interaction=nonstopmode "{}"'
+            .format(outfilename)))
+        shutil.copy(os.path.splitext(outfilename)[0]+'.pdf', TARGETDIR)
 
     if args.filetype == 'lj':
 
@@ -936,18 +999,18 @@ def main():
     ['<li>{}</li>'.format(html_element_layout(x)) for x in e]))
                 return res
 
-        main.counter = 1
+        gui_compose.counter = 1
 
         def html_format_question(q):
             if 'setcounter' in q:
-                main.counter = int(q['setcounter'])
+                gui_compose.counter = int(q['setcounter'])
             res = (
-            '<strong>Вопрос {}.</strong> {}'.format(main.counter 
+            '<strong>Вопрос {}.</strong> {}'.format(gui_compose.counter 
                 if not 'number' in q else q['number'], yapper
                 (q['question'])
                 +('\n<lj-spoiler>' if not args.nospoilers else '')))
             if not 'number' in q:
-                main.counter += 1
+                gui_compose.counter += 1
             res += '\n<strong>Ответ: </strong>{}'.format(
                 yapper(q['answer']),
                 )
@@ -959,14 +1022,14 @@ def main():
                 res += '\n<strong>Незачёт: </strong>{}'.format(
                 yapper(q['nezachet']),
                 )
+            if 'comment' in q:
+                res += '\n<strong>Комментарий: </strong>{}'.format(
+                yapper(q['comment']),
+                )
             if 'source' in q:
                 res += '\n<strong>Источник{}: </strong>{}'.format(
                 'и' if isinstance(q['source'], list) else '',
                 yapper(q['source']),
-                )
-            if 'comment' in q:
-                res += '\n<strong>Комментарий: </strong>{}'.format(
-                yapper(q['comment']),
                 )
             if 'author' in q:
                 res += '\n<strong>Автор{}: </strong>{}'.format(
@@ -1012,7 +1075,7 @@ def main():
             if element[0] == 'Question':
                 final_structure.append({'header': 'Вопрос {}'
                     .format(element[1]['number'] if 'number' in
-                        element[1] else main.counter),
+                        element[1] else gui_compose.counter),
                     'content': html_format_question(element[1])})
             if element[0] == 'meta':
                 final_structure.append({'header': '',

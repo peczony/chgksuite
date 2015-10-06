@@ -6,11 +6,14 @@ import pprint
 import urllib
 import re
 import os
+import pdb
 import sys
 import codecs
 import json
 import typotools
 import traceback
+import subprocess
+import shlex
 import datetime
 from typotools import remove_excessive_whitespace as rew
 
@@ -25,16 +28,35 @@ debug = False
 QUESTION_LABELS = ['handout', 'question', 'answer',
         'zachet', 'nezachet', 'comment', 'source', 'author', 'number',
         'setcounter']
+ENC = 'cp866' #TODO: add cross-platform encoding detection
+SEP = os.linesep
+EDITORS = {
+    'win32': 'notepad',
+    'linux2': 'gedit',
+    'darwin': 'open -t'
+}
+TEXTEDITOR = EDITORS[sys.platform]
 
 def make_filename(s):
-    return os.path.splitext(s)[0]+'.4s'
+    return os.path.splitext(os.path.basename(s))[0]+'.4s'
 
 def debug_print(s):
     if debug == True:
-        sys.stderr.write(s+'\n')
+        sys.stderr.write(s+SEP)
 
 def partition(alist, indices):
     return [alist[i:j] for i, j in zip([0]+indices, indices+[None])]
+
+def check_question(question):
+    warnings = []
+    for el in {'question', 'answer', 'source', 'author'}:
+        if el not in question:
+            warnings.append(el)
+    if len(warnings) > 1:
+        print('WARNING: question {} lacks the following fields: {}{}'
+            .format(question, ', '.join(warnings), SEP)
+            .decode('unicode_escape')
+            .encode(ENC, errors='replace'))
 
 def chgk_parse(text):
 
@@ -61,28 +83,26 @@ def chgk_parse(text):
 
     BADNEXTFIELDS = set(['question', 'answer'])
 
-    WHITESPACE = set([' ', ' ', '\n'])
+    WHITESPACE = set([' ', ' ', '\n', '\r'])
     PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
 
-    re_tourdb = re.compile(r'^Тур:')
-    re_tour = re.compile(r'^Тур ([0-9]*)([\.:])?$')
-    re_tourrev = re.compile(r'^([0-9]+) тур([\.:])?$')
-    re_question = re.compile(r'Вопрос? ([0-9]*) ?[\.:]', re.I)
-    re_answer = re.compile(r'Ответы? ?([0-9]+)? ?[\.:]', re.I)
-    re_zachet = re.compile(r'Зач[её]т ?[\.:]', re.I)
-    re_nezachet = re.compile(r'Незач[её]т ?[\.:]', re.I)
-    re_comment = re.compile(r'Комментари[ий] ?([0-9]+)? ?[\.:]', re.I)
-    re_author = re.compile(r'Автор\(?ы?\)? ?[\.:]', re.I)
-    re_source = re.compile(r'Источник\(?и?\)? ?[\.:]', re.I)
-    re_editor = re.compile(r'Редактор(ы|ская группа)? ?[\.:]', re.I)
-    re_date = re.compile(r'Дата ?[\.:]', re.I)
-    re_handout = re.compile(r'Разда(ча|тка|точный материал) ?[\.:]', re.I)
+    re_tour = re.compile(r'^ТУР ?([0-9IVXLCDM]*)([\.:])?$', re.I | re.U)
+    re_tourrev = re.compile(r'^([0-9]+) ТУР([\.:])?$', re.I | re.U)
+    re_question = re.compile(r'ВОПРОС ?[№N]?([0-9]*) ?[\.:]', re.I | re.U)
+    re_answer = re.compile(r'ОТВЕТЫ? ?[№N]?([0-9]+)? ?[:]', re.I | re.U)
+    re_zachet = re.compile(r'ЗАЧ[ЕЁ]Т ?[\.:]', re.I | re.U)
+    re_nezachet = re.compile(r'НЕЗАЧ[ЕЁ]Т ?[\.:]', re.I | re.U)
+    re_comment = re.compile(r'КОММЕНТАРИ[ИЙ] ?[№N]?([0-9]+)? ?[\.:]', re.I | re.U)
+    re_author = re.compile(r'АВТОР\(?Ы?\)? ?[\.:]', re.I | re.U)
+    re_source = re.compile(r'ИСТОЧНИК\(?И?\)? ?[\.:]', re.I | re.U)
+    re_editor = re.compile(r'РЕДАКТОР(Ы|СКАЯ ГРУППА)? ?[\.:]', re.I | re.U)
+    re_date = re.compile(r'ДАТА ?[\.:]', re.I | re.U)
+    re_handout = re.compile(r'РАЗДА(ЧА|ТКА|ТОЧНЫЙ МАТЕРИАЛ) ?[\.:]', re.I | re.U)
     re_number = re.compile(r'^[0-9]+[\.\)] *')
 
     regexes = {
         'tour' : re_tour,
         'tourrev' : re_tourrev,
-        'tourdb' : re_tourdb,
         'question' : re_question,
         'answer' : re_answer,
         'zachet' : re_zachet,
@@ -99,12 +119,12 @@ def chgk_parse(text):
     def merge_to_previous(index):
         target = index - 1
         chgk_parse.structure[target][1] = (
-            chgk_parse.structure[target][1] + '\n' 
+            chgk_parse.structure[target][1] + SEP 
             + chgk_parse.structure.pop(index)[1])
 
     def merge_to_next(index):
         target = chgk_parse.structure.pop(index)
-        chgk_parse.structure[index][1] = (target[1] + '\n' 
+        chgk_parse.structure[index][1] = (target[1] + SEP 
             + chgk_parse.structure[index][1])
 
     def find_next_specific_field(index, fieldname):
@@ -158,9 +178,9 @@ def chgk_parse(text):
 
     # 1.
 
-    for x in text.split('\n'):
+    for x in re.split(r'\r?\n',text):
         if x != '':
-            chgk_parse.structure.append(['',x])
+            chgk_parse.structure.append(['',rew(x)])
 
     i = 0
     st = chgk_parse.structure
@@ -318,9 +338,9 @@ def chgk_parse(text):
         # turn source into list if necessary
 
         if (element[0] == 'source' and isinstance(element[1], basestring)
-                    and len(element[1].split('\n')) > 1):
+                    and len(re.split(r'\r?\n', element[1])) > 1):
             element[1] = [re_number.sub('', rew(x)) 
-                for x in element[1].split('\n')]
+                for x in re.split(r'\r?\n', element[1])]
 
 
 
@@ -333,16 +353,22 @@ def chgk_parse(text):
     for element in chgk_parse.structure:
         if element[0] in set(['tour', 'question', 'meta']): 
             if current_question != {}:
+                check_question(current_question)
                 final_structure.append(['Question', current_question])
                 current_question = {}
         if element[0] in QUESTION_LABELS:
             if element[0] in current_question:
-                current_question[element[0]] += '\n' + element[1]
+                try:
+                    current_question[element[0]] += SEP + element[1]
+                except:
+                    print('{}'.format(current_question).decode('unicode_escape'))
+                    pdb.set_trace()
             else:
                 current_question[element[0]] = element[1]
         else:
             final_structure.append([element[0], element[1]])
     if current_question != {}:
+        check_question(current_question)
         final_structure.append(['Question', current_question])
 
 
@@ -373,32 +399,36 @@ def compose_4s(structure):
             return z
         elif isinstance(z, list):
             if isinstance(z[1], list):
-                return z[0] + '\n- ' + '\n- '.join(z[1])
+                return z[0] + '- ' + SEP + ('{}- '.format(SEP)).join(z[1])
             else:
-                return '\n- ' + '\n- '.join(z)
+                return SEP + '- ' + ('{}- '.format(SEP)).join(z)
     result = ''
     for element in structure:
         if element[0] in ['tour', 'tourrev']:
             checkNumber = True
         if element[0] == 'number' and checkNumber and int(element[1])!=0:
             checkNumber = False
-            result += '№№ '+element[1]+'\n'
+            result += '№№ '+element[1]+SEP
         if element[0] == 'number' and int(element[1])==0:
-            result += '№ '+element[1]+'\n'
+            result += '№ '+element[1]+SEP
         if element[0] in types_mapping and types_mapping[element[0]]:
             result += (types_mapping[element[0]] 
-                + format_element(element[1]) + '\n\n')
+                + format_element(element[1]) + SEP + SEP)
         elif element[0] == 'Question':
             for label in QUESTION_LABELS:
                 if label in element[1] and label in types_mapping:
                     result += (types_mapping[label]
-                        + format_element(element[1][label]) + '\n')
-            result += '\n'
+                        + format_element(element[1][label]) + SEP)
+            result += SEP
     return result
 
 
 
-def main():
+def gui_parse():
+
+    global __file__                         # to fix stupid
+    __file__ = os.path.abspath(__file__)    # __file__ handling
+    _file_ = os.path.basename(__file__)     # in python 2
 
     global debug
 
@@ -435,17 +465,17 @@ def main():
 
 
     elif os.path.splitext(args.filename)[1] == '.docx':
-        from pydocx import Docx2Html
+        from pydocx import PyDocX
         from bs4 import BeautifulSoup
         from parse import parse
         import base64
         import html2text
-        input_docx = Docx2Html(args.filename)
-        bsoup = BeautifulSoup(input_docx.parsed)
+        input_docx = PyDocX.to_html(args.filename)
+        bsoup = BeautifulSoup(input_docx)
 
         if args.debug:
             with codecs.open('debug.pydocx', 'w', 'utf8') as dbg:
-                dbg.write(input_docx.parsed)
+                dbg.write(input_docx)
         
         def generate_imgname(ext):
             imgcounter = 1
@@ -458,7 +488,7 @@ def main():
             tag.extract()
         for tag in bsoup.find_all('p'):
             if tag.string:
-                tag.string = tag.string + '\n'
+                tag.string = tag.string + SEP
         for tag in bsoup.find_all('b'):
             tag.unwrap()
         for tag in bsoup.find_all('strong'):
@@ -506,14 +536,21 @@ def main():
         final_structure = chgk_parse(txt)
 
     else:
-        sys.stderr.write('Error: unsupported file format.\n')
+        sys.stderr.write('Error: unsupported file format.' + SEP)
         sys.exit()
-
 
     with codecs.open(
         make_filename(args.filename), 'w', 'utf8') as output_file:
         output_file.write(
             compose_4s(final_structure))
+
+    print('Please review the resulting file {}:'.format(
+        make_filename(args.filename)))
+    subprocess.call(shlex.split('{} "{}"'
+        .format(
+            TEXTEDITOR,
+            make_filename(args.filename)).encode('cp1251',errors='replace')))
+
 
 if __name__ == "__main__":
     main()

@@ -24,5 +24,6 @@ for element in structure:
 
 for au in authors.most_common():
     print('{}\t{}'.format(au[0],au[1]))
+print('Total: {}'.format(sum(authors.values())))
 
 
