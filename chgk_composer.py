@@ -46,7 +46,7 @@ re_lowercase = re.compile(r'[а-яё]')
 re_uppercase = re.compile(r'[А-ЯЁ]')
 
 REQUIRED_LABELS = set(['question', 'answer'])
-SOURCEDIR = os.getcwd()
+SOURCEDIR = os.path.dirname(os.path.abspath(__file__))
 TARGETDIR = os.getcwd()
 
 FIELDS = {
@@ -932,7 +932,8 @@ def gui_compose(largs):
     if args.filetype == 'docx':
         
         outfilename = make_filename(filename, 'docx')
-        gui_compose.doc = Document('template.docx')
+        print(os.path.join(SOURCEDIR, 'template.docx'))
+        gui_compose.doc = Document(os.path.join(SOURCEDIR, 'template.docx'))
         qcount = 0
         debug_print(pprint.pformat(structure).decode('unicode_escape'))
         
