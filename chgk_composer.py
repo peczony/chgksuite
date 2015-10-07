@@ -1,28 +1,30 @@
 #!usr/bin/env python
 #! -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-import sys
+from chgk_parser import QUESTION_LABELS
+from docx import Document
+from docx.shared import Inches
+from parse import parse
+from typotools import remove_excessive_whitespace as rew
+from xmlrpclib import ServerProxy
 import argparse
+import base64
+import codecs
+import datetime
+import docx
 import hashlib
+import json
+import os
 import pprint
+import pyimgur
 import random
+import re
+import shlex
 import shutil
 import subprocess
-import shlex
-import urllib
-import re
-import os
 import sys
-import codecs
-import json
-import typotools
-from typotools import remove_excessive_whitespace as rew
 import traceback
-import datetime
-from chgk_parser import QUESTION_LABELS
-import base64
-import pyimgur
-from xmlrpclib import ServerProxy
+import typotools
 import urllib
 
 args = None
@@ -928,10 +930,6 @@ def gui_compose(largs):
             .format(args.filetype, 'off' if args.nospoilers else 'on'))
 
     if args.filetype == 'docx':
-        import docx
-        from docx import Document
-        from parse import parse
-        from docx.shared import Inches
         
         outfilename = make_filename(filename, 'docx')
         gui_compose.doc = Document('template.docx')
