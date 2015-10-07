@@ -429,9 +429,6 @@ def gui_compose():
 
     structure = parse_4s(input_text, randomize=args.randomize)
 
-    # os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-
     if args.debug:
         with codecs.open(
             make_filename(filename, 'dbg'), 'w', 'utf8') as output_file:
