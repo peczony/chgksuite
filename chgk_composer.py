@@ -984,6 +984,8 @@ def gui_compose(largs):
                 gui_compose.doc.add_paragraph()
 
         gui_compose.doc.save(outfilename)
+        print('Output: {}'.format(
+            os.path.join(TARGETDIR, outfilename)))
         if (os.path.normpath(SOURCEDIR.lower()) 
         != os.path.normpath(TARGETDIR.lower())):
             shutil.copy(outfilename, TARGETDIR)
@@ -1028,6 +1030,12 @@ def gui_compose(largs):
         subprocess.call(shlex.split(
             'xelatex -synctex=1 -interaction=nonstopmode "{}"'
             .format(outfilename)))
+        print('Output: {}'.format(
+            os.path.join(TARGETDIR, 
+                os.path.splitext(outfilename)[0]+'.tex'
+                +'\n'
+                + os.path.join(TARGETDIR, 
+                    os.path.splitext(outfilename)[0]+'.pdf'))))
         if (os.path.normpath(SOURCEDIR.lower()) 
             != os.path.normpath(TARGETDIR.lower())):
             shutil.copy(os.path.splitext(outfilename)[0]+'.pdf', TARGETDIR)

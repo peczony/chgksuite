@@ -541,8 +541,11 @@ def gui_parse(args):
         sys.stderr.write('Error: unsupported file format.' + SEP)
         sys.exit()
 
+    outfilename = make_filename(args.filename)
+    print('Output: {}'.format(
+            os.path.abspath(outfilename)))
     with codecs.open(
-        make_filename(args.filename), 'w', 'utf8') as output_file:
+        outfilename, 'w', 'utf8') as output_file:
         output_file.write(
             compose_4s(final_structure))
 
