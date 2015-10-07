@@ -381,6 +381,42 @@ def parse_4s(s, randomize=False):
         root.mainloop()
         return root.ret
 
+def lj_post_getdata():
+        root = Tk()
+        
+        loginbox = Entry(root)
+        pwdbox = Entry(root, show = '*')
+        communitybox = Entry(root)
+        
+        def onpwdentry(evt):
+            root.login = loginbox.get()
+            root.password = pwdbox.get()
+            root.community = communitybox.get()
+            root.quit()
+            root.destroy()
+        def onokclick():
+            root.login = loginbox.get()
+            root.password = pwdbox.get()
+            root.community = communitybox.get()
+            root.quit()
+            root.destroy()
+        
+        Label(root, text='Login').pack(side = 'top')
+        loginbox.pack(side = 'top')
+        Label(root, text = 'Password').pack(side = 'top')
+        pwdbox.pack(side = 'top')
+        Label(root, text='Community (may be blank)').pack(side = 'top')
+        communitybox.pack(side = 'top')
+
+        pwdbox.bind('<Return>', onpwdentry)
+        loginbox.bind('<Return>', onpwdentry)
+        communitybox.bind('<Return>', onpwdentry)
+
+        Button(root, command=onokclick, text = 'OK').pack(side = 'top')
+
+        root.mainloop()
+        return root.login, root.password, root.community
+
 def gui_compose():
     
     global __file__                         # to fix stupid
@@ -403,6 +439,7 @@ def gui_compose():
     parser.add_argument('--noparagraph', action='store_true')
     parser.add_argument('--randomize', action='store_true')
     parser.add_argument('--login', '-l')
+    parser.add_argument('--password', '-p')
     parser.add_argument('--community', '-c')
     args = parser.parse_args()
 
@@ -802,46 +839,9 @@ def gui_compose():
 
     if args.filetype == 'lj':
 
-        def lj_post_getdata():
-
-            root = Tk()
-            
-            loginbox = Entry(root)
-            pwdbox = Entry(root, show = '*')
-            communitybox = Entry(root)
-            
-            def onpwdentry(evt):
-                root.login = loginbox.get()
-                root.password = pwdbox.get()
-                root.community = communitybox.get()
-                root.quit()
-                root.destroy()
-            def onokclick():
-                root.login = loginbox.get()
-                root.password = pwdbox.get()
-                root.community = communitybox.get()
-                root.quit()
-                root.destroy()
-            
-            Label(root, text='Login').pack(side = 'top')
-            loginbox.pack(side = 'top')
-            Label(root, text = 'Password').pack(side = 'top')
-            pwdbox.pack(side = 'top')
-            Label(root, text='Community (may be blank)').pack(side = 'top')
-            communitybox.pack(side = 'top')
-
-            pwdbox.bind('<Return>', onpwdentry)
-            loginbox.bind('<Return>', onpwdentry)
-            communitybox.bind('<Return>', onpwdentry)
-
-            Button(root, command=onokclick, text = 'OK').pack(side = 'top')
-
-            root.mainloop()
-            return root.login, root.password, root.community
-
         if not args.login:
             args.login, passwd, args.community = lj_post_getdata()
-        else:
+        elif not args.password:
             import getpass
             passwd = getpass.getpass()
         
