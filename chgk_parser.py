@@ -441,6 +441,9 @@ def gui_parse(args):
     if args.debug:
         debug = True
 
+    if args.filename:
+        console_mode = True
+
     if args.filename is None:
         args.filename = tkFileDialog.askopenfilename(
             filetypes=[

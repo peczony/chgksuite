@@ -428,6 +428,7 @@ def gui_compose(args):
     
     root = Tk()
     root.withdraw()
+    noanswers = False
 
     sys.stderr = codecs.getwriter('utf8')(sys.stderr)
 
@@ -437,6 +438,14 @@ def gui_compose(args):
     argsdict = vars(args)
     debug_print(pprint.pformat(argsdict))
 
+    if (args.filename
+        and args.filetype):
+        if args.filetype == 'lj':
+            if args.login and args.password:
+                console_mode = True
+        else:
+            console_mode = True
+
     if args.filename is None:
         print('Choose .4s file to load:')
         args.filename = tkFileDialog.askopenfilename(
@@ -444,7 +453,8 @@ def gui_compose(args):
 
     TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
     filename = os.path.basename(os.path.abspath(args.filename))
-    shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
+    if SOURCEDIR != TARGETDIR:
+        shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
     os.chdir(SOURCEDIR)
 
     with codecs.open(filename, 'r', 'utf8') as input_file:
@@ -632,7 +642,8 @@ def gui_compose(args):
                 gui_compose.doc.add_paragraph()
 
         gui_compose.doc.save(outfilename)
-        shutil.copy(outfilename, TARGETDIR)
+        if SOURCEDIR != TARGETDIR:
+            shutil.copy(outfilename, TARGETDIR)
 
     if args.filetype == 'tex':
 
@@ -1051,7 +1062,6 @@ def gui_compose(args):
             final_structure[0]['header'] = ljheading
         else:
             final_structure[0]['header'] = heading
-
 
         for element in structure[i:]:
             if element[0] == 'Question':

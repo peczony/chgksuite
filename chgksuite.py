@@ -71,10 +71,10 @@ def main():
     args = parser.parse_args()
     
     if not args.action:
-        action = gui_choose_action()
-    if action == 'parse':
+        args.action = gui_choose_action()
+    if args.action == 'parse':
         gui_parse(args)
-    if action == 'compose':
+    if args.action == 'compose':
         gui_compose(args)
 
 if __name__ == "__main__":
