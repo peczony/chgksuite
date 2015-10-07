@@ -896,8 +896,8 @@ def gui_compose(largs):
 
     TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
     filename = os.path.basename(os.path.abspath(args.filename))
-    if (os.path.normpath(SOURCEDIR.lower()) 
-        != os.path.normpath(TARGETDIR.lower())):
+    if (os.path.abspath(SOURCEDIR.lower()) 
+        != os.path.abspath(TARGETDIR.lower())):
         shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
     os.chdir(SOURCEDIR)
 
@@ -986,8 +986,8 @@ def gui_compose(largs):
         gui_compose.doc.save(outfilename)
         print('Output: {}'.format(
             os.path.join(TARGETDIR, outfilename)))
-        if (os.path.normpath(SOURCEDIR.lower()) 
-        != os.path.normpath(TARGETDIR.lower())):
+        if (os.path.abspath(SOURCEDIR.lower()) 
+        != os.path.abspath(TARGETDIR.lower())):
             shutil.copy(outfilename, TARGETDIR)
 
     if args.filetype == 'tex':
