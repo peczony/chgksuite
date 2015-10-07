@@ -427,6 +427,7 @@ def compose_4s(structure):
 
 def gui_parse(args):
 
+    global console_mode
     global __file__                         # to fix stupid
     __file__ = os.path.abspath(__file__)    # __file__ handling
     _file_ = os.path.basename(__file__)     # in python 2
