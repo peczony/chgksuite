@@ -30,6 +30,7 @@ except:
 import tkFileDialog
 
 debug = False
+console_mode = False
 re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
 """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s<>]+|(([^\s()<>]+|(([^\s<>]+)))*))+"""
 """(?:(([^\s<>]+|(‌​([^\s<>]+)))*)|[^\s`!\[\]{};:'".,<>?«»“”‘’]))""", re.DOTALL)
@@ -1088,15 +1089,12 @@ def gui_compose():
 
         lj_post(final_structure)
 
-    os.system('pause')
+    if not console_mode:
+        raw_input("Press Enter to continue...")
 
-
-
-
-
-
-
-
+def main():
+    print('This program was not designed to run standalone.')
+    raw_input("Press Enter to continue...")
 
 if __name__ == '__main__':
     main()

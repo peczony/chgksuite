@@ -24,6 +24,7 @@ except:
 import tkFileDialog
 
 debug = False
+console_mode = False
 
 QUESTION_LABELS = ['handout', 'question', 'answer',
         'zachet', 'nezachet', 'comment', 'source', 'author', 'number',
@@ -550,7 +551,12 @@ def gui_parse():
         .format(
             TEXTEDITOR,
             make_filename(args.filename)).encode('cp1251',errors='replace')))
+    if not console_mode:
+        raw_input("Press Enter to continue...")
 
+def main():
+    print('This program was not designed to run standalone.')
+    raw_input("Press Enter to continue...")
 
 if __name__ == "__main__":
     main()
