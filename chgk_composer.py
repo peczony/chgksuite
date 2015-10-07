@@ -328,66 +328,6 @@ def parse_4s(s, randomize=False):
     return final_structure
 
 
-
-
-def gui_compose():
-    
-    global __file__                         # to fix stupid
-    __file__ = os.path.abspath(__file__)    # __file__ handling
-    _file_ = os.path.basename(__file__)     # in python 2
-
-    global debug
-    global TARGETDIR
-    
-    root = Tk()
-    root.withdraw()
-
-    sys.stderr = codecs.getwriter('utf8')(sys.stderr)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('filename', nargs='?')
-    parser.add_argument('filetype', nargs='?')
-    parser.add_argument('--debug', '-d', action='store_true')
-    parser.add_argument('--nospoilers', '-n', action='store_true')
-    parser.add_argument('--noparagraph', action='store_true')
-    parser.add_argument('--randomize', action='store_true')
-    parser.add_argument('--login', '-l')
-    parser.add_argument('--community', '-c')
-    args = parser.parse_args()
-
-    if args.debug:
-        debug = True
-    
-    argsdict = vars(args)
-    
-    debug_print(pprint.pformat(argsdict))
-
-    if args.filename is None:
-        print('Choose .4s file to load:')
-        args.filename = tkFileDialog.askopenfilename(
-            filetypes=[('chgksuite markup files','*.4s')])
-
-    TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
-    filename = os.path.basename(os.path.abspath(args.filename))
-    shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
-    os.chdir(SOURCEDIR)
-
-    with codecs.open(filename, 'r', 'utf8') as input_file:
-            input_text = input_file.read()
-
-    input_text = input_text.replace('\r','')
-
-    structure = parse_4s(input_text, randomize=args.randomize)
-
-    # os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-
-    if args.debug:
-        with codecs.open(
-            make_filename(filename, 'dbg'), 'w', 'utf8') as output_file:
-            output_file.write(
-                pprint.pformat(structure).decode('unicode_escape'))
-
     def gui_get_filetype():
         ch_spoilers = IntVar()
         ch_answers = IntVar()
@@ -422,7 +362,6 @@ def gui_compose():
                 ch_answers.set(1)
             else:
                 ch_answers.set(0)
-
         Button(frame, command=
             docxreturn, text = 'docx').pack(side = 'left')
         Button(frame, command=
@@ -441,6 +380,63 @@ def gui_compose():
         ans.pack(side = 'bottom')
         root.mainloop()
         return root.ret
+
+def gui_compose():
+    
+    global __file__                         # to fix stupid
+    __file__ = os.path.abspath(__file__)    # __file__ handling
+    _file_ = os.path.basename(__file__)     # in python 2
+
+    global debug
+    global TARGETDIR
+    
+    root = Tk()
+    root.withdraw()
+
+    sys.stderr = codecs.getwriter('utf8')(sys.stderr)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filename', nargs='?')
+    parser.add_argument('filetype', nargs='?')
+    parser.add_argument('--debug', '-d', action='store_true')
+    parser.add_argument('--nospoilers', '-n', action='store_true')
+    parser.add_argument('--noparagraph', action='store_true')
+    parser.add_argument('--randomize', action='store_true')
+    parser.add_argument('--login', '-l')
+    parser.add_argument('--community', '-c')
+    args = parser.parse_args()
+
+    if args.debug:
+        debug = True
+    
+    argsdict = vars(args)
+    debug_print(pprint.pformat(argsdict))
+
+    if args.filename is None:
+        print('Choose .4s file to load:')
+        args.filename = tkFileDialog.askopenfilename(
+            filetypes=[('chgksuite markup files','*.4s')])
+
+    TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
+    filename = os.path.basename(os.path.abspath(args.filename))
+    shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
+    os.chdir(SOURCEDIR)
+
+    with codecs.open(filename, 'r', 'utf8') as input_file:
+            input_text = input_file.read()
+
+    input_text = input_text.replace('\r','')
+
+    structure = parse_4s(input_text, randomize=args.randomize)
+
+    # os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+
+    if args.debug:
+        with codecs.open(
+            make_filename(filename, 'dbg'), 'w', 'utf8') as output_file:
+            output_file.write(
+                pprint.pformat(structure).decode('unicode_escape'))
 
     if args.filetype is None:
         print('Choose type of export:')
