@@ -450,6 +450,9 @@ def gui_compose(args):
         print('Choose .4s file to load:')
         args.filename = tkFileDialog.askopenfilename(
             filetypes=[('chgksuite markup files','*.4s')])
+    if not args.filename:
+        print('No file specified.')
+        sys.exit(0)
 
     TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
     filename = os.path.basename(os.path.abspath(args.filename))
@@ -473,6 +476,9 @@ def gui_compose(args):
     if args.filetype is None:
         print('Choose type of export:')
         args.filetype, spoil, noanswers = gui_get_filetype()
+        if not args.filetype:
+            print('Filetype not specified.')
+            sys.exit(0)
         if spoil:
             args.nospoilers = False
         else:
@@ -840,6 +846,9 @@ def gui_compose(args):
 
         if not args.login:
             args.login, passwd, args.community = lj_post_getdata()
+            if not args.login:
+                print('Login not specified.')
+                sys.exit(0)
         elif not args.password:
             import getpass
             passwd = getpass.getpass()

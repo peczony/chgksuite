@@ -447,9 +447,11 @@ def gui_parse(args):
     if args.filename is None:
         args.filename = tkFileDialog.askopenfilename(
             filetypes=[
-            ('Word 2007+','*.docx'),
-            ('Plain text','*.txt'),
+            ('chgksuite parsable files',('*.docx','*.txt'))
             ])
+    if not args.filename:
+        print('No file specified.')
+        sys.exit(0)
 
     os.chdir(os.path.dirname(os.path.abspath(args.filename)))
 
