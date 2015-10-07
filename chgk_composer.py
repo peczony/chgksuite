@@ -22,7 +22,10 @@ import datetime
 from chgk_parser import QUESTION_LABELS
 import base64
 import pyimgur
+from xmlrpclib import ServerProxy
+import urllib
 
+args = None
 try:
     from Tkinter import *
 except:
@@ -89,6 +92,8 @@ def debug_print(s):
 
 def partition(alist, indices):
     return [alist[i:j] for i, j in zip([0]+indices, indices+[None])]
+
+
 
 def parse_4s_elem(s):
     
@@ -187,7 +192,6 @@ def parse_4s_elem(s):
                 traceback.format_exc() ))
 
     return parts
-
 
 def parse_4s(s, randomize=False):
     mapping = {
@@ -328,97 +332,533 @@ def parse_4s(s, randomize=False):
     return final_structure
 
 
-    def gui_get_filetype():
-        ch_spoilers = IntVar()
-        ch_answers = IntVar()
-        if args.nospoilers:
-            ch_spoilers.set(0)
-        else:
+def gui_get_filetype():
+    ch_spoilers = IntVar()
+    ch_answers = IntVar()
+    if args.nospoilers:
+        ch_spoilers.set(0)
+    else:
+        ch_spoilers.set(1)
+    root = Tk()
+    frame = Frame(root)
+    frame.pack()
+    bottomframe = Frame(root)
+    bottomframe.pack(side = 'bottom')
+    def docxreturn():
+        root.ret = 'docx', ch_spoilers.get(), ch_answers.get()
+        root.quit()
+        root.destroy()
+    def texreturn():
+        root.ret = 'tex', ch_spoilers.get(), ch_answers.get()
+        root.quit()
+        root.destroy()
+    def ljreturn():
+        root.ret = 'lj', ch_spoilers.get(), ch_answers.get()
+        root.quit()
+        root.destroy()
+    def chtoggle():
+        if ch_spoilers.get() == 0:
             ch_spoilers.set(1)
-        root = Tk()
-        frame = Frame(root)
-        frame.pack()
-        bottomframe = Frame(root)
-        bottomframe.pack(side = 'bottom')
-        def docxreturn():
-            root.ret = 'docx', ch_spoilers.get(), ch_answers.get()
-            root.quit()
-            root.destroy()
-        def texreturn():
-            root.ret = 'tex', ch_spoilers.get(), ch_answers.get()
-            root.quit()
-            root.destroy()
-        def ljreturn():
-            root.ret = 'lj', ch_spoilers.get(), ch_answers.get()
-            root.quit()
-            root.destroy()
-        def chtoggle():
-            if ch_spoilers.get() == 0:
-                ch_spoilers.set(1)
+        else:
+            ch_spoilers.set(0)
+    def antoggle():
+        if ch_answers.get() == 0:
+            ch_answers.set(1)
+        else:
+            ch_answers.set(0)
+    Button(frame, command=
+        docxreturn, text = 'docx').pack(side = 'left')
+    Button(frame, command=
+        texreturn, text = 'tex').pack(side = 'left')
+    Button(frame, command=
+        ljreturn, text = 'LJ').pack(side = 'left')
+    ch = Checkbutton(bottomframe, text='Spoilers',
+        variable=ch_spoilers, command=chtoggle)
+    ans = Checkbutton(bottomframe, text='No answers',
+        variable=ch_answers, command=antoggle)
+    if ch_spoilers.get() == 1:
+        ch.select()
+    if ch_answers.get() == 1:
+        ans.select()
+    ch.pack(side = 'bottom')
+    ans.pack(side = 'bottom')
+    root.mainloop()
+    return root.ret
+
+def docx_format(el, para, whiten):
+    if isinstance(el, list):
+        
+        if len(el) > 1 and isinstance(el[1], list):
+            docx_format(el[0], para, whiten)
+            licount = 0
+            for li in el[1]:
+                licount += 1
+                
+                p = gui_compose.doc.add_paragraph('{}. '
+                    .format(licount))
+                docx_format(li, p, whiten)
+        else:
+            licount = 0
+            for li in el:
+                licount += 1
+                
+                p = gui_compose.doc.add_paragraph('{}. '
+                    .format(licount))
+                docx_format(li, p, whiten)
+
+    if isinstance(el, basestring):
+        debug_print('parsing element {}:'
+            .format(pprint.pformat(el).decode('unicode_escape')))
+
+        while '`' in el:
+            if el.index('`') + 1 >= len(el):
+                el = el.replace('`', '')
             else:
-                ch_spoilers.set(0)
-        def antoggle():
-            if ch_answers.get() == 0:
-                ch_answers.set(1)
-            else:
-                ch_answers.set(0)
-        Button(frame, command=
-            docxreturn, text = 'docx').pack(side = 'left')
-        Button(frame, command=
-            texreturn, text = 'tex').pack(side = 'left')
-        Button(frame, command=
-            ljreturn, text = 'LJ').pack(side = 'left')
-        ch = Checkbutton(bottomframe, text='Spoilers',
-            variable=ch_spoilers, command=chtoggle)
-        ans = Checkbutton(bottomframe, text='No answers',
-            variable=ch_answers, command=antoggle)
-        if ch_spoilers.get() == 1:
-            ch.select()
-        if ch_answers.get() == 1:
-            ans.select()
-        ch.pack(side = 'bottom')
-        ans.pack(side = 'bottom')
-        root.mainloop()
-        return root.ret
+                if (el.index('`')+2 < len(el) 
+                    and re.search(r'\s', el[el.index('`')+2])):
+                    el = el[:el.index('`')+2]+''+el[el.index('`')+2:]
+                if (el.index('`')+1 < len(el) 
+                    and re_lowercase.search(el[el.index('`')+1])):
+                    el = (el[:el.index('`')+1]+''
+                        +el[el.index('`')+1]+'\u0301'+el[el.index('`')+2:])
+                elif (el.index('`')+1 < len(el) 
+                    and re_uppercase.search(el[el.index('`')+1])):
+                    el = (el[:el.index('`')+1]+''
+                        +el[el.index('`')+1]+'\u0301'+el[el.index('`')+2:])
+                el = el[:el.index('`')]+el[el.index('`')+1:]
+        parsed = parse_4s_elem(el)
+        images_exist = False
+        
+        for run in parsed:
+            if run[0] == 'img':
+                images_exist = True
+        
+        for run in parse_4s_elem(el):
+            if run[0] == '':
+                r = para.add_run(run[1])
+                if whiten and not args.nospoilers:
+                    r.style = 'Whitened'
+                if images_exist:
+                    para = gui_compose.doc.add_paragraph()
+            
+            elif run[0] == 'em':
+                r = para.add_run(run[1])
+                r.italic = True
+                if whiten and not args.nospoilers:
+                    r.style = 'Whitened'
+                if images_exist:
+                    para = gui_compose.doc.add_paragraph()
+
+            elif run[0] == 'sc':
+                r = para.add_run(run[1])
+                r.small_caps = True
+                if whiten and not args.nospoilers:
+                    r.style = 'Whitened'
+                if images_exist:
+                    para = gui_compose.doc.add_paragraph()
+            
+            elif run[0] == 'img':
+                width = -1
+                height = -1
+                sp = run[1].split()
+                if len(sp) == 1:
+                    try:
+                        gui_compose.doc.add_picture(run[1], width=Inches(4))
+                    except:
+                        sys.stderr.write(traceback.format_exc())
+                else:
+                    for spsp in sp[:-1]:
+                        spspsp = spsp.split('=')
+                        if spspsp[0] == 'w':
+                            width = spspsp[1]
+                        if spspsp[0] == 'h':
+                            height = spspsp[1]
+                    
+                    try:
+                        if width == -1 and height == -1:
+                            gui_compose.doc.add_picture(sp[-1], width=Inches(4))
+                        elif width != -1 and height == -1:
+                            gui_compose.doc.add_picture(sp[-1], width=width)
+                        elif width == -1 and height != -1:
+                            gui_compose.doc.add_picture(sp[-1], height=height)
+                        elif width != -1 and height != -1:
+                            gui_compose.doc.add_picture(sp[-1], width=width, 
+                                height=height)
+                    except:
+                        sys.stderr.write(traceback.format_exc())
+                
+                para = gui_compose.doc.add_paragraph()
+
+def html_format_question(q):
+    yapper = htmlyapper
+    if 'setcounter' in q:
+        gui_compose.counter = int(q['setcounter'])
+    res = (
+    '<strong>Вопрос {}.</strong> {}'.format(gui_compose.counter 
+        if not 'number' in q else q['number'], yapper
+        (q['question'])
+        +('\n<lj-spoiler>' if not args.nospoilers else '')))
+    if not 'number' in q:
+        gui_compose.counter += 1
+    res += '\n<strong>Ответ: </strong>{}'.format(
+        yapper(q['answer']),
+        )
+    if 'zachet' in q:
+        res += '\n<strong>Зачёт: </strong>{}'.format(
+        yapper(q['zachet']),
+        )
+    if 'nezachet' in q:
+        res += '\n<strong>Незачёт: </strong>{}'.format(
+        yapper(q['nezachet']),
+        )
+    if 'comment' in q:
+        res += '\n<strong>Комментарий: </strong>{}'.format(
+        yapper(q['comment']),
+        )
+    if 'source' in q:
+        res += '\n<strong>Источник{}: </strong>{}'.format(
+        'и' if isinstance(q['source'], list) else '',
+        yapper(q['source']),
+        )
+    if 'author' in q:
+        res += '\n<strong>Автор{}: </strong>{}'.format(
+        'ы' if isinstance(q['author'], list) else '',
+        yapper(q['author']))
+    if not args.nospoilers:
+        res += '</lj-spoiler>'
+    return res
+
+def htmlrepl(zz):
+    zz = zz.replace('&','&amp;')
+    zz = zz.replace('<','&lt;')
+    zz = zz.replace('>','&gt;')
+    
+    # while re_scaps.search(zz):
+    #     zz = zz.replace(re_scaps.search(zz).group(1),
+    #         '\\tsc{'+re_scaps.search(zz).group(1).lower()+'}')
+    
+    while '`' in zz:
+        if zz.index('`') + 1 >= len(zz):
+            zz = zz.replace('`', '')
+        else:
+            if (zz.index('`')+2 < len(zz) 
+                and re.search(r'\s', zz[zz.index('`')+2])):
+                zz = zz[:zz.index('`')+2]+''+zz[zz.index('`')+2:]
+            if (zz.index('`')+1 < len(zz) 
+                and re_lowercase.search(zz[zz.index('`')+1])):
+                zz = (zz[:zz.index('`')+1]+''
+                    +zz[zz.index('`')+1]+'&#x0301;'+zz[zz.index('`')+2:])
+            elif (zz.index('`')+1 < len(zz) 
+                and re_uppercase.search(zz[zz.index('`')+1])):
+                zz = (zz[:zz.index('`')+1]+''
+                    +zz[zz.index('`')+1]+'&#x0301;'+zz[zz.index('`')+2:])
+            zz = zz[:zz.index('`')]+zz[zz.index('`')+1:]
+
+    return zz
+
+def htmlformat(s):
+    res = ''
+    for run in parse_4s_elem(s):
+        if run[0] == '':
+            res += htmlrepl(run[1])
+        if run[0] == 'em':
+            res += '<em>'+htmlrepl(run[1])+'</em>'
+        if run[0] == 'img':
+            imgfile, w, h = parseimg(run[1])
+            if os.path.isfile(imgfile):
+                # with open(imgfile, 'rb') as f:
+                #     imgdata = f.read()
+                # imgfile = 'data:image/{ext};base64,{b64}'.format(
+                #     ext=os.path.splitext(imgfile)[-1][1:], 
+                #     b64=base64.b64encode(imgdata))
+                uploaded_image = im.upload_image(imgfile, 
+                    title=imgfile)
+                imgfile = uploaded_image.link
+
+            res += '<img{}{} src="{}"/>'.format(
+                '' if w==-1 else ' width={}'.format(w),
+                '' if h==-1 else ' height={}'.format(h),
+                imgfile
+                 )
+    return res
+
+def htmlyapper(e):
+    if isinstance(e, basestring):
+        return html_element_layout(e)
+    elif isinstance(e, list):
+        if not any(isinstance(x, list) for x in e):
+            return html_element_layout(e)
+        else:
+            return '\n'.join([html_element_layout(x) for x in e])
+
+def html_element_layout(e):
+    res = ''
+    if isinstance(e, basestring):
+        res = htmlformat(e)
+        return res
+    if isinstance(e, list):
+        res = """
+<ol>
+{}
+</ol>""".format('\n'.join(
+['<li>{}</li>'.format(html_element_layout(x)) for x in e]))
+        return res
+
+def md5(s):
+    return hashlib.md5(s).hexdigest()
+
+def get_chal(lj, passwd):
+    chal = lj.getchallenge()['challenge']
+    response = md5(chal + md5(passwd))
+    return (chal,response)
+
+def lj_post(stru, passwd):
+
+    lj = ServerProxy('http://www.livejournal.com/interface/xmlrpc').LJ.XMLRPC
+     
+    chal, response = get_chal(lj, passwd)
+
+    now = datetime.datetime.now()
+    year = now.strftime('%Y')
+    month = now.strftime('%m')
+    day = now.strftime('%d')
+    hour = now.strftime('%H')
+    minute = now.strftime('%M')
+
+    params = {
+        'username' : args.login,
+        'auth_method' : 'challenge',
+        'auth_challenge' : chal,
+        'auth_response' : response,
+        'subject' : stru[0]['header'],
+        'event' : stru[0]['content'].encode('utf8'),
+        'year': year,
+        'mon': month,
+        'day': day,
+        'hour': hour,
+        'min': minute,
+    }
+
+    if args.community == '':
+        params['security'] = 'private'
+    else:
+        params['usejournal'] = args.community
+
+    journal = args.community if args.community else args.login
+
+    try:
+        post = lj.postevent(params)
+        ditemid = post['ditemid']
+        print post
+
+        for id, x in enumerate(stru[1:], start=1):
+            chal, response = get_chal(lj, passwd)
+            params = {
+                'username' : args.login,
+                'auth_method' : 'challenge',
+                'auth_challenge' : chal,
+                'auth_response' : response,
+                'journal' : journal,
+                'ditemid' : ditemid,
+                'parenttalkid' : 0,
+                'body' : x['content'].encode('utf8'),
+                'subject' : x['header']
+                }
+            print lj.addcomment(params)
+    except:
+        sys.stderr.write('Error issued by LJ API: {}'.format(
+            traceback.format_exc()))
+        sys.exit(1)
 
 def lj_post_getdata():
-        root = Tk()
-        
-        loginbox = Entry(root)
-        pwdbox = Entry(root, show = '*')
-        communitybox = Entry(root)
-        
-        def onpwdentry(evt):
-            root.login = loginbox.get()
-            root.password = pwdbox.get()
-            root.community = communitybox.get()
-            root.quit()
-            root.destroy()
-        def onokclick():
-            root.login = loginbox.get()
-            root.password = pwdbox.get()
-            root.community = communitybox.get()
-            root.quit()
-            root.destroy()
-        
-        Label(root, text='Login').pack(side = 'top')
-        loginbox.pack(side = 'top')
-        Label(root, text = 'Password').pack(side = 'top')
-        pwdbox.pack(side = 'top')
-        Label(root, text='Community (may be blank)').pack(side = 'top')
-        communitybox.pack(side = 'top')
-
-        pwdbox.bind('<Return>', onpwdentry)
-        loginbox.bind('<Return>', onpwdentry)
-        communitybox.bind('<Return>', onpwdentry)
-
-        Button(root, command=onokclick, text = 'OK').pack(side = 'top')
-
-        root.mainloop()
-        return root.login, root.password, root.community
-
-def gui_compose(args):
+    root = Tk()
     
+    loginbox = Entry(root)
+    pwdbox = Entry(root, show = '*')
+    communitybox = Entry(root)
+    
+    def onpwdentry(evt):
+        root.login = loginbox.get()
+        root.password = pwdbox.get()
+        root.community = communitybox.get()
+        root.quit()
+        root.destroy()
+    def onokclick():
+        root.login = loginbox.get()
+        root.password = pwdbox.get()
+        root.community = communitybox.get()
+        root.quit()
+        root.destroy()
+    
+    Label(root, text='Login').pack(side = 'top')
+    loginbox.pack(side = 'top')
+    Label(root, text = 'Password').pack(side = 'top')
+    pwdbox.pack(side = 'top')
+    Label(root, text='Community (may be blank)').pack(side = 'top')
+    communitybox.pack(side = 'top')
+
+    pwdbox.bind('<Return>', onpwdentry)
+    loginbox.bind('<Return>', onpwdentry)
+    communitybox.bind('<Return>', onpwdentry)
+
+    Button(root, command=onokclick, text = 'OK').pack(side = 'top')
+
+    root.mainloop()
+    return root.login, root.password, root.community
+
+def tex_format_question(q):
+    yapper = texyapper
+    if 'setcounter' in q:
+        gui_compose.counter = int(q['setcounter'])
+    res = ('\n\n\\begin{{samepage}}\n'
+    '\\textbf{{Вопрос {}.}} {}'.format(gui_compose.counter 
+        if not 'number' in q else q['number'], yapper
+        (q['question'])))
+    if not 'number' in q:
+        gui_compose.counter += 1
+    res += '\n\\textbf{{Ответ: }}{}'.format(yapper
+        (q['answer']))
+    if 'zachet' in q:
+        res += '\n\\textbf{{Зачёт: }}{}'.format(yapper
+        (q['zachet']))
+    if 'nezachet' in q:
+        res += '\n\\textbf{{Незачёт: }}{}'.format(yapper
+        (q['nezachet']))
+    if 'comment' in q:
+        res += '\n\\textbf{{Комментарий: }}{}'.format(yapper
+        (q['comment']))
+    if 'source' in q:
+        res += '\n\\textbf{{Источник{}: }}{}'.format(
+        'и' if isinstance(q['source'], list) else '',
+        yapper(q['source']))
+    if 'author' in q:
+        res += '\n\\textbf{{Автор: }}{}'.format(yapper
+        (q['author']))
+    res += '\n\\end{samepage}\\vspace{0.8em}\n'
+    return res
+
+def texrepl(zz):
+    zz = re.sub(r"{",r"\{",zz) 
+    zz = re.sub(r"}",r"\}",zz)
+    zz = re.sub("_",r"\_",zz) 
+    zz = re.sub(r"\^",r"{\\textasciicircum}",zz) 
+    zz = re.sub(r"\~",r"{\\textasciitilde}",zz) 
+    zz = re.sub(r"%",r"\%",zz) 
+    zz = re.sub(r"\$",r"\$",zz) 
+    zz = re.sub(r"#",r"\#",zz) 
+    zz = re.sub(r"&",r"\&",zz) 
+    zz = re.sub(r"\\",r"\\",zz) 
+    zz = re.sub(r'((\"(?=[ \.\,;\:\?!\)\]]))|("(?=\Z)))',u'»',zz)
+    zz = re.sub(r'(((?<=[ \.\,;\:\?!\(\[)])")|((?<=\A)"))',u'«',zz)
+    zz = re.sub('"',"''",zz)
+    
+    for match in sorted([x for x in re_scaps.finditer(zz)],
+        key=lambda x: len(x.group(2)), reverse=True):
+        zz = zz.replace(match.group(2),
+            '\\tsc{'+match.group(2).lower()+'}')
+
+
+    # while re_scaps.search(zz):
+    #     zz = zz.replace(re_scaps.search(zz).group(2),
+    #         '\\tsc{'+re_scaps.search(zz).group(2).lower()+'}')
+
+    torepl = [x.group(0) for x in re.finditer(re_url, zz)]
+    for s in range(len(torepl)):
+        item = torepl[s]
+        while item[-1] in typotools.PUNCTUATION:
+            item = item[:-1]
+        while (item[-1] in typotools.CLOSING_BRACKETS and
+            typotools.find_matching_opening_bracket(item, -1) is None):
+            item = item[:-1]
+        while item[-1] in typotools.PUNCTUATION:
+            item = item[:-1]
+        torepl[s] = item
+    torepl = sorted(set(torepl), key=len, reverse=True)
+    hashurls = {}
+    for s in torepl:
+        hashurls[s] = hashlib.md5(
+            s.encode('utf8')).hexdigest().decode('utf8')
+    for s in sorted(hashurls, key=len, reverse=True):
+        zz = zz.replace(s, hashurls[s])
+    hashurls = {v: k for k, v in hashurls.items()}
+    for s in sorted(hashurls):
+        zz = zz.replace(s, '\\url{{{}}}'.format(
+            hashurls[s]))
+
+    # debug_print('URLS FOR REPLACING: ' +pprint.pformat(torepl).decode('unicode_escape'))
+    # while len(torepl)>0:
+    #     s = torepl[0]
+    #     debug_print('STRING BEFORE REPLACEMENT: {}'.format(zz))
+    #     zz = zz.replace(s, '\\url{'+s+'}')
+    #     debug_print('STRING AFTER REPLACEMENT: {}'.format(zz))
+    #     torepl.pop(0)
+
+    zz = zz.replace(' — ', '{\\hair}—{\\hair}')
+    
+    while '`' in zz:
+        if zz.index('`') + 1 >= len(zz):
+            zz = zz.replace('`', '')
+        else:
+            if (zz.index('`')+2 < len(zz) 
+                and re.search(r'\s', zz[zz.index('`')+2])):
+                zz = zz[:zz.index('`')+2]+'\\'+zz[zz.index('`')+2:]
+            if (zz.index('`')+1 < len(zz) 
+                and re_lowercase.search(zz[zz.index('`')+1])):
+                zz = (zz[:zz.index('`')+1]+'\\acc{'
+                    +zz[zz.index('`')+1]+'}'+zz[zz.index('`')+2:])
+            elif (zz.index('`')+1 < len(zz) 
+                and re_uppercase.search(zz[zz.index('`')+1])):
+                zz = (zz[:zz.index('`')+1]+'\\cacc{'
+                    +zz[zz.index('`')+1]+'}'+zz[zz.index('`')+2:])
+            zz = zz[:zz.index('`')]+zz[zz.index('`')+1:]
+
+    return zz
+
+def texformat(s):
+    res = ''
+    for run in parse_4s_elem(s):
+        if run[0] == '':
+            res += texrepl(run[1])
+        if run[0] == 'em':
+            res += '\\emph{'+texrepl(run[1])+'}'
+        if run[0] == 'img':
+            imgfile, w, h = parseimg(run[1])
+            res += ('\\includegraphics'+
+                '[width={}{}]'.format(
+                    '10em' if w==-1 else w,
+                    ', height={}'.format(h) if h!=-1 else ''
+                    )+
+                '{'+texrepl(imgfile)+'}')
+    return res
+
+def texyapper(e):
+    if isinstance(e, basestring):
+        return tex_element_layout(e)
+    elif isinstance(e, list):
+        if not any(isinstance(x, list) for x in e):
+            return tex_element_layout(e)
+        else:
+            return '\n'.join([tex_element_layout(x) for x in e])
+
+def tex_element_layout(e):
+    res = ''
+    if isinstance(e, basestring):
+        res = texformat(e)
+        return res
+    if isinstance(e, list):
+        res = """
+\\begin{{enumerate}}
+{}
+\\end{{enumerate}}
+""".format('\n'.join(
+    ['\\item {}'.format(tex_element_layout(x)) for x in e]))
+    return res
+
+def gui_compose(largs):
+    
+    global args
+    global console_mode
+    args = largs
     global __file__                         # to fix stupid
     __file__ = os.path.abspath(__file__)    # __file__ handling
     _file_ = os.path.basename(__file__)     # in python 2
@@ -456,7 +896,8 @@ def gui_compose(args):
 
     TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
     filename = os.path.basename(os.path.abspath(args.filename))
-    if SOURCEDIR != TARGETDIR:
+    if (os.path.normpath(SOURCEDIR.lower()) 
+        != os.path.normpath(TARGETDIR.lower())):
         shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
     os.chdir(SOURCEDIR)
 
@@ -492,111 +933,6 @@ def gui_compose(args):
         from parse import parse
         from docx.shared import Inches
         
-        def docx_format(el, para, whiten):
-            if isinstance(el, list):
-                
-                if len(el) > 1 and isinstance(el[1], list):
-                    docx_format(el[0], para, whiten)
-                    licount = 0
-                    for li in el[1]:
-                        licount += 1
-                        
-                        p = gui_compose.doc.add_paragraph('{}. '
-                            .format(licount))
-                        docx_format(li, p, whiten)
-                else:
-                    licount = 0
-                    for li in el:
-                        licount += 1
-                        
-                        p = gui_compose.doc.add_paragraph('{}. '
-                            .format(licount))
-                        docx_format(li, p, whiten)
-
-            if isinstance(el, basestring):
-                debug_print('parsing element {}:'
-                    .format(pprint.pformat(el).decode('unicode_escape')))
-
-                while '`' in el:
-                    if el.index('`') + 1 >= len(el):
-                        el = el.replace('`', '')
-                    else:
-                        if (el.index('`')+2 < len(el) 
-                            and re.search(r'\s', el[el.index('`')+2])):
-                            el = el[:el.index('`')+2]+''+el[el.index('`')+2:]
-                        if (el.index('`')+1 < len(el) 
-                            and re_lowercase.search(el[el.index('`')+1])):
-                            el = (el[:el.index('`')+1]+''
-                                +el[el.index('`')+1]+'\u0301'+el[el.index('`')+2:])
-                        elif (el.index('`')+1 < len(el) 
-                            and re_uppercase.search(el[el.index('`')+1])):
-                            el = (el[:el.index('`')+1]+''
-                                +el[el.index('`')+1]+'\u0301'+el[el.index('`')+2:])
-                        el = el[:el.index('`')]+el[el.index('`')+1:]
-                parsed = parse_4s_elem(el)
-                images_exist = False
-                
-                for run in parsed:
-                    if run[0] == 'img':
-                        images_exist = True
-                
-                for run in parse_4s_elem(el):
-                    if run[0] == '':
-                        r = para.add_run(run[1])
-                        if whiten and not args.nospoilers:
-                            r.style = 'Whitened'
-                        if images_exist:
-                            para = gui_compose.doc.add_paragraph()
-                    
-                    elif run[0] == 'em':
-                        r = para.add_run(run[1])
-                        r.italic = True
-                        if whiten and not args.nospoilers:
-                            r.style = 'Whitened'
-                        if images_exist:
-                            para = gui_compose.doc.add_paragraph()
-
-                    elif run[0] == 'sc':
-                        r = para.add_run(run[1])
-                        r.small_caps = True
-                        if whiten and not args.nospoilers:
-                            r.style = 'Whitened'
-                        if images_exist:
-                            para = gui_compose.doc.add_paragraph()
-                    
-                    elif run[0] == 'img':
-                        width = -1
-                        height = -1
-                        sp = run[1].split()
-                        if len(sp) == 1:
-                            try:
-                                gui_compose.doc.add_picture(run[1], width=Inches(4))
-                            except:
-                                sys.stderr.write(traceback.format_exc())
-                        else:
-                            for spsp in sp[:-1]:
-                                spspsp = spsp.split('=')
-                                if spspsp[0] == 'w':
-                                    width = spspsp[1]
-                                if spspsp[0] == 'h':
-                                    height = spspsp[1]
-                            
-                            try:
-                                if width == -1 and height == -1:
-                                    gui_compose.doc.add_picture(sp[-1], width=Inches(4))
-                                elif width != -1 and height == -1:
-                                    gui_compose.doc.add_picture(sp[-1], width=width)
-                                elif width == -1 and height != -1:
-                                    gui_compose.doc.add_picture(sp[-1], height=height)
-                                elif width != -1 and height != -1:
-                                    gui_compose.doc.add_picture(sp[-1], width=width, 
-                                        height=height)
-                            except:
-                                sys.stderr.write(traceback.format_exc())
-                        
-                        para = gui_compose.doc.add_paragraph()
-
-
         outfilename = make_filename(filename, 'docx')
         gui_compose.doc = Document('template.docx')
         qcount = 0
@@ -648,163 +984,15 @@ def gui_compose(args):
                 gui_compose.doc.add_paragraph()
 
         gui_compose.doc.save(outfilename)
-        if SOURCEDIR != TARGETDIR:
+        if (os.path.normpath(SOURCEDIR.lower()) 
+        != os.path.normpath(TARGETDIR.lower())):
             shutil.copy(outfilename, TARGETDIR)
 
     if args.filetype == 'tex':
 
         outfilename = make_filename(filename, 'tex')
 
-        def texrepl(zz):
-            zz = re.sub(r"{",r"\{",zz) 
-            zz = re.sub(r"}",r"\}",zz)
-            zz = re.sub("_",r"\_",zz) 
-            zz = re.sub(r"\^",r"{\\textasciicircum}",zz) 
-            zz = re.sub(r"\~",r"{\\textasciitilde}",zz) 
-            zz = re.sub(r"%",r"\%",zz) 
-            zz = re.sub(r"\$",r"\$",zz) 
-            zz = re.sub(r"#",r"\#",zz) 
-            zz = re.sub(r"&",r"\&",zz) 
-            zz = re.sub(r"\\",r"\\",zz) 
-            zz = re.sub(r'((\"(?=[ \.\,;\:\?!\)\]]))|("(?=\Z)))',u'»',zz)
-            zz = re.sub(r'(((?<=[ \.\,;\:\?!\(\[)])")|((?<=\A)"))',u'«',zz)
-            zz = re.sub('"',"''",zz)
-            
-            for match in sorted([x for x in re_scaps.finditer(zz)],
-                key=lambda x: len(x.group(2)), reverse=True):
-                zz = zz.replace(match.group(2),
-                    '\\tsc{'+match.group(2).lower()+'}')
-
-
-            # while re_scaps.search(zz):
-            #     zz = zz.replace(re_scaps.search(zz).group(2),
-            #         '\\tsc{'+re_scaps.search(zz).group(2).lower()+'}')
-
-            torepl = [x.group(0) for x in re.finditer(re_url, zz)]
-            for s in range(len(torepl)):
-                item = torepl[s]
-                while item[-1] in typotools.PUNCTUATION:
-                    item = item[:-1]
-                while (item[-1] in typotools.CLOSING_BRACKETS and
-                    typotools.find_matching_opening_bracket(item, -1) is None):
-                    item = item[:-1]
-                while item[-1] in typotools.PUNCTUATION:
-                    item = item[:-1]
-                torepl[s] = item
-            torepl = sorted(set(torepl), key=len, reverse=True)
-            hashurls = {}
-            for s in torepl:
-                hashurls[s] = hashlib.md5(
-                    s.encode('utf8')).hexdigest().decode('utf8')
-            for s in sorted(hashurls, key=len, reverse=True):
-                zz = zz.replace(s, hashurls[s])
-            hashurls = {v: k for k, v in hashurls.items()}
-            for s in sorted(hashurls):
-                zz = zz.replace(s, '\\url{{{}}}'.format(
-                    hashurls[s]))
-
-            # debug_print('URLS FOR REPLACING: ' +pprint.pformat(torepl).decode('unicode_escape'))
-            # while len(torepl)>0:
-            #     s = torepl[0]
-            #     debug_print('STRING BEFORE REPLACEMENT: {}'.format(zz))
-            #     zz = zz.replace(s, '\\url{'+s+'}')
-            #     debug_print('STRING AFTER REPLACEMENT: {}'.format(zz))
-            #     torepl.pop(0)
-
-            zz = zz.replace(' — ', '{\\hair}—{\\hair}')
-            
-            while '`' in zz:
-                if zz.index('`') + 1 >= len(zz):
-                    zz = zz.replace('`', '')
-                else:
-                    if (zz.index('`')+2 < len(zz) 
-                        and re.search(r'\s', zz[zz.index('`')+2])):
-                        zz = zz[:zz.index('`')+2]+'\\'+zz[zz.index('`')+2:]
-                    if (zz.index('`')+1 < len(zz) 
-                        and re_lowercase.search(zz[zz.index('`')+1])):
-                        zz = (zz[:zz.index('`')+1]+'\\acc{'
-                            +zz[zz.index('`')+1]+'}'+zz[zz.index('`')+2:])
-                    elif (zz.index('`')+1 < len(zz) 
-                        and re_uppercase.search(zz[zz.index('`')+1])):
-                        zz = (zz[:zz.index('`')+1]+'\\cacc{'
-                            +zz[zz.index('`')+1]+'}'+zz[zz.index('`')+2:])
-                    zz = zz[:zz.index('`')]+zz[zz.index('`')+1:]
-
-            return zz
-
-        def texformat(s):
-            res = ''
-            for run in parse_4s_elem(s):
-                if run[0] == '':
-                    res += texrepl(run[1])
-                if run[0] == 'em':
-                    res += '\\emph{'+texrepl(run[1])+'}'
-                if run[0] == 'img':
-                    imgfile, w, h = parseimg(run[1])
-                    res += ('\\includegraphics'+
-                        '[width={}{}]'.format(
-                            '10em' if w==-1 else w,
-                            ', height={}'.format(h) if h!=-1 else ''
-                            )+
-                        '{'+texrepl(imgfile)+'}')
-            return res
-
-        def yapper(e):
-            if isinstance(e, basestring):
-                return tex_element_layout(e)
-            elif isinstance(e, list):
-                if not any(isinstance(x, list) for x in e):
-                    return tex_element_layout(e)
-                else:
-                    return '\n'.join([tex_element_layout(x) for x in e])
-
-        def tex_element_layout(e):
-            res = ''
-            if isinstance(e, basestring):
-                res = texformat(e)
-                return res
-            if isinstance(e, list):
-                res = """
-\\begin{{enumerate}}
-{}
-\\end{{enumerate}}
-""".format('\n'.join(
-    ['\\item {}'.format(tex_element_layout(x)) for x in e]))
-                return res
-
         gui_compose.counter = 1
-
-        def tex_format_question(q):
-            if 'setcounter' in q:
-                gui_compose.counter = int(q['setcounter'])
-            res = ('\n\n\\begin{{samepage}}\n'
-            '\\textbf{{Вопрос {}.}} {}'.format(gui_compose.counter 
-                if not 'number' in q else q['number'], yapper
-                (q['question'])))
-            if not 'number' in q:
-                gui_compose.counter += 1
-            res += '\n\\textbf{{Ответ: }}{}'.format(yapper
-                (q['answer']))
-            if 'zachet' in q:
-                res += '\n\\textbf{{Зачёт: }}{}'.format(yapper
-                (q['zachet']))
-            if 'nezachet' in q:
-                res += '\n\\textbf{{Незачёт: }}{}'.format(yapper
-                (q['nezachet']))
-            if 'comment' in q:
-                res += '\n\\textbf{{Комментарий: }}{}'.format(yapper
-                (q['comment']))
-            if 'source' in q:
-                res += '\n\\textbf{{Источник{}: }}{}'.format(
-                'и' if isinstance(q['source'], list) else '',
-                yapper(q['source']))
-            if 'author' in q:
-                res += '\n\\textbf{{Автор: }}{}'.format(yapper
-                (q['author']))
-            res += '\n\\end{samepage}\\vspace{0.8em}\n'
-            return res
-
-            
 
         title = 'Title'
         author = 'Author'
@@ -838,9 +1026,11 @@ def gui_compose(args):
         with codecs.open(outfilename, 'w', 'utf8') as outfile:
             outfile.write(gui_compose.tex)
         subprocess.call(shlex.split(
-            'xelatex.exe -synctex=1 -interaction=nonstopmode "{}"'
+            'xelatex -synctex=1 -interaction=nonstopmode "{}"'
             .format(outfilename)))
-        shutil.copy(os.path.splitext(outfilename)[0]+'.pdf', TARGETDIR)
+        if (os.path.normpath(SOURCEDIR.lower()) 
+            != os.path.normpath(TARGETDIR.lower())):
+            shutil.copy(os.path.splitext(outfilename)[0]+'.pdf', TARGETDIR)
 
     if args.filetype == 'lj':
 
@@ -853,194 +1043,10 @@ def gui_compose(args):
             import getpass
             passwd = getpass.getpass()
         
-        from xmlrpclib import ServerProxy as s
-        import urllib
-
         CLIENT_ID = '8da1bd97da30ac1'
         im = pyimgur.Imgur(CLIENT_ID)
 
-        def lj_post(stru):
-            def md5(s):
-                return hashlib.md5(s).hexdigest()
-
-            def get_chal():
-                chal = lj.getchallenge()['challenge']
-                response = md5(chal + md5(passwd))
-                return (chal,response)
-             
-            lj = s('http://www.livejournal.com/interface/xmlrpc').LJ.XMLRPC
-             
-            chal, response = get_chal()
-
-            now = datetime.datetime.now()
-            year = now.strftime('%Y')
-            month = now.strftime('%m')
-            day = now.strftime('%d')
-            hour = now.strftime('%H')
-            minute = now.strftime('%M')
-
-
-            params = {
-                'username' : args.login,
-                'auth_method' : 'challenge',
-                'auth_challenge' : chal,
-                'auth_response' : response,
-                'subject' : stru[0]['header'],
-                'event' : stru[0]['content'].encode('utf8'),
-                'year': year,
-                'mon': month,
-                'day': day,
-                'hour': hour,
-                'min': minute,
-            }
-
-            if args.community == '':
-                params['security'] = 'private'
-            else:
-                params['usejournal'] = args.community
-
-            journal = args.community if args.community else args.login
-
-            try:
-                post = lj.postevent(params)
-                ditemid = post['ditemid']
-                print post
-
-                for id, x in enumerate(stru[1:], start=1):
-                    chal, response = get_chal()
-                    params = {
-                        'username' : args.login,
-                        'auth_method' : 'challenge',
-                        'auth_challenge' : chal,
-                        'auth_response' : response,
-                        'journal' : journal,
-                        'ditemid' : ditemid,
-                        'parenttalkid' : 0,
-                        'body' : x['content'].encode('utf8'),
-                        'subject' : x['header']
-                        }
-                    print lj.addcomment(params)
-            except:
-                sys.stderr.write('Error issued by LJ API: {}'.format(
-                    traceback.format_exc()))
-                sys.exit()
-
-        def htmlrepl(zz):
-            zz = zz.replace('&','&amp;')
-            zz = zz.replace('<','&lt;')
-            zz = zz.replace('>','&gt;')
-            
-            # while re_scaps.search(zz):
-            #     zz = zz.replace(re_scaps.search(zz).group(1),
-            #         '\\tsc{'+re_scaps.search(zz).group(1).lower()+'}')
-            
-            while '`' in zz:
-                if zz.index('`') + 1 >= len(zz):
-                    zz = zz.replace('`', '')
-                else:
-                    if (zz.index('`')+2 < len(zz) 
-                        and re.search(r'\s', zz[zz.index('`')+2])):
-                        zz = zz[:zz.index('`')+2]+''+zz[zz.index('`')+2:]
-                    if (zz.index('`')+1 < len(zz) 
-                        and re_lowercase.search(zz[zz.index('`')+1])):
-                        zz = (zz[:zz.index('`')+1]+''
-                            +zz[zz.index('`')+1]+'&#x0301;'+zz[zz.index('`')+2:])
-                    elif (zz.index('`')+1 < len(zz) 
-                        and re_uppercase.search(zz[zz.index('`')+1])):
-                        zz = (zz[:zz.index('`')+1]+''
-                            +zz[zz.index('`')+1]+'&#x0301;'+zz[zz.index('`')+2:])
-                    zz = zz[:zz.index('`')]+zz[zz.index('`')+1:]
-
-            return zz
-
-        def htmlformat(s):
-            res = ''
-            for run in parse_4s_elem(s):
-                if run[0] == '':
-                    res += htmlrepl(run[1])
-                if run[0] == 'em':
-                    res += '<em>'+htmlrepl(run[1])+'</em>'
-                if run[0] == 'img':
-                    imgfile, w, h = parseimg(run[1])
-                    if os.path.isfile(imgfile):
-                        # with open(imgfile, 'rb') as f:
-                        #     imgdata = f.read()
-                        # imgfile = 'data:image/{ext};base64,{b64}'.format(
-                        #     ext=os.path.splitext(imgfile)[-1][1:], 
-                        #     b64=base64.b64encode(imgdata))
-                        uploaded_image = im.upload_image(imgfile, 
-                            title=imgfile)
-                        imgfile = uploaded_image.link
-
-                    res += '<img{}{} src="{}"/>'.format(
-                        '' if w==-1 else ' width={}'.format(w),
-                        '' if h==-1 else ' height={}'.format(h),
-                        imgfile
-                         )
-            return res
-
-        def yapper(e):
-            if isinstance(e, basestring):
-                return html_element_layout(e)
-            elif isinstance(e, list):
-                if not any(isinstance(x, list) for x in e):
-                    return html_element_layout(e)
-                else:
-                    return '\n'.join([html_element_layout(x) for x in e])
-
-        def html_element_layout(e):
-            res = ''
-            if isinstance(e, basestring):
-                res = htmlformat(e)
-                return res
-            if isinstance(e, list):
-                res = """
-<ol>
-{}
-</ol>""".format('\n'.join(
-    ['<li>{}</li>'.format(html_element_layout(x)) for x in e]))
-                return res
-
         gui_compose.counter = 1
-
-        def html_format_question(q):
-            if 'setcounter' in q:
-                gui_compose.counter = int(q['setcounter'])
-            res = (
-            '<strong>Вопрос {}.</strong> {}'.format(gui_compose.counter 
-                if not 'number' in q else q['number'], yapper
-                (q['question'])
-                +('\n<lj-spoiler>' if not args.nospoilers else '')))
-            if not 'number' in q:
-                gui_compose.counter += 1
-            res += '\n<strong>Ответ: </strong>{}'.format(
-                yapper(q['answer']),
-                )
-            if 'zachet' in q:
-                res += '\n<strong>Зачёт: </strong>{}'.format(
-                yapper(q['zachet']),
-                )
-            if 'nezachet' in q:
-                res += '\n<strong>Незачёт: </strong>{}'.format(
-                yapper(q['nezachet']),
-                )
-            if 'comment' in q:
-                res += '\n<strong>Комментарий: </strong>{}'.format(
-                yapper(q['comment']),
-                )
-            if 'source' in q:
-                res += '\n<strong>Источник{}: </strong>{}'.format(
-                'и' if isinstance(q['source'], list) else '',
-                yapper(q['source']),
-                )
-            if 'author' in q:
-                res += '\n<strong>Автор{}: </strong>{}'.format(
-                'ы' if isinstance(q['author'], list) else '',
-                yapper(q['author']))
-            if not args.nospoilers:
-                res += '</lj-spoiler>'
-            return res
-
         final_structure = [{'header': '',
         'content':''}]
 
@@ -1048,6 +1054,7 @@ def gui_compose(args):
 
         heading = ''
         ljheading = ''
+        yapper = htmlyapper
         while structure[i][0] != 'Question':
             if structure[i][0] == 'heading':
                 final_structure[0]['content'] += ('<h1>{}</h1>'
@@ -1087,7 +1094,7 @@ def gui_compose(args):
                 f.write(pprint.pformat(final_structure)
                     .decode('unicode_escape'))
 
-        lj_post(final_structure)
+        lj_post(final_structure, passwd)
 
     if not console_mode:
         raw_input("Press Enter to continue...")
