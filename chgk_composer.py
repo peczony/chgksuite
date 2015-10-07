@@ -417,7 +417,7 @@ def lj_post_getdata():
         root.mainloop()
         return root.login, root.password, root.community
 
-def gui_compose():
+def gui_compose(args):
     
     global __file__                         # to fix stupid
     __file__ = os.path.abspath(__file__)    # __file__ handling
@@ -430,18 +430,6 @@ def gui_compose():
     root.withdraw()
 
     sys.stderr = codecs.getwriter('utf8')(sys.stderr)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('filename', nargs='?')
-    parser.add_argument('filetype', nargs='?')
-    parser.add_argument('--debug', '-d', action='store_true')
-    parser.add_argument('--nospoilers', '-n', action='store_true')
-    parser.add_argument('--noparagraph', action='store_true')
-    parser.add_argument('--randomize', action='store_true')
-    parser.add_argument('--login', '-l')
-    parser.add_argument('--password', '-p')
-    parser.add_argument('--community', '-c')
-    args = parser.parse_args()
 
     if args.debug:
         debug = True

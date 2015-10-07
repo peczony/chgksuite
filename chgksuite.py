@@ -57,11 +57,25 @@ def gui_choose_action():
         return root.ret
 
 def main():
-    action = gui_choose_action()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('action', nargs='?')
+    parser.add_argument('filename', nargs='?')
+    parser.add_argument('filetype', nargs='?')
+    parser.add_argument('--debug', '-d', action='store_true')
+    parser.add_argument('--nospoilers', '-n', action='store_true')
+    parser.add_argument('--noparagraph', action='store_true')
+    parser.add_argument('--randomize', action='store_true')
+    parser.add_argument('--login', '-l')
+    parser.add_argument('--password', '-p')
+    parser.add_argument('--community', '-c')
+    args = parser.parse_args()
+    
+    if not args.action:
+        action = gui_choose_action()
     if action == 'parse':
-        gui_parse()
+        gui_parse(args)
     if action == 'compose':
-        gui_compose()
+        gui_compose(args)
 
 if __name__ == "__main__":
     main()

@@ -425,7 +425,7 @@ def compose_4s(structure):
 
 
 
-def gui_parse():
+def gui_parse(args):
 
     global __file__                         # to fix stupid
     __file__ = os.path.abspath(__file__)    # __file__ handling
@@ -437,11 +437,6 @@ def gui_parse():
     root.withdraw()
 
     sys.stderr = codecs.getwriter('utf8')(sys.stderr)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('filename', nargs='?')
-    parser.add_argument('--debug', '-d', action='store_true')
-    args = parser.parse_args()
 
     if args.debug:
         debug = True
