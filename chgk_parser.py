@@ -8,6 +8,7 @@ import re
 import os
 import pdb
 import sys
+import chardet
 import codecs
 import json
 import typotools
@@ -15,6 +16,11 @@ import traceback
 import subprocess
 import shlex
 import datetime
+from pydocx import PyDocX
+from bs4 import BeautifulSoup
+from parse import parse
+import base64
+import html2text
 from typotools import remove_excessive_whitespace as rew
 
 try:
@@ -378,6 +384,88 @@ def chgk_parse(text):
     debug_print(pprint.pformat(final_structure).decode('unicode_escape'))
     return final_structure
 
+class UnknownEncodingException(Exception): pass
+
+def chgk_parse_txt(txtfile, encoding=None):
+    raw = open(txtfile,'r').read()
+    if not encoding and chardet.detect(raw)['confidence'] > 0.8:
+        encoding = chardet.detect(raw)['encoding']
+    else:
+        raise UnknownEncodingException(
+            'Encoding of file {} cannot be verified, '
+            'please pass encoding directly via command line '
+            'or resave with a less exotic encoding'.format(txtfile))
+    text = raw.decode(encoding)
+    return chgk_parse(text)
+
+def chgk_parse_docx(docxfile):
+    input_docx = PyDocX.to_html(docxfile)
+    bsoup = BeautifulSoup(input_docx)
+
+    if debug:
+        with codecs.open('debug.pydocx', 'w', 'utf8') as dbg:
+            dbg.write(input_docx)
+    
+    def generate_imgname(ext):
+        imgcounter = 1
+        while os.path.isfile('{:03}.{}'
+            .format(imgcounter, ext)):
+            imgcounter += 1
+        return '{:03}.{}'.format(imgcounter, ext)
+
+    for tag in bsoup.find_all('style'):
+        tag.extract()
+    for tag in bsoup.find_all('p'):
+        if tag.string:
+            tag.string = tag.string + SEP
+    for tag in bsoup.find_all('b'):
+        tag.unwrap()
+    for tag in bsoup.find_all('strong'):
+        tag.unwrap()
+    for tag in bsoup.find_all('i'):
+        tag.string = '_' + tag.string + '_'
+        tag.unwrap()
+    for tag in bsoup.find_all('em'):
+        tag.string = '_' + tag.string + '_'
+        tag.unwrap()
+    for tag in bsoup.find_all('li'):
+        if tag.string:
+            tag.string = '- ' + tag.string
+    for tag in bsoup.find_all('img'):
+        imgparse = parse('data:image/{ext};base64,{b64}', tag['src'])
+        imgname = generate_imgname(imgparse['ext'])
+        if not args.debug:
+            with open(imgname, 'wb') as f:
+                f.write(base64.b64decode(imgparse['b64']))
+        imgpath = os.path.abspath(imgname)
+        tag.insert_before('(img {})'.format(imgpath))
+        tag.extract()
+    for tag in bsoup.find_all('a'):
+        if rew(tag.string) == '':
+            tag.extract()
+        else:
+            tag.string = tag['href']
+            tag.unwrap()
+
+    h = html2text.HTML2Text()
+    h.body_width = 0
+    txt = (h.handle(bsoup.prettify())
+        .replace('\\-','')
+        .replace('\\.','.')
+        .replace('( ', '(')
+        .replace('[ ', '[')
+        .replace(' )', ')')
+        .replace(' ]', ']')
+        .replace(' :', ':')
+        )
+
+    if debug:
+        with codecs.open('debug.debug', 'w', 'utf8') as dbg:
+            dbg.write(txt)
+
+    final_structure = chgk_parse(txt)
+    return final_structure
+
 def compose_4s(structure):
     types_mapping = {
         'meta' : '# ',
@@ -423,8 +511,6 @@ def compose_4s(structure):
             result += SEP
     return result
 
-
-
 def gui_parse(args):
 
     global console_mode
@@ -457,85 +543,11 @@ def gui_parse(args):
     os.chdir(os.path.dirname(os.path.abspath(args.filename)))
 
     if os.path.splitext(args.filename)[1] == '.txt':
-
-        with codecs.open(args.filename, 'r', 'utf8') as input_file:
-                input_text = input_file.read()
-
-        input_text = input_text.replace('\r','')
-
-        final_structure = chgk_parse(input_text)
+        final_structure = chgk_parse_txt(args.filename)
 
 
     elif os.path.splitext(args.filename)[1] == '.docx':
-        from pydocx import PyDocX
-        from bs4 import BeautifulSoup
-        from parse import parse
-        import base64
-        import html2text
-        input_docx = PyDocX.to_html(args.filename)
-        bsoup = BeautifulSoup(input_docx)
-
-        if args.debug:
-            with codecs.open('debug.pydocx', 'w', 'utf8') as dbg:
-                dbg.write(input_docx)
-        
-        def generate_imgname(ext):
-            imgcounter = 1
-            while os.path.isfile('{:03}.{}'
-                .format(imgcounter, ext)):
-                imgcounter += 1
-            return '{:03}.{}'.format(imgcounter, ext)
-
-        for tag in bsoup.find_all('style'):
-            tag.extract()
-        for tag in bsoup.find_all('p'):
-            if tag.string:
-                tag.string = tag.string + SEP
-        for tag in bsoup.find_all('b'):
-            tag.unwrap()
-        for tag in bsoup.find_all('strong'):
-            tag.unwrap()
-        for tag in bsoup.find_all('i'):
-            tag.string = '_' + tag.string + '_'
-            tag.unwrap()
-        for tag in bsoup.find_all('em'):
-            tag.string = '_' + tag.string + '_'
-            tag.unwrap()
-        for tag in bsoup.find_all('li'):
-            if tag.string:
-                tag.string = '- ' + tag.string
-        for tag in bsoup.find_all('img'):
-            imgparse = parse('data:image/{ext};base64,{b64}', tag['src'])
-            imgname = generate_imgname(imgparse['ext'])
-            tag.insert_before('(img {})'.format(imgname))
-            if not args.debug:
-                with open(imgname, 'wb') as f:
-                    f.write(base64.b64decode(imgparse['b64']))
-            tag.extract()
-        for tag in bsoup.find_all('a'):
-            if rew(tag.string) == '':
-                tag.extract()
-            else:
-                tag.string = tag['href']
-                tag.unwrap()
-
-        h = html2text.HTML2Text()
-        h.body_width = 0
-        txt = (h.handle(bsoup.prettify())
-            .replace('\\-','')
-            .replace('\\.','.')
-            .replace('( ', '(')
-            .replace('[ ', '[')
-            .replace(' )', ')')
-            .replace(' ]', ']')
-            .replace(' :', ':')
-            )
-
-        if args.debug:
-            with codecs.open('debug.debug', 'w', 'utf8') as dbg:
-                dbg.write(txt)
-
-        final_structure = chgk_parse(txt)
+        final_structure = chgk_parse_docx(args.filename)
 
     else:
         sys.stderr.write('Error: unsupported file format.' + SEP)
