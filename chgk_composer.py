@@ -227,7 +227,7 @@ def parse_4s(s, randomize=False):
         if rew(line) == '':
             structure.append(['', ''])
         else:
-            if len(line.split()) > 1 and line.split()[0] in mapping:
+            if line.split()[0] in mapping:
                 structure.append([mapping[line.split()[0]], 
                     rew(line[
                         len(line.split()[0]):])])
