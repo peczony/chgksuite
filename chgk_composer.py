@@ -15,6 +15,7 @@ import docx
 import hashlib
 import json
 import os
+import pdb
 import pprint
 import pyimgur
 import random
