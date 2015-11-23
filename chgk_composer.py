@@ -77,8 +77,16 @@ def parseimg(s):
     width = -1
     height = -1
     sp = s.split()
+    imgfile = sp[-1]
+    if not os.path.isabs(imgfile): 
+        if os.path.isfile(
+        os.path.join(TARGETDIR, imgfile)):
+            imgfile = os.path.join(TARGETDIR, imgfile)
+        else:
+            imgfile = os.path.join(SOURCEDIR, imgfile)
+
     if len(sp) == 1:
-        return sp[0], -1, -1
+        return imgfile.replace('\\','/'), -1, -1
     else:
         for spsp in sp[:-1]:
             spspsp = spsp.split('=')
@@ -86,7 +94,7 @@ def parseimg(s):
                 width = spspsp[1]
             if spspsp[0] == 'h':
                 height = spspsp[1]
-        return sp[-1], width, height
+        return imgfile.replace('\\','/'), width, height
 
 def debug_print(s):
     if debug == True:
@@ -463,9 +471,17 @@ def docx_format(el, para, whiten):
                 width = -1
                 height = -1
                 sp = run[1].split()
+                imgfile = sp[-1]
+                if not os.path.isabs(imgfile): 
+                    if os.path.isfile(
+                    os.path.join(TARGETDIR, imgfile)):
+                        imgfile = os.path.join(TARGETDIR, imgfile)
+                    else:
+                        imgfile = os.path.join(SOURCEDIR, imgfile)
+
                 if len(sp) == 1:
                     try:
-                        gui_compose.doc.add_picture(run[1], width=Inches(4))
+                        gui_compose.doc.add_picture(imgfile, width=Inches(4))
                     except:
                         sys.stderr.write(traceback.format_exc())
                 else:
@@ -478,13 +494,13 @@ def docx_format(el, para, whiten):
                     
                     try:
                         if width == -1 and height == -1:
-                            gui_compose.doc.add_picture(sp[-1], width=Inches(4))
+                            gui_compose.doc.add_picture(imgfile, width=Inches(4))
                         elif width != -1 and height == -1:
-                            gui_compose.doc.add_picture(sp[-1], width=width)
+                            gui_compose.doc.add_picture(imgfile, width=width)
                         elif width == -1 and height != -1:
-                            gui_compose.doc.add_picture(sp[-1], height=height)
+                            gui_compose.doc.add_picture(imgfile, height=height)
                         elif width != -1 and height != -1:
-                            gui_compose.doc.add_picture(sp[-1], width=width, 
+                            gui_compose.doc.add_picture(imgfile, width=width, 
                                 height=height)
                     except:
                         sys.stderr.write(traceback.format_exc())
@@ -649,6 +665,7 @@ def lj_post(stru, passwd):
     journal = args.community if args.community else args.login
 
     try:
+        open('debug.zalupa2','w').write(json.dumps(params))
         post = lj.postevent(params)
         ditemid = post['ditemid']
         print post
