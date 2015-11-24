@@ -85,7 +85,7 @@ def proportional_resize(tup):
         return tuple([int(x * 200/max(tup)) for x in tup])
     return tup
 
-def imgsize(imgfile, dimensions='pixels', emsize=25, dpi=72):
+def imgsize(imgfile, dimensions='pixels', emsize=25, dpi=120):
     img = Image.open(imgfile)
     width, height = proportional_resize((img.width, img.height))
     if dimensions == 'ems':
