@@ -35,7 +35,8 @@ console_mode = False
 QUESTION_LABELS = ['handout', 'question', 'answer',
         'zachet', 'nezachet', 'comment', 'source', 'author', 'number',
         'setcounter']
-ENC = 'cp866' #TODO: add cross-platform encoding detection
+ENC = ('utf8' if sys.platform != 'win32' else 'cp1251')
+CONSOLE_ENC = (ENC if sys.platform != 'win32' else 'cp866')
 SEP = os.linesep
 EDITORS = {
     'win32': 'notepad',
@@ -43,6 +44,8 @@ EDITORS = {
     'darwin': 'open -t'
 }
 TEXTEDITOR = EDITORS[sys.platform]
+SOURCEDIR = os.path.dirname(os.path.abspath(__file__))
+TARGETDIR = os.getcwd()
 
 def make_filename(s):
     return os.path.splitext(os.path.basename(s))[0]+'.4s'
@@ -63,7 +66,7 @@ def check_question(question):
         print('WARNING: question {} lacks the following fields: {}{}'
             .format(question, ', '.join(warnings), SEP)
             .decode('unicode_escape')
-            .encode(ENC, errors='replace'))
+            .encode(CONSOLE_ENC, errors='replace'))
 
 def chgk_parse(text):
 
@@ -571,7 +574,7 @@ def gui_parse(args):
     subprocess.call(shlex.split('{} "{}"'
         .format(
             TEXTEDITOR,
-            make_filename(args.filename)).encode('cp1251',errors='replace')))
+            make_filename(args.filename)).encode(ENC,errors='replace')))
     if not console_mode:
         raw_input("Press Enter to continue...")
 
