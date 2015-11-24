@@ -1014,7 +1014,11 @@ def gui_compose(largs):
                                     'comment', 'source', 'author']:
                         if field in q:
                             p = gui_compose.doc.add_paragraph()
-                            p.add_run(FIELDS[field]).bold = True
+                            if (field == 'source' 
+                                and isinstance(q[field], list)):
+                                p.add_run('Источники: ').bold = True
+                            else:
+                                p.add_run(FIELDS[field]).bold = True
                             docx_format(q[field], p, WHITEN[field])
                 
                 gui_compose.doc.add_paragraph()
