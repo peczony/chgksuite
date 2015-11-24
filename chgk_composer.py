@@ -637,11 +637,8 @@ def html_element_layout(e):
         res = htmlformat(e)
         return res
     if isinstance(e, list):
-        res = """
-<ol>
-{}
-</ol>""".format('\n'.join(
-['<li>{}</li>'.format(html_element_layout(x)) for x in e]))
+        res = '\n'.join(
+['{}. {}'.format(en+1, html_element_layout(x)) for en, x in enumerate(e)])
         return res
 
 def md5(s):
