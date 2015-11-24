@@ -492,43 +492,9 @@ def docx_format(el, para, whiten):
                     para = gui_compose.doc.add_paragraph()
             
             elif run[0] == 'img':
-                width = -1
-                height = -1
-                sp = run[1].split()
-                imgfile = sp[-1]
-                if not os.path.isabs(imgfile): 
-                    if os.path.isfile(
-                    os.path.join(TARGETDIR, imgfile)):
-                        imgfile = os.path.join(TARGETDIR, imgfile)
-                    else:
-                        imgfile = os.path.join(SOURCEDIR, imgfile)
-
-                if len(sp) == 1:
-                    try:
-                        gui_compose.doc.add_picture(imgfile, width=Inches(4))
-                    except:
-                        sys.stderr.write(traceback.format_exc())
-                else:
-                    for spsp in sp[:-1]:
-                        spspsp = spsp.split('=')
-                        if spspsp[0] == 'w':
-                            width = spspsp[1]
-                        if spspsp[0] == 'h':
-                            height = spspsp[1]
-                    
-                    try:
-                        if width == -1 and height == -1:
-                            gui_compose.doc.add_picture(imgfile, width=Inches(4))
-                        elif width != -1 and height == -1:
-                            gui_compose.doc.add_picture(imgfile, width=width)
-                        elif width == -1 and height != -1:
-                            gui_compose.doc.add_picture(imgfile, height=height)
-                        elif width != -1 and height != -1:
-                            gui_compose.doc.add_picture(imgfile, width=width, 
-                                height=height)
-                    except:
-                        sys.stderr.write(traceback.format_exc())
-                
+                imgfile, width, height = parseimg(run[1], dimensions='inches')
+                gui_compose.doc.add_picture(imgfile, width=Inches(width),
+                    height=Inches(height))
                 para = gui_compose.doc.add_paragraph()
 
 def html_format_question(q):
