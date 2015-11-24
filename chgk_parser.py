@@ -466,6 +466,9 @@ def chgk_parse_docx(docxfile):
     final_structure = chgk_parse(txt)
     return final_structure
 
+def remove_double_separators(s):
+    return re.sub(r'({})+'.format(SEP), SEP, s)
+
 def compose_4s(structure):
     types_mapping = {
         'meta' : '# ',
@@ -485,12 +488,15 @@ def compose_4s(structure):
     }
     def format_element(z):
         if isinstance(z, basestring):
-            return z
+            return remove_double_separators(z)
         elif isinstance(z, list):
             if isinstance(z[1], list):
-                return z[0] + '- ' + SEP + ('{}- '.format(SEP)).join(z[1])
+                return (remove_double_separators(z[0]) + '- ' + SEP 
+                    + ('{}- '.format(SEP)).join((
+                        [remove_double_separators(x) for x in z[1]])))
             else:
-                return SEP + '- ' + ('{}- '.format(SEP)).join(z)
+                return SEP + '- ' + ('{}- '.format(SEP)).join(
+                    [remove_double_separators(x) for x in z])
     result = ''
     for element in structure:
         if element[0] in ['tour', 'tourrev']:
