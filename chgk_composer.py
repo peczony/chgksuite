@@ -1,6 +1,7 @@
 #!usr/bin/env python
 #! -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+from __future__ import division
 from chgk_parser import QUESTION_LABELS
 from docx import Document
 from docx.shared import Inches
