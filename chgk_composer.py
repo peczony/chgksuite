@@ -7,6 +7,7 @@ from docx.shared import Inches
 from parse import parse
 from typotools import remove_excessive_whitespace as rew
 from xmlrpclib import ServerProxy
+from PIL import Image
 import argparse
 import base64
 import codecs
@@ -30,11 +31,12 @@ import urllib
 
 args = None
 try:
-    from Tkinter import *
+    from Tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
 except:
-    from tkinter import *
+    from tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
 import tkFileDialog
 
+im = None
 debug = False
 console_mode = False
 re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
@@ -74,7 +76,25 @@ def make_filename(s, ext):
             now.strftime('%H%M'))
         +ext)
 
-def parseimg(s):
+def proportional_resize(tup):
+    if max(tup) > 600:
+        return tuple([int(x * 600/max(tup)) for x in tup])
+    if max(tup) < 200:
+        return tuple([int(x * 200/max(tup)) for x in tup])
+    return tup
+
+def imgsize(imgfile, dimensions='pixels', emsize=25, dpi=72):
+    img = Image.open(imgfile)
+    width, height = proportional_resize((img.width, img.height))
+    if dimensions == 'ems':
+        return width/emsize, height/emsize
+    if dimensions == 'inches':
+        return width/dpi, height/dpi
+    if dimensions == 'pixels':
+        return width, height
+    return width, height
+
+def parseimg(s, dimensions='pixels'):
     width = -1
     height = -1
     sp = s.split()
@@ -87,7 +107,8 @@ def parseimg(s):
             imgfile = os.path.join(SOURCEDIR, imgfile)
 
     if len(sp) == 1:
-        return imgfile.replace('\\','/'), -1, -1
+        width, height = imgsize(imgfile, dimensions=dimensions)
+        return imgfile.replace('\\','/'), width, height
     else:
         for spsp in sp[:-1]:
             spspsp = spsp.split('=')
@@ -842,13 +863,13 @@ def texformat(s):
         if run[0] == 'em':
             res += '\\emph{'+texrepl(run[1])+'}'
         if run[0] == 'img':
-            imgfile, w, h = parseimg(run[1])
+            imgfile, w, h = parseimg(run[1], dimensions='ems')
             res += ('\\includegraphics'+
                 '[width={}{}]'.format(
-                    '10em' if w==-1 else w,
-                    ', height={}'.format(h) if h!=-1 else ''
+                    '10em' if w==-1 else '{}em'.format(w),
+                    ', height={}em'.format(h) if h!=-1 else ''
                     )+
-                '{'+texrepl(imgfile)+'}')
+                '{'+imgfile+'}')
     return res
 
 def texyapper(e):
@@ -876,6 +897,7 @@ def tex_element_layout(e):
 
 def gui_compose(largs):
     
+    global im
     global args
     global console_mode
     args = largs
