@@ -72,7 +72,8 @@ WHITEN = {
 
 def make_filename(s, ext):
     now = datetime.datetime.now()
-    return (os.path.splitext(s)[0]+'-{}-{}.'
+    bn = os.path.basename(s)
+    return (os.path.splitext(bn)[0]+'-{}-{}.'
         .format(now.strftime('%Y%m%d'),
             now.strftime('%H%M'))
         +ext)
