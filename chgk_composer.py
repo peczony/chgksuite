@@ -12,6 +12,7 @@ from PIL import Image
 import argparse
 import base64
 import codecs
+import contextlib
 import datetime
 import docx
 import hashlib
@@ -26,6 +27,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import traceback
 import typotools
 import urllib
@@ -77,6 +79,12 @@ def make_filename(s, ext):
         .format(now.strftime('%Y%m%d'),
             now.strftime('%H%M'))
         +ext)
+
+@contextlib.contextmanager
+def make_temp_directory(**kwargs):
+    temp_dir = tempfile.mkdtemp(**kwargs)
+    yield temp_dir
+    shutil.rmtree(temp_dir)
 
 def proportional_resize(tup):
     if max(tup) > 600:
@@ -872,6 +880,7 @@ def gui_compose(largs):
 
     global debug
     global TARGETDIR
+    global SOURCEDIR
     
     root = Tk()
     root.withdraw()
@@ -903,12 +912,22 @@ def gui_compose(largs):
 
     TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
     filename = os.path.basename(os.path.abspath(args.filename))
-    if (os.path.abspath(SOURCEDIR.lower()) 
-        != os.path.abspath(TARGETDIR.lower())):
-        shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
-    os.chdir(SOURCEDIR)
+    # if (os.path.abspath(SOURCEDIR.lower()) 
+    #     != os.path.abspath(TARGETDIR.lower())):
+    #     shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
+    with make_temp_directory(dir=SOURCEDIR) as tmp_dir:
+        for fn in ['template.docx', 'fix-unnumbered-sections.sty',
+                    'cheader.tex']:
+            shutil.copy(fn, tmp_dir)
+        process_file(filename, args, tmp_dir)
+        os.chdir(SOURCEDIR)
+        # pdb.set_trace()
 
-    with codecs.open(filename, 'r', 'utf8') as input_file:
+def process_file(filename, args, srcdir):
+    SOURCEDIR = srcdir
+    os.chdir(SOURCEDIR)
+    with codecs.open(os.path.join(TARGETDIR, filename), 
+        'r', 'utf8') as input_file:
             input_text = input_file.read()
 
     input_text = input_text.replace('\r','')
@@ -936,7 +955,8 @@ def gui_compose(largs):
 
     if args.filetype == 'docx':
         
-        outfilename = make_filename(filename, 'docx')
+        outfilename = os.path.join(SOURCEDIR,
+            make_filename(filename, 'docx'))
         print(os.path.join(SOURCEDIR, 'template.docx'))
         gui_compose.doc = Document(os.path.join(SOURCEDIR, 'template.docx'))
         qcount = 0
@@ -1000,7 +1020,8 @@ def gui_compose(largs):
 
     if args.filetype == 'tex':
 
-        outfilename = make_filename(filename, 'tex')
+        outfilename = os.path.join(SOURCEDIR,
+            make_filename(filename, 'tex'))
 
         gui_compose.counter = 1
 
