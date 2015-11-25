@@ -917,7 +917,7 @@ def gui_compose(largs):
     with make_temp_directory(dir=SOURCEDIR) as tmp_dir:
         for fn in ['template.docx', 'fix-unnumbered-sections.sty',
                     'cheader.tex']:
-            shutil.copy(fn, tmp_dir)
+            shutil.copy(os.path.join(SOURCEDIR, fn), tmp_dir)
         process_file(filename, args, tmp_dir)
         os.chdir(SOURCEDIR)
         # pdb.set_trace()
