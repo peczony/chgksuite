@@ -390,6 +390,7 @@ def chgk_parse(text):
 class UnknownEncodingException(Exception): pass
 
 def chgk_parse_txt(txtfile, encoding=None):
+    os.chdir(os.path.dirname(os.path.abspath(txtfile)))
     raw = open(txtfile,'r').read()
     if not encoding and chardet.detect(raw)['confidence'] > 0.8:
         encoding = chardet.detect(raw)['encoding']
@@ -409,6 +410,7 @@ def generate_imgname(ext):
     return '{:03}.{}'.format(imgcounter, ext)
 
 def chgk_parse_docx(docxfile):
+    os.chdir(os.path.dirname(os.path.abspath(docxfile)))
     input_docx = PyDocX.to_html(docxfile)
     bsoup = BeautifulSoup(input_docx)
 
