@@ -306,7 +306,8 @@ def chgk_parse(text):
     for id, element in enumerate(chgk_parse.structure):
         if element[0] == '':
             element[0] = 'meta'
-        if element[0] in regexes and element[0] not in ['tour', 'tourrev']:
+        if element[0] in regexes and element[0] not in ['tour', 'tourrev',
+            'editor']:
             if element[0] == 'question':
                 try:
                     num = re_question.search(element[1]).group(1)
