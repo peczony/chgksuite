@@ -884,7 +884,6 @@ def gui_compose(largs):
     
     root = Tk()
     root.withdraw()
-    noanswers = False
 
     sys.stderr = codecs.getwriter('utf8')(sys.stderr)
 
@@ -942,7 +941,7 @@ def process_file(filename, args, srcdir):
 
     if args.filetype is None:
         print('Choose type of export:')
-        args.filetype, spoil, noanswers = gui_get_filetype()
+        args.filetype, spoil, args.noanswers = gui_get_filetype()
         if not args.filetype:
             print('Filetype not specified.')
             sys.exit(0)
@@ -994,7 +993,7 @@ def process_file(filename, args, srcdir):
                 docx_format(q['question'], p, False)
                 p = gui_compose.doc.add_paragraph()
                 
-                if not noanswers:
+                if not args.noanswers:
                     p.add_run('Ответ: ').bold = True
                     docx_format(q['answer'], p, True)
                     
