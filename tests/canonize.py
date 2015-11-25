@@ -16,13 +16,24 @@ sys.path.insert(0,parentdir)
 from chgk_parser import chgk_parse, chgk_parse_txt, chgk_parse_docx, compose_4s
 from chgk_composer import parse_4s
 
+def workaround_chgk_parse(filename):
+    if filename.endswith('.txt'):
+        return chgk_parse_txt(filename)
+    elif filename.endswith('.docx'):
+        return chgk_parse_docx(filename)
+    return
+
 def main():
     for filename in os.listdir(currentdir):
         if filename.endswith(('.docx', '.txt')):
             print('Canonizing {}...'.format(filename))
-            parsed = chgk_parse(filename)
+            parsed = workaround_chgk_parse(os.path.join(currentdir, filename))
+            for filename1 in os.listdir(currentdir):
+                if (filename1.endswith(('.jpg', '.jpeg', '.png', '.gif'))
+                    and not filename1.startswith('ALLOWED')):
+                    os.remove(os.path.join(currentdir, filename1))
             with codecs.open(
-                os.path.basename(filename)+'.canon','w','utf8') as f:
+                os.path.join(currentdir, filename)+'.canon','w','utf8') as f:
                 f.write(compose_4s(parsed))
 
 
