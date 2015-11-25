@@ -62,7 +62,7 @@ def check_question(question):
     for el in {'question', 'answer', 'source', 'author'}:
         if el not in question:
             warnings.append(el)
-    if len(warnings) > 1:
+    if len(warnings) > 0:
         print('WARNING: question {} lacks the following fields: {}{}'
             .format(question, ', '.join(warnings), SEP)
             .decode('unicode_escape')
