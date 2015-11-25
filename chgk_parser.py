@@ -128,9 +128,13 @@ def chgk_parse(text):
 
     def merge_to_previous(index):
         target = index - 1
-        chgk_parse.structure[target][1] = (
-            chgk_parse.structure[target][1] + SEP 
-            + chgk_parse.structure.pop(index)[1])
+        if chgk_parse.structure[target][1]:
+            chgk_parse.structure[target][1] = (
+                chgk_parse.structure[target][1] + SEP 
+                + chgk_parse.structure.pop(index)[1])
+        else:
+            chgk_parse.structure[target][1] = chgk_parse.structure.pop(
+                index)[1]
 
     def merge_to_next(index):
         target = chgk_parse.structure.pop(index)
