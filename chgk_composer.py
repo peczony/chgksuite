@@ -2,7 +2,7 @@
 #! -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from __future__ import division
-from chgk_parser import QUESTION_LABELS
+from chgk_parser import QUESTION_LABELS, check_question
 from docx import Document
 from docx.shared import Inches
 from parse import parse
@@ -370,6 +370,10 @@ def parse_4s(s, randomize=False):
     if debug:
         with codecs.open('debug.debug', 'w', 'utf8') as debugf:
             debugf.write(pprint.pformat(final_structure))
+
+    for element in final_structure:
+        if element[0] == 'Question':
+            check_question(element[1])
 
     return final_structure
 
