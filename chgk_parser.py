@@ -221,13 +221,22 @@ def chgk_parse(text):
         i += 1
     chgk_parse.structure = st
     i = 0
-        
+
+    if debug:
+        with codecs.open('debug_1.json', 'w', 'utf8') as f:
+            f.write(json.dumps(chgk_parse.structure, ensure_ascii=False,
+                indent=4))
 
     # 2.
 
     merge_y_to_x('question','answer')
     merge_to_x_until_nextfield('answer')
     merge_to_x_until_nextfield('comment')
+
+    if debug:
+        with codecs.open('debug_2.json', 'w', 'utf8') as f:
+            f.write(json.dumps(chgk_parse.structure, ensure_ascii=False,
+                indent=4))
 
     # 3.
 
@@ -275,6 +284,11 @@ def chgk_parse(text):
     
     merge_to_x_until_nextfield('zachet')
     merge_to_x_until_nextfield('nezachet')
+
+    if debug:
+        with codecs.open('debug_3.json', 'w', 'utf8') as f:
+            f.write(json.dumps(chgk_parse.structure, ensure_ascii=False,
+                indent=4))
     
     # 4.
 
@@ -352,7 +366,10 @@ def chgk_parse(text):
             element[1] = [re_number.sub('', rew(x)) 
                 for x in re.split(r'\r?\n', element[1])]
 
-
+    if debug:
+        with codecs.open('debug_5.json', 'w', 'utf8') as f:
+            f.write(json.dumps(chgk_parse.structure, ensure_ascii=False,
+                indent=4))
 
 
     # 6.
@@ -361,8 +378,8 @@ def chgk_parse(text):
     current_question = {}
 
     for element in chgk_parse.structure:
-        if element[0] in set(['tour', 'question', 'meta']): 
-            if current_question != {}:
+        if (element[0] in set(['number', 'tour', 'question', 'meta'])
+            and 'question' in current_question):
                 check_question(current_question)
                 final_structure.append(['Question', current_question])
                 current_question = {}
@@ -383,8 +400,10 @@ def chgk_parse(text):
 
 
     # 7.
-
-    debug_print(pprint.pformat(final_structure).decode('unicode_escape'))
+    if debug:
+        with codecs.open('debug_final.json', 'w', 'utf8') as f:
+            f.write(json.dumps(final_structure, ensure_ascii=False,
+                indent=4))
     return final_structure
 
 class UnknownEncodingException(Exception): pass
