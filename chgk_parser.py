@@ -315,6 +315,13 @@ def chgk_parse(text):
                 except:
                     pass
             element[1] = regexes[element[0]].sub('', element[1])
+            if element[1].startswith(SEP):
+                element[1] = element[1][len(SEP):]
+
+    if debug:
+        with codecs.open('debug_4.json', 'w', 'utf8') as f:
+            f.write(json.dumps(chgk_parse.structure, ensure_ascii=False,
+                indent=4))
 
     # 5.
 
