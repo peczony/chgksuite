@@ -401,6 +401,13 @@ def chgk_parse_txt(txtfile, encoding=None):
     text = raw.decode(encoding)
     return chgk_parse(text)
 
+def generate_imgname(ext):
+    imgcounter = 1
+    while os.path.isfile('{:03}.{}'
+        .format(imgcounter, ext)):
+        imgcounter += 1
+    return '{:03}.{}'.format(imgcounter, ext)
+
 def chgk_parse_docx(docxfile):
     input_docx = PyDocX.to_html(docxfile)
     bsoup = BeautifulSoup(input_docx)
@@ -409,13 +416,6 @@ def chgk_parse_docx(docxfile):
         with codecs.open('debug.pydocx', 'w', 'utf8') as dbg:
             dbg.write(input_docx)
     
-    def generate_imgname(ext):
-        imgcounter = 1
-        while os.path.isfile('{:03}.{}'
-            .format(imgcounter, ext)):
-            imgcounter += 1
-        return '{:03}.{}'.format(imgcounter, ext)
-
     for tag in bsoup.find_all('style'):
         tag.extract()
     for tag in bsoup.find_all('p'):
