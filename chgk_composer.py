@@ -905,10 +905,21 @@ def gui_compose(largs):
         else:
             console_mode = True
 
+    ld = '.'
+    if os.path.isfile('lastdir'):
+        with codecs.open('lastdir','r','utf8') as f:
+            ld = f.read().rstrip()
+        if not os.path.isdir(ld):
+            ld = '.'
     if args.filename is None:
         print('Choose .4s file to load:')
         args.filename = tkFileDialog.askopenfilename(
-            filetypes=[('chgksuite markup files','*.4s')])
+            filetypes=[('chgksuite markup files','*.4s')],
+            initialdir=ld)
+    if args.filename:
+        ld = os.path.dirname(os.path.abspath(args.filename))
+    with codecs.open('lastdir','w','utf8') as f:
+            f.write(ld)
     if not args.filename:
         print('No file specified.')
         sys.exit(0)
