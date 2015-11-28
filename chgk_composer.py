@@ -629,11 +629,11 @@ def get_chal(lj, passwd):
     response = md5(chal + md5(passwd))
     return (chal,response)
 
-def lj_post(stru, passwd):
+def lj_post(stru):
 
     lj = ServerProxy('http://www.livejournal.com/interface/xmlrpc').LJ.XMLRPC
      
-    chal, response = get_chal(lj, passwd)
+    chal, response = get_chal(lj, args.password)
 
     now = datetime.datetime.now()
     year = now.strftime('%Y')
@@ -648,7 +648,7 @@ def lj_post(stru, passwd):
         'auth_challenge' : chal,
         'auth_response' : response,
         'subject' : stru[0]['header'],
-        'event' : stru[0]['content'].encode('utf8'),
+        'event' : stru[0]['content'],
         'year': year,
         'mon': month,
         'day': day,
@@ -664,13 +664,14 @@ def lj_post(stru, passwd):
     journal = args.community if args.community else args.login
 
     try:
-        open('debug.zalupa2','w').write(json.dumps(params))
+        if args.debug:
+            pdb.set_trace()
         post = lj.postevent(params)
         ditemid = post['ditemid']
         print post
 
         for id, x in enumerate(stru[1:], start=1):
-            chal, response = get_chal(lj, passwd)
+            chal, response = get_chal(lj, args.password)
             params = {
                 'username' : args.login,
                 'auth_method' : 'challenge',
@@ -679,7 +680,7 @@ def lj_post(stru, passwd):
                 'journal' : journal,
                 'ditemid' : ditemid,
                 'parenttalkid' : 0,
-                'body' : x['content'].encode('utf8'),
+                'body' : x['content'],
                 'subject' : x['header']
                 }
             print lj.addcomment(params)
@@ -933,11 +934,13 @@ def gui_compose(largs):
         for fn in ['template.docx', 'fix-unnumbered-sections.sty',
                     'cheader.tex']:
             shutil.copy(os.path.join(SOURCEDIR, fn), tmp_dir)
-        process_file(filename, args, tmp_dir)
+        process_file(filename, tmp_dir)
         os.chdir(SOURCEDIR)
         # pdb.set_trace()
 
-def process_file(filename, args, srcdir):
+def process_file(filename, srcdir):
+    global im
+    global args
     SOURCEDIR = srcdir
     os.chdir(SOURCEDIR)
     with codecs.open(os.path.join(TARGETDIR, filename), 
@@ -956,10 +959,14 @@ def process_file(filename, args, srcdir):
 
     if args.filetype is None:
         print('Choose type of export:')
-        args.filetype, spoil, args.noanswers = gui_get_filetype()
+        answer = gui_get_filetype()
+        print format(answer)
+        if not answer:
+            sys.exit(1)
+        args.filetype, spoil, args.noanswers = answer
         if not args.filetype:
             print('Filetype not specified.')
-            sys.exit(0)
+            sys.exit(1)
         if spoil:
             args.nospoilers = False
         else:
@@ -1085,14 +1092,16 @@ def process_file(filename, args, srcdir):
 
     if args.filetype == 'lj':
 
+        if not args.community:
+            args.community = ''
         if not args.login:
-            args.login, passwd, args.community = lj_post_getdata()
+            args.login, args.password, args.community = lj_post_getdata()
             if not args.login:
                 print('Login not specified.')
                 sys.exit(0)
         elif not args.password:
             import getpass
-            passwd = getpass.getpass()
+            args.password = getpass.getpass()
         
         CLIENT_ID = '8da1bd97da30ac1'
         im = pyimgur.Imgur(CLIENT_ID)
@@ -1145,7 +1154,7 @@ def process_file(filename, args, srcdir):
                 f.write(pprint.pformat(final_structure)
                     .decode('unicode_escape'))
 
-        lj_post(final_structure, passwd)
+        lj_post(final_structure)
 
     if not console_mode:
         raw_input("Press Enter to continue...")
