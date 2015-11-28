@@ -612,13 +612,13 @@ def gui_parse(args):
         output_file.write(
             compose_4s(final_structure))
 
-    print('Please review the resulting file {}:'.format(
-        make_filename(args.filename)))
-    subprocess.call(shlex.split('{} "{}"'
-        .format(
-            TEXTEDITOR,
-            make_filename(args.filename)).encode(ENC,errors='replace')))
     if not console_mode:
+        print('Please review the resulting file {}:'.format(
+            make_filename(args.filename)))
+        subprocess.call(shlex.split('{} "{}"'
+            .format(
+                TEXTEDITOR,
+                make_filename(args.filename)).encode(ENC,errors='replace')))
         raw_input("Press Enter to continue...")
 
 def main():
