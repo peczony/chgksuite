@@ -1098,7 +1098,7 @@ def process_file(filename, srcdir):
             args.login, args.password, args.community = lj_post_getdata()
             if not args.login:
                 print('Login not specified.')
-                sys.exit(0)
+                sys.exit(1)
         elif not args.password:
             import getpass
             args.password = getpass.getpass()
