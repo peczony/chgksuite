@@ -388,6 +388,9 @@ def gui_get_filetype():
     root = Tk()
     root.eval('tk::PlaceWindow {} center'.format(
         root.winfo_pathname(root.winfo_id())))
+    root.grexit = lambda: on_close(root)
+    root.ret = None
+    root.protocol("WM_DELETE_WINDOW", root.grexit)
     frame = Frame(root)
     frame.pack()
     bottomframe = Frame(root)
@@ -691,10 +694,19 @@ def lj_post(stru):
             traceback.format_exc()))
         sys.exit(1)
 
+def on_close(root):
+    root.quit()
+    root.destroy()
+
 def lj_post_getdata():
     root = Tk()
+    root.login = None
+    root.password = None
+    root.community = None
+    root.grexit = lambda: on_close(root)
     root.eval('tk::PlaceWindow {} center'.format(
         root.winfo_pathname(root.winfo_id())))
+    root.protocol("WM_DELETE_WINDOW", root.grexit)
     loginbox = Entry(root)
     pwdbox = Entry(root, show = '*')
     communitybox = Entry(root)
@@ -926,7 +938,7 @@ def gui_compose(largs):
             f.write(ld)
     if not args.filename:
         print('No file specified.')
-        sys.exit(0)
+        sys.exit(1)
 
     TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
     filename = os.path.basename(os.path.abspath(args.filename))
@@ -965,6 +977,7 @@ def process_file(filename, srcdir):
         answer = gui_get_filetype()
         print format(answer)
         if not answer:
+            print('No type of export specified.')
             sys.exit(1)
         args.filetype, spoil, args.noanswers = answer
         if not args.filetype:
