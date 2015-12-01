@@ -105,7 +105,7 @@ def chgk_parse(text):
     re_comment = re.compile(r'КОММЕНТАРИ[ИЙ] ?[№N]?([0-9]+)? ?[\.:]', re.I | re.U)
     re_author = re.compile(r'АВТОР\(?Ы?\)? ?[\.:]', re.I | re.U)
     re_source = re.compile(r'ИСТОЧНИК\(?И?\)? ?[\.:]', re.I | re.U)
-    re_editor = re.compile(r'РЕДАКТОР(Ы|СКАЯ ГРУППА)? ?[\.:]', re.I | re.U)
+    re_editor = re.compile(r'РЕДАКТОР(Ы|СКАЯ ГРУППА)?( ?[\.:]| [\-–—]+ )', re.I | re.U)
     re_date = re.compile(r'ДАТА ?[\.:]', re.I | re.U)
     re_handout = re.compile(r'РАЗДА(ЧА|ТКА|ТОЧНЫЙ МАТЕРИАЛ) ?[\.:]', re.I | re.U)
     re_number = re.compile(r'^[0-9]+[\.\)] *')
