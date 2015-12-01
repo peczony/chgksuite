@@ -8,9 +8,9 @@ from chgk_parser import gui_parse
 from chgk_composer import gui_compose
 
 try:
-    from Tkinter import *
+    from Tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
 except:
-    from tkinter import *
+    from tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
 import tkFileDialog
 import tkFont
 

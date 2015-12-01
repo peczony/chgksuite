@@ -24,9 +24,9 @@ import html2text
 from typotools import remove_excessive_whitespace as rew
 
 try:
-    from Tkinter import *
+    from Tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
 except:
-    from tkinter import *
+    from tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
 import tkFileDialog
 
 debug = False
