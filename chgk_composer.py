@@ -1118,7 +1118,7 @@ def process_file(filename, srcdir):
             outfile.write(gui_compose.tex)
         subprocess.call(shlex.split(
             'xelatex -synctex=1 -interaction=nonstopmode "{}"'
-            .format(outfilename)))
+            .format(outfilename).encode(ENC)))
         print('Output: {}'.format(
             os.path.join(TARGETDIR, 
                 os.path.splitext(outfilename)[0]+'.tex'
