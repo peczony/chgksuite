@@ -98,7 +98,7 @@ def chgk_parse(text):
 
     re_tour = re.compile(r'^ТУР ?([0-9IVXLCDM]*)([\.:])?$', re.I | re.U)
     re_tourrev = re.compile(r'^([0-9]+) ТУР([\.:])?$', re.I | re.U)
-    re_question = re.compile(r'ВОПРОС ?[№N]?([0-9]*) ?[\.:]', re.I | re.U)
+    re_question = re.compile(r'ВОПРОС ?[№N]?([0-9]*) ?([\.:]|\n|\r\n|$)', re.I | re.U)
     re_answer = re.compile(r'ОТВЕТЫ? ?[№N]?([0-9]+)? ?[:]', re.I | re.U)
     re_zachet = re.compile(r'ЗАЧ[ЕЁ]Т ?[\.:]', re.I | re.U)
     re_nezachet = re.compile(r'НЕЗАЧ[ЕЁ]Т ?[\.:]', re.I | re.U)
