@@ -55,6 +55,9 @@ REQUIRED_LABELS = set(['question', 'answer'])
 SOURCEDIR = os.path.dirname(os.path.abspath(__file__))
 TARGETDIR = os.getcwd()
 
+ENC = ('utf8' if sys.platform != 'win32' else 'cp1251')
+CONSOLE_ENC = (ENC if sys.platform != 'win32' else 'cp866')
+
 FIELDS = {
     'zachet': 'Зачёт: ',
     'nezachet': 'Незачёт: ',
@@ -381,10 +384,19 @@ def parse_4s(s, randomize=False):
 def gui_get_filetype():
     ch_spoilers = IntVar()
     ch_answers = IntVar()
+    ch_rawtex = IntVar()
     if args.nospoilers:
         ch_spoilers.set(0)
     else:
         ch_spoilers.set(1)
+    if args.noanswers:
+        ch_answers.set(1)
+    else:
+        ch_answers.set(0)
+    if args.rawtex:
+        ch_rawtex.set(1)
+    else:
+        ch_rawtex.set(0)
     root = Tk()
     root.eval('tk::PlaceWindow {} center'.format(
         root.winfo_pathname(root.winfo_id())))
@@ -396,15 +408,15 @@ def gui_get_filetype():
     bottomframe = Frame(root)
     bottomframe.pack(side = 'bottom')
     def docxreturn():
-        root.ret = 'docx', ch_spoilers.get(), ch_answers.get()
+        root.ret = 'docx', ch_spoilers.get(), ch_answers.get(), ch_rawtex.get()
         root.quit()
         root.destroy()
     def texreturn():
-        root.ret = 'tex', ch_spoilers.get(), ch_answers.get()
+        root.ret = 'tex', ch_spoilers.get(), ch_answers.get(), ch_rawtex.get()
         root.quit()
         root.destroy()
     def ljreturn():
-        root.ret = 'lj', ch_spoilers.get(), ch_answers.get()
+        root.ret = 'lj', ch_spoilers.get(), ch_answers.get(), ch_rawtex.get()
         root.quit()
         root.destroy()
     def chtoggle():
@@ -417,22 +429,30 @@ def gui_get_filetype():
             ch_answers.set(1)
         else:
             ch_answers.set(0)
+    def rttoggle():
+        if ch_rawtex.get() == 0:
+            ch_rawtex.set(1)
+        else:
+            ch_rawtex.set(0)
     Button(frame, command=
         docxreturn, text = 'docx').pack(side = 'left')
     Button(frame, command=
         texreturn, text = 'tex').pack(side = 'left')
     Button(frame, command=
         ljreturn, text = 'LJ').pack(side = 'left')
-    ch = Checkbutton(bottomframe, text='Spoilers',
+    ch = Checkbutton(bottomframe, text='Spoilers (docx/lj only)',
         variable=ch_spoilers, command=chtoggle)
-    ans = Checkbutton(bottomframe, text='No answers',
+    ans = Checkbutton(bottomframe, text='No answers (docx only)',
         variable=ch_answers, command=antoggle)
+    rawtex = Checkbutton(bottomframe, text='I want to edit tex',
+        variable=ch_rawtex, command=rttoggle)
     if ch_spoilers.get() == 1:
         ch.select()
     if ch_answers.get() == 1:
         ans.select()
-    ch.pack(side = 'bottom')
+    rawtex.pack(side = 'bottom')
     ans.pack(side = 'bottom')
+    ch.pack(side = 'bottom')
     root.mainloop()
     return root.ret
 
@@ -982,7 +1002,7 @@ def process_file(filename, srcdir):
         if not answer:
             print('No type of export specified.')
             sys.exit(1)
-        args.filetype, spoil, args.noanswers = answer
+        args.filetype, spoil, args.noanswers, args.rawtex = answer
         if not args.filetype:
             print('Filetype not specified.')
             sys.exit(1)
@@ -1108,6 +1128,12 @@ def process_file(filename, srcdir):
         if (os.path.normpath(SOURCEDIR.lower()) 
             != os.path.normpath(TARGETDIR.lower())):
             shutil.copy(os.path.splitext(outfilename)[0]+'.pdf', TARGETDIR)
+        if args.rawtex and (os.path.normpath(SOURCEDIR.lower()) 
+            != os.path.normpath(TARGETDIR.lower())):
+            shutil.copy(outfilename, TARGETDIR)
+            shutil.copy(os.path.join(SOURCEDIR, 'cheader.tex'), TARGETDIR)
+            shutil.copy(os.path.join(SOURCEDIR, 
+                'fix-unnumbered-sections.sty'), TARGETDIR)
 
     if args.filetype == 'lj':
 

@@ -54,6 +54,7 @@ def main():
     parser.add_argument('--noanswers', action='store_true')
     parser.add_argument('--noparagraph', action='store_true')
     parser.add_argument('--randomize', action='store_true')
+    parser.add_argument('--rawtex', action='store_true')
     parser.add_argument('--login', '-l')
     parser.add_argument('--password', '-p')
     parser.add_argument('--community', '-c')
