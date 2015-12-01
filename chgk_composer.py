@@ -1121,10 +1121,11 @@ def process_file(filename, srcdir):
             .format(outfilename).encode(ENC)))
         print('Output: {}'.format(
             os.path.join(TARGETDIR, 
-                os.path.splitext(outfilename)[0]+'.tex'
+                os.path.basename(outfilename))
                 +'\n'
                 + os.path.join(TARGETDIR, 
-                    os.path.splitext(outfilename)[0]+'.pdf'))))
+                    os.path.splitext(os.path.basename(outfilename))[0]
+                    +'.pdf')))
         if (os.path.normpath(SOURCEDIR.lower()) 
             != os.path.normpath(TARGETDIR.lower())):
             shutil.copy(os.path.splitext(outfilename)[0]+'.pdf', TARGETDIR)
