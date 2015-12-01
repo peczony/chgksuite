@@ -78,7 +78,8 @@ def main():
     if args.action == 'parse':
         gui_parse(args)
     if args.action == 'compose':
-        gui_compose(args)
+        gui_compose(args, sourcedir=os.path.dirname(
+            os.path.abspath(__file__)))
 
 if __name__ == "__main__":
     main()

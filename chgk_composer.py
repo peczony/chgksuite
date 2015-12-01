@@ -888,7 +888,7 @@ def tex_element_layout(e):
     ['\\item {}'.format(tex_element_layout(x)) for x in e]))
     return res
 
-def gui_compose(largs):
+def gui_compose(largs, sourcedir=None):
     
     global im
     global args
@@ -901,7 +901,10 @@ def gui_compose(largs):
     global debug
     global TARGETDIR
     global SOURCEDIR
-    
+
+    if sourcedir:
+        SOURCEDIR = sourcedir
+
     root = Tk()
     root.withdraw()
 
