@@ -40,6 +40,8 @@ def gui_choose_action():
             root.quit()
             root.destroy()
         root = Tk()
+        root.eval('tk::PlaceWindow {} center'.format(
+            root.winfo_pathname(root.winfo_id())))
         root.ret = 'None'
         frame = Frame(root)
         frame.pack()

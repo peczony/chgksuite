@@ -386,6 +386,8 @@ def gui_get_filetype():
     else:
         ch_spoilers.set(1)
     root = Tk()
+    root.eval('tk::PlaceWindow {} center'.format(
+        root.winfo_pathname(root.winfo_id())))
     frame = Frame(root)
     frame.pack()
     bottomframe = Frame(root)
@@ -691,7 +693,8 @@ def lj_post(stru):
 
 def lj_post_getdata():
     root = Tk()
-    
+    root.eval('tk::PlaceWindow {} center'.format(
+        root.winfo_pathname(root.winfo_id())))
     loginbox = Entry(root)
     pwdbox = Entry(root, show = '*')
     communitybox = Entry(root)
