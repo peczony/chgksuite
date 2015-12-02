@@ -107,6 +107,7 @@ def chgk_parse(text):
     re_source = re.compile(r'ИСТОЧНИК\(?И?\)? ?[\.:]', re.I | re.U)
     re_editor = re.compile(r'РЕДАКТОР(Ы|СКАЯ ГРУППА)?( ?[\.:]| [\-–—]+ )', re.I | re.U)
     re_date = re.compile(r'ДАТА ?[\.:]', re.I | re.U)
+    re_date2 = re.compile(r'(^|\s)ЯНВАР[ЬЯ]|ФЕВРАЛ[ЬЯ]|МАРТА?|АПРЕЛ[ЬЯ]|МА[ЙЯ]|ИЮН[ЬЯ]|ИЮЛ[ЬЯ]|АВГУСТА?|СЕНТЯБР[ЬЯ]|ОКТЯБР[ЬЯ]|НОЯБР[ЬЯ]|ДЕКАБР[ЬЯ](\s|$)', re.I | re.U)
     re_handout = re.compile(r'РАЗДА(ЧА|ТКА|ТОЧНЫЙ МАТЕРИАЛ) ?[\.:]', re.I | re.U)
     re_number = re.compile(r'^[0-9]+[\.\)] *')
 
@@ -412,6 +413,28 @@ def chgk_parse(text):
 
 
     # 7.
+    try:
+        fq = [x[0] for x in final_structure].index('Question')
+        headerlabels = [x[0] for x in final_structure[:fq]]
+        datedefined = False
+        headingdefined = False
+        if 'date' in headerlabels:
+            datedefined = True
+        if 'heading' in headerlabels or 'ljheading' in headerlabels:
+            headingdefined = True
+        if not headingdefined and final_structure[0][0] == 'meta':
+            final_structure[0][0] = 'heading'
+            final_structure.insert(0, ['ljheading', final_structure[0][1]])
+        i = 0
+        while not datedefined and i < fq:
+            if re_date2.search(final_structure[i][1]):
+                final_structure[i][0] = 'date'
+                datedefined = True
+            i += 1
+    except ValueError:
+        pass
+
+
     if debug:
         with codecs.open('debug_final.json', 'w', 'utf8') as f:
             f.write(json.dumps(final_structure, ensure_ascii=False,
@@ -510,6 +533,8 @@ def compose_4s(structure):
         'tour' : '## ',
         'tourrev' : '## ',
         'editor': '#EDITOR ',
+        'heading': '### ',
+        'ljheading': '###LJ ',
         'date': '#DATE ',
         'question': '? ',
         'answer': '! ',
