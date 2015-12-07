@@ -228,12 +228,18 @@ def recursive_typography(s):
             new_s.append(recursive_typography(element))
         return new_s
 
-def typography(s):
-    s = remove_excessive_whitespace(s)
-    s = get_quotes_right(s)
-    s = get_dashes_right(s)
-    s = detect_accent(s)
-    s = percent_decode(s)
+def typography(s, wsp=True, quotes=True, 
+    dashes=True, accents=True, percent=True):
+    if wsp:
+        s = remove_excessive_whitespace(s)
+    if quotes:
+        s = get_quotes_right(s)
+    if dashes:
+        s = get_dashes_right(s)
+    if accents:
+        s = detect_accent(s)
+    if percent:
+        s = percent_decode(s)
     return s
 
 def matching_bracket(s):
