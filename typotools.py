@@ -185,8 +185,8 @@ def get_quotes_right(s):
 
 def get_dashes_right(s):
     s = re.sub(r'(?<=\s)-+(?=\s)','—',s)
-    s = re.sub(r'(?<=\d)-(?<=\d)','–',s)
-    s = re.sub(r'-(?=\d)','−',s)
+    # s = re.sub(r'(?<=\d)-(?<=\d)','–',s)
+    # s = re.sub(r'-(?=\d)','−',s)
     return s
 
 def detect_accent(s):
