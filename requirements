@@ -1,0 +1,10 @@
+beautifulsoup4==4.4.1
+chardet==2.3.0
+html2text==2015.6.21
+lxml==3.4.4
+parse==1.6.6
+PyDocX==0.9.5
+pyimgur==0.5.2
+python-docx==0.8.5
+requests==2.8.1
+Pillow==3.0.0
