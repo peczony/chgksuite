@@ -81,7 +81,7 @@ def main():
     parser.add_argument('--randomize', action='store_true')
     parser.add_argument('--rawtex', action='store_true')
     parser.add_argument('--parsedir', action='store_true')
-    parser.add_argument('--defaultauthor', default='')
+    parser.add_argument('--defaultauthor', action='store_true')
     parser.add_argument('--login', '-l')
     parser.add_argument('--password', '-p')
     parser.add_argument('--community', '-c')
@@ -92,9 +92,6 @@ def main():
     
     if not args.action:
         args.action, args.defaultauthor = gui_choose_action(args)
-        args.defaultauthor = str(args.defaultauthor)
-    if args.defaultauthor in {'0', 'False'}:
-        args.defaultauthor = 0
     if args.action == 'parse':
         gui_parse(args)
     if args.action == 'parsedir':
