@@ -636,6 +636,7 @@ def gui_parse(args):
                         os.path.join(args.filename, filename))
                     print('{} -> {}'.format(filename, 
                         os.path.basename(outfilename)))
+            raw_input("Press Enter to continue...")
 
         else:
             print('No directory specified.')
