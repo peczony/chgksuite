@@ -13,8 +13,20 @@ requests==2.8.1
 Pillow==3.0.0
 ```
 
-В `virtualenv` достаточно выполнить команду `pip install -U requirements`.
+Одной командой: `pip install -r requirements`.
 
 (Работа с более ранними или поздними версиями пакетов возможна, но не гарантируется. Точно будут проблемы со старыми версиями PyDocX.)
 
-Если вы хотите собирать бинарные версии, вам также потребуется `PyInstaller==3.0` или более свежая (dev) версия. В PyInstaller 3.0 на Windows есть [баг](https://github.com/pyinstaller/pyinstaller/issues/1584), мешающий сборке. Его можно полечить, установив dev-версию (в которой, разумеется, могут быть другие, неизвестные баги) или закомментировав строчки, начинающиеся с `excludedimports` в `\PyInstaller\hooks\hook-PIL.py` и `\PyInstaller\hooks\hook-PIL.SpiderImagePlugin.py`.
+Если вы хотите собирать бинарные версии и тестировать, вам также потребуются 
+
+```
+PyInstaller==3.0
+pytest==2.8.4
+```
+
+Одной командой: `pip install PyInstaller==3.0 pytest==2.8.4`.
+
+В PyInstaller 3.0 на Windows есть [баг](https://github.com/pyinstaller/pyinstaller/issues/1584), мешающий сборке. Его можно полечить, установив dev-версию (в которой, разумеется, могут быть другие, неизвестные баги) или закомментировав строчки, начинающиеся с `excludedimports` в `\PyInstaller\hooks\hook-PIL.py` и `\PyInstaller\hooks\hook-PIL.SpiderImagePlugin.py`.
+
+Чтобы собрать: `pyinstaller --onefile chgksuite.py`  
+Чтобы запустить тесты: `py.test`
