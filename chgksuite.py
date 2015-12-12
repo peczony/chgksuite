@@ -21,6 +21,10 @@ def gui_choose_action():
             root.ret = 'parse'
             root.quit()
             root.destroy()
+        def parsedirreturn():
+            root.ret = 'parsedir'
+            root.quit()
+            root.destroy()
         def composereturn():
             root.ret = 'compose'
             root.quit()
@@ -34,7 +38,11 @@ def gui_choose_action():
         bottomframe = Frame(root)
         bottomframe.pack(side = 'bottom')
         Button(frame, command=
-            parsereturn, text = 'Parse').pack(side = 'left', 
+            parsereturn, text = 'Parse file').pack(side = 'left', 
+            padx = 20, pady = 20,
+            ipadx = 20, ipady = 20,)
+        Button(frame, command=
+            parsedirreturn, text = 'Parse directory').pack(side = 'left', 
             padx = 20, pady = 20,
             ipadx = 20, ipady = 20,)
         Button(frame, command=
@@ -55,6 +63,7 @@ def main():
     parser.add_argument('--noparagraph', action='store_true')
     parser.add_argument('--randomize', action='store_true')
     parser.add_argument('--rawtex', action='store_true')
+    parser.add_argument('--parsedir', action='store_true')
     parser.add_argument('--login', '-l')
     parser.add_argument('--password', '-p')
     parser.add_argument('--community', '-c')
@@ -63,6 +72,9 @@ def main():
     if not args.action:
         args.action = gui_choose_action()
     if args.action == 'parse':
+        gui_parse(args)
+    if args.action == 'parsedir':
+        args.parsedir = True
         gui_parse(args)
     if args.action == 'compose':
         gui_compose(args, sourcedir=os.path.dirname(

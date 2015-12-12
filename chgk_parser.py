@@ -577,6 +577,24 @@ def compose_4s(structure):
             result += SEP
     return result
 
+def chgk_parse_wrapper(abspath):
+    os.chdir(os.path.dirname(os.path.abspath(abspath)))
+    if os.path.splitext(abspath)[1] == '.txt':
+        final_structure = chgk_parse_txt(abspath)
+    elif os.path.splitext(abspath)[1] == '.docx':
+        final_structure = chgk_parse_docx(abspath)
+    else:
+        sys.stderr.write('Error: unsupported file format.' + SEP)
+        sys.exit()
+    outfilename = make_filename(abspath)
+    print('Output: {}'.format(
+            os.path.abspath(outfilename)))
+    with codecs.open(
+        outfilename, 'w', 'utf8') as output_file:
+        output_file.write(
+            compose_4s(final_structure))
+    return outfilename
+
 def gui_parse(args):
 
     global console_mode
@@ -603,48 +621,48 @@ def gui_parse(args):
             ld = f.read().rstrip()
         if not os.path.isdir(ld):
             ld = '.'
-    if args.filename is None:
-        args.filename = tkFileDialog.askopenfilename(
-            filetypes=[
-            ('chgksuite parsable files',('*.docx','*.txt'))
-            ], initialdir=ld)
-    if args.filename:
-        ld = os.path.dirname(os.path.abspath(args.filename))
-    with codecs.open('lastdir','w','utf8') as f:
-            f.write(ld)
-    if not args.filename:
-        print('No file specified.')
-        sys.exit(0)
+    if args.parsedir:
+        if args.filename is None:
+            args.filename = tkFileDialog.askdirectory(initialdir=ld)
+        if os.path.isdir(args.filename):
+            ld = args.filename
+            with codecs.open('lastdir','w','utf8') as f:
+                f.write(ld)
+            for filename in os.listdir(args.filename):
+                if (filename.endswith(('.docx', '.txt')) 
+                    and not os.path.isfile(make_filename(
+                        os.path.join(args.filename, filename)))):
+                    outfilename = chgk_parse_wrapper(
+                        os.path.join(args.filename, filename))
+                    print('{} -> {}'.format(filename, 
+                        os.path.basename(outfilename)))
 
-    os.chdir(os.path.dirname(os.path.abspath(args.filename)))
-
-    if os.path.splitext(args.filename)[1] == '.txt':
-        final_structure = chgk_parse_txt(args.filename)
-
-
-    elif os.path.splitext(args.filename)[1] == '.docx':
-        final_structure = chgk_parse_docx(args.filename)
-
+        else:
+            print('No directory specified.')
+            sys.exit(0)
     else:
-        sys.stderr.write('Error: unsupported file format.' + SEP)
-        sys.exit()
+        if args.filename is None:
+            args.filename = tkFileDialog.askopenfilename(
+                filetypes=[
+                ('chgksuite parsable files',('*.docx','*.txt'))
+                ], initialdir=ld)
+        if args.filename:
+            ld = os.path.dirname(os.path.abspath(args.filename))
+        with codecs.open('lastdir','w','utf8') as f:
+                f.write(ld)
+        if not args.filename:
+            print('No file specified.')
+            sys.exit(0)
 
-    outfilename = make_filename(args.filename)
-    print('Output: {}'.format(
-            os.path.abspath(outfilename)))
-    with codecs.open(
-        outfilename, 'w', 'utf8') as output_file:
-        output_file.write(
-            compose_4s(final_structure))
-
-    if not console_mode:
-        print('Please review the resulting file {}:'.format(
-            make_filename(args.filename)))
-        subprocess.call(shlex.split('{} "{}"'
-            .format(
-                TEXTEDITOR,
-                make_filename(args.filename)).encode(ENC,errors='replace')))
-        raw_input("Press Enter to continue...")
+        outfilename = chgk_parse_wrapper(args.filename)
+        if outfilename and not console_mode:
+            print('Please review the resulting file {}:'.format(
+                make_filename(args.filename)))
+            subprocess.call(shlex.split('{} "{}"'
+                .format(
+                    TEXTEDITOR,
+                    outfilename).encode(ENC,errors='replace')))
+            raw_input("Press Enter to continue...")
 
 def main():
     print('This program was not designed to run standalone.')
