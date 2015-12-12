@@ -68,7 +68,7 @@ def check_question(question):
             .decode('unicode_escape')
             .encode(CONSOLE_ENC, errors='replace'))
 
-def chgk_parse(text):
+def chgk_parse(text, defaultauthor=None):
 
     """
     Parsing rationale: every Question has two required fields: 'question' and
@@ -190,6 +190,11 @@ def chgk_parse(text):
         z = chgk_parse.structure[y]
         chgk_parse.structure[y] = chgk_parse.structure[x]
         chgk_parse.structure[x] = z
+
+    if defaultauthor:
+        print('The default author is {}. '
+            'Missing authors will be substituted with them'
+            .format(defaultauthor))
 
     # 1.
 
@@ -393,6 +398,8 @@ def chgk_parse(text):
     for element in chgk_parse.structure:
         if (element[0] in set(['number', 'tour', 'question', 'meta'])
             and 'question' in current_question):
+                if defaultauthor and not 'author' in current_question:
+                    current_question['author'] = defaultauthor
                 check_question(current_question)
                 final_structure.append(['Question', current_question])
                 current_question = {}
