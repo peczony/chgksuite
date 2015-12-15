@@ -40,7 +40,7 @@ def gui_choose_action(args):
         else:
             ch_defaultauthor.set(0)
     root = Tk()
-        root.title('chgksuite')
+    root.title('chgksuite')
     root.eval('tk::PlaceWindow {} center'.format(
         root.winfo_pathname(root.winfo_id())))
     root.ret = 'None', '0'
