@@ -68,7 +68,7 @@ def check_question(question):
             .decode('unicode_escape')
             .encode(CONSOLE_ENC, errors='replace'))
 
-def chgk_parse(text):
+def chgk_parse(text, defaultauthor=None):
 
     """
     Parsing rationale: every Question has two required fields: 'question' and
@@ -190,6 +190,11 @@ def chgk_parse(text):
         z = chgk_parse.structure[y]
         chgk_parse.structure[y] = chgk_parse.structure[x]
         chgk_parse.structure[x] = z
+
+    if defaultauthor:
+        print('The default author is {}. '
+            'Missing authors will be substituted with them'
+            .format(defaultauthor))
 
     # 1.
 
@@ -393,6 +398,8 @@ def chgk_parse(text):
     for element in chgk_parse.structure:
         if (element[0] in set(['number', 'tour', 'question', 'meta'])
             and 'question' in current_question):
+                if defaultauthor and not 'author' in current_question:
+                    current_question['author'] = defaultauthor
                 check_question(current_question)
                 final_structure.append(['Question', current_question])
                 current_question = {}
@@ -408,6 +415,8 @@ def chgk_parse(text):
         else:
             final_structure.append([element[0], element[1]])
     if current_question != {}:
+        if defaultauthor and not 'author' in current_question:
+            current_question['author'] = defaultauthor
         check_question(current_question)
         final_structure.append(['Question', current_question])
 
@@ -443,7 +452,7 @@ def chgk_parse(text):
 
 class UnknownEncodingException(Exception): pass
 
-def chgk_parse_txt(txtfile, encoding=None):
+def chgk_parse_txt(txtfile, encoding=None, defaultauthor=''):
     os.chdir(os.path.dirname(os.path.abspath(txtfile)))
     raw = open(txtfile,'r').read()
     if not encoding and chardet.detect(raw)['confidence'] > 0.8:
@@ -454,7 +463,7 @@ def chgk_parse_txt(txtfile, encoding=None):
             'please pass encoding directly via command line '
             'or resave with a less exotic encoding'.format(txtfile))
     text = raw.decode(encoding)
-    return chgk_parse(text)
+    return chgk_parse(text, defaultauthor=defaultauthor)
 
 def generate_imgname(ext):
     imgcounter = 1
@@ -463,7 +472,7 @@ def generate_imgname(ext):
         imgcounter += 1
     return '{:03}.{}'.format(imgcounter, ext)
 
-def chgk_parse_docx(docxfile):
+def chgk_parse_docx(docxfile, defaultauthor=''):
     os.chdir(os.path.dirname(os.path.abspath(docxfile)))
     input_docx = PyDocX.to_html(docxfile)
     bsoup = BeautifulSoup(input_docx)
@@ -521,7 +530,7 @@ def chgk_parse_docx(docxfile):
         with codecs.open('debug.debug', 'w', 'utf8') as dbg:
             dbg.write(txt)
 
-    final_structure = chgk_parse(txt)
+    final_structure = chgk_parse(txt, defaultauthor=defaultauthor)
     return final_structure
 
 def remove_double_separators(s):
@@ -577,6 +586,29 @@ def compose_4s(structure):
             result += SEP
     return result
 
+def chgk_parse_wrapper(abspath, args):
+    os.chdir(os.path.dirname(os.path.abspath(abspath)))
+    defaultauthor = ''
+    if args.defaultauthor:
+        defaultauthor = os.path.splitext(os.path.basename(abspath))[0]
+    if os.path.splitext(abspath)[1] == '.txt':
+        final_structure = chgk_parse_txt(abspath,
+            defaultauthor=defaultauthor)
+    elif os.path.splitext(abspath)[1] == '.docx':
+        final_structure = chgk_parse_docx(abspath,
+            defaultauthor=defaultauthor)
+    else:
+        sys.stderr.write('Error: unsupported file format.' + SEP)
+        sys.exit()
+    outfilename = make_filename(abspath)
+    print('Output: {}'.format(
+            os.path.abspath(outfilename)))
+    with codecs.open(
+        outfilename, 'w', 'utf8') as output_file:
+        output_file.write(
+            compose_4s(final_structure))
+    return outfilename
+
 def gui_parse(args):
 
     global console_mode
@@ -603,48 +635,49 @@ def gui_parse(args):
             ld = f.read().rstrip()
         if not os.path.isdir(ld):
             ld = '.'
-    if args.filename is None:
-        args.filename = tkFileDialog.askopenfilename(
-            filetypes=[
-            ('chgksuite parsable files',('*.docx','*.txt'))
-            ], initialdir=ld)
-    if args.filename:
-        ld = os.path.dirname(os.path.abspath(args.filename))
-    with codecs.open('lastdir','w','utf8') as f:
-            f.write(ld)
-    if not args.filename:
-        print('No file specified.')
-        sys.exit(0)
+    if args.parsedir:
+        if args.filename is None:
+            args.filename = tkFileDialog.askdirectory(initialdir=ld)
+        if os.path.isdir(args.filename):
+            ld = args.filename
+            with codecs.open('lastdir','w','utf8') as f:
+                f.write(ld)
+            for filename in os.listdir(args.filename):
+                if (filename.endswith(('.docx', '.txt')) 
+                    and not os.path.isfile(make_filename(
+                        os.path.join(args.filename, filename)))):
+                    outfilename = chgk_parse_wrapper(
+                        os.path.join(args.filename, filename), args)
+                    print('{} -> {}'.format(filename, 
+                        os.path.basename(outfilename)))
+            raw_input("Press Enter to continue...")
 
-    os.chdir(os.path.dirname(os.path.abspath(args.filename)))
-
-    if os.path.splitext(args.filename)[1] == '.txt':
-        final_structure = chgk_parse_txt(args.filename)
-
-
-    elif os.path.splitext(args.filename)[1] == '.docx':
-        final_structure = chgk_parse_docx(args.filename)
-
+        else:
+            print('No directory specified.')
+            sys.exit(0)
     else:
-        sys.stderr.write('Error: unsupported file format.' + SEP)
-        sys.exit()
+        if args.filename is None:
+            args.filename = tkFileDialog.askopenfilename(
+                filetypes=[
+                ('chgksuite parsable files',('*.docx','*.txt'))
+                ], initialdir=ld)
+        if args.filename:
+            ld = os.path.dirname(os.path.abspath(args.filename))
+        with codecs.open('lastdir','w','utf8') as f:
+                f.write(ld)
+        if not args.filename:
+            print('No file specified.')
+            sys.exit(0)
 
-    outfilename = make_filename(args.filename)
-    print('Output: {}'.format(
-            os.path.abspath(outfilename)))
-    with codecs.open(
-        outfilename, 'w', 'utf8') as output_file:
-        output_file.write(
-            compose_4s(final_structure))
-
-    if not console_mode:
-        print('Please review the resulting file {}:'.format(
-            make_filename(args.filename)))
-        subprocess.call(shlex.split('{} "{}"'
-            .format(
-                TEXTEDITOR,
-                make_filename(args.filename)).encode(ENC,errors='replace')))
-        raw_input("Press Enter to continue...")
+        outfilename = chgk_parse_wrapper(args.filename, args)
+        if outfilename and not console_mode:
+            print('Please review the resulting file {}:'.format(
+                make_filename(args.filename)))
+            subprocess.call(shlex.split('{} "{}"'
+                .format(
+                    TEXTEDITOR,
+                    outfilename).encode(ENC,errors='replace')))
+            raw_input("Press Enter to continue...")
 
 def main():
     print('This program was not designed to run standalone.')
