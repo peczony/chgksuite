@@ -504,7 +504,7 @@ def chgk_parse_docx(docxfile, defaultauthor=''):
         imgname = generate_imgname(imgparse['ext'])
         with open(imgname, 'wb') as f:
             f.write(base64.b64decode(imgparse['b64']))
-        imgpath = os.path.abspath(imgname)
+        imgpath = os.path.basename(imgname)
         tag.insert_before('(img {})'.format(imgpath))
         tag.extract()
     for tag in bsoup.find_all('a'):
