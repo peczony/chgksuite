@@ -579,11 +579,13 @@ def compose_4s(structure):
             result += (types_mapping[element[0]] 
                 + format_element(element[1]) + SEP + SEP)
         elif element[0] == 'Question':
+            tmp = ''
             for label in QUESTION_LABELS:
                 if label in element[1] and label in types_mapping:
-                    result += (types_mapping[label]
+                    tmp += (types_mapping[label]
                         + format_element(element[1][label]) + SEP)
-            result += SEP
+            tmp = tmp.replace(SEP + SEP, SEP)
+            result += tmp + SEP
     return result
 
 def chgk_parse_wrapper(abspath, args):
