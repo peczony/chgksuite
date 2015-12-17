@@ -562,7 +562,7 @@ def compose_4s(structure):
             return remove_double_separators(z)
         elif isinstance(z, list):
             if isinstance(z[1], list):
-                return (remove_double_separators(z[0]) + '- ' + SEP 
+                return (remove_double_separators(z[0]) + SEP + '- ' 
                     + ('{}- '.format(SEP)).join((
                         [remove_double_separators(x) for x in z[1]])))
             else:
