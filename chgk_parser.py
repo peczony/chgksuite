@@ -524,6 +524,8 @@ def chgk_parse_docx(docxfile, defaultauthor=''):
         .replace(' )', ')')
         .replace(' ]', ']')
         .replace(' :', ':')
+        .replace('&lt;','<')
+        .replace('&gt;','>')
         )
 
     if debug:
