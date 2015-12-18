@@ -709,8 +709,6 @@ def split_into_tours(structure, general_impression=False):
             ])
     return result
 
-
-
 def lj_process(structure):
     final_structure = [{'header': '',
         'content':''}]
@@ -839,17 +837,41 @@ def lj_post_getdata():
     loginbox = Entry(root)
     pwdbox = Entry(root, show = '*')
     communitybox = Entry(root)
-    
+    ch_split = IntVar()
+    ch_genimp = IntVar()
+    if args.splittours:
+        ch_split.set(1)
+    else:
+        ch_split.set(0)
+    if args.genimp:
+        ch_genimp.set(1)
+    else:
+        ch_genimp.set(0)
+
+    def sptoggle():
+        if ch_split.get() == 0:
+            ch_split.set(1)
+        else:
+            ch_split.set(0)
+    def gitoggle():
+        if ch_genimp.get() == 0:
+            ch_genimp.set(1)
+        else:
+            ch_genimp.set(0)
     def onpwdentry(evt):
         root.login = loginbox.get()
         root.password = pwdbox.get()
         root.community = communitybox.get()
+        root.sp = ch_split.get()
+        root.gi = ch_genimp.get()
         root.quit()
         root.destroy()
     def onokclick():
         root.login = loginbox.get()
         root.password = pwdbox.get()
         root.community = communitybox.get()
+        root.sp = ch_split.get()
+        root.gi = ch_genimp.get()
         root.quit()
         root.destroy()
     
@@ -864,10 +886,21 @@ def lj_post_getdata():
     loginbox.bind('<Return>', onpwdentry)
     communitybox.bind('<Return>', onpwdentry)
 
+    sp = Checkbutton(root, text='Split into tours',
+        variable=ch_split, command=sptoggle)
+    gi = Checkbutton(root, text='General impression post',
+        variable=ch_genimp, command=gitoggle)
+    if ch_split.get() == 1:
+        sp.select()
+    if ch_genimp.get() == 1:
+        gi.select()
+    sp.pack(side = 'top')
+    gi.pack(side = 'top')
+
     Button(root, command=onokclick, text = 'OK').pack(side = 'top')
 
     root.mainloop()
-    return root.login, root.password, root.community
+    return root.login, root.password, root.community, root.sp, root.gi
 
 def tex_format_question(q):
     yapper = texyapper
@@ -1250,7 +1283,8 @@ def process_file(filename, srcdir):
         if not args.community:
             args.community = ''
         if not args.login:
-            args.login, args.password, args.community = lj_post_getdata()
+            args.login, args.password, args.community, \
+                args.splittours, args.genimp = lj_post_getdata()
             if not args.login:
                 print('Login not specified.')
                 sys.exit(1)
@@ -1263,7 +1297,7 @@ def process_file(filename, srcdir):
 
         gui_compose.counter = 1
         if args.splittours:
-            tours = split_into_tours(structure)
+            tours = split_into_tours(structure, general_impression=args.genimp)
             for tour in tours:
                 lj_process(tour)
         else:
