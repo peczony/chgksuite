@@ -27,6 +27,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 import tempfile
 import traceback
 import typotools
@@ -654,6 +655,112 @@ def get_chal(lj, passwd):
     response = md5(chal + md5(passwd))
     return (chal,response)
 
+def find_heading(structure):
+    h_id = -1
+    for e,x in enumerate(structure):
+        if x[0] == 'ljheading':
+            return (e,x)
+        elif x[0] == 'heading':
+            h_id = e
+    if h_id >= 0:
+        return (h_id, structure[h_id])
+    return None
+
+def find_tour(structure):
+    for e,x in enumerate(structure):
+        if x[0] == 'section':
+            return (e,x)
+    return None
+
+def split_into_tours(structure, general_impression=False):
+    result = []
+    current = []
+    mode = 'meta'
+    for i, element in enumerate(structure):
+        if element[0] != 'Question':
+            if mode == 'meta':
+                current.append(element)
+            elif element[0] == 'section':
+                result.append(current)
+                current = [element]
+                mode = 'meta'
+            else:
+                current.append(element)
+        else:
+            if mode == 'meta':
+                current.append(element)
+                mode = 'questions'
+            else:
+                current.append(element)
+    result.append(current)
+    globalheading = find_heading(result[0])[1][1]
+    result[0][find_heading(result[0])[0]][1] += ', {}'.format(
+        find_tour(result[0])[1][1])
+    for tour in result[1:]:
+        if not find_heading(tour):
+            tour.insert(0, ['ljheading','{}, {}'.format(globalheading, 
+                find_tour(tour)[1][1])])
+    if general_impression:
+        result.append(
+            [
+            ['ljheading', '{}. Общие впечатления'.format(globalheading)],
+            ['meta', 'В комментариях к этому посту можно '
+            'поделиться общими впечатлениями от вопросов'],
+            ])
+    return result
+
+
+
+def lj_process(structure):
+    final_structure = [{'header': '',
+        'content':''}]
+    i = 0
+    heading = ''
+    ljheading = ''
+    yapper = htmlyapper
+    while i < len(structure) and structure[i][0] != 'Question':
+        if structure[i][0] == 'heading':
+            final_structure[0]['content'] += ('<center>{}</center>'
+                .format(yapper(structure[i][1])))
+            heading = yapper(structure[i][1])
+        if structure[i][0] == 'ljheading':
+            # final_structure[0]['header'] = structure[i][1]
+            ljheading = yapper(structure[i][1])
+        if structure[i][0] == 'date':
+            final_structure[0]['content'] += ('\n<center>{}</center>'
+                .format(yapper(structure[i][1])))
+        if structure[i][0] == 'editor':
+            final_structure[0]['content'] += ('\n<center>{}</center>'
+                .format(yapper(structure[i][1])))
+        if structure[i][0] == 'meta':
+            final_structure[0]['content'] += ('\n{}'
+                .format(yapper(structure[i][1])))
+        i += 1
+
+    if ljheading != '':
+        final_structure[0]['header'] = ljheading
+    else:
+        final_structure[0]['header'] = heading
+
+    for element in structure[i:]:
+        if element[0] == 'Question':
+            final_structure.append({'header': 'Вопрос {}'
+                .format(element[1]['number'] if 'number' in
+                    element[1] else gui_compose.counter),
+                'content': html_format_question(element[1])})
+        if element[0] == 'meta':
+            final_structure.append({'header': '',
+                'content': yapper(element[1])})
+
+    if not final_structure[0]['content']:
+        final_structure[0]['content'] = 'Вопросы в комментариях.'
+    if debug:
+        with codecs.open('lj.debug', 'w', 'utf8') as f:
+            f.write(pprint.pformat(final_structure)
+                .decode('unicode_escape'))
+
+    lj_post(final_structure)
+
 def lj_post(stru):
 
     lj = ServerProxy('http://www.livejournal.com/interface/xmlrpc').LJ.XMLRPC
@@ -691,6 +798,7 @@ def lj_post(stru):
     try:
         if args.debug:
             pdb.set_trace()
+        time.sleep(5)
         post = lj.postevent(params)
         ditemid = post['ditemid']
         print post
@@ -709,6 +817,7 @@ def lj_post(stru):
                 'subject' : x['header']
                 }
             print lj.addcomment(params)
+            time.sleep(5)
     except:
         sys.stderr.write('Error issued by LJ API: {}'.format(
             traceback.format_exc()))
@@ -1153,54 +1262,12 @@ def process_file(filename, srcdir):
         im = pyimgur.Imgur(CLIENT_ID)
 
         gui_compose.counter = 1
-        final_structure = [{'header': '',
-        'content':''}]
-
-        i = 0
-
-        heading = ''
-        ljheading = ''
-        yapper = htmlyapper
-        while structure[i][0] != 'Question':
-            if structure[i][0] == 'heading':
-                final_structure[0]['content'] += ('<h1>{}</h1>'
-                    .format(yapper(structure[i][1])))
-                heading = yapper(structure[i][1])
-            if structure[i][0] == 'ljheading':
-                # final_structure[0]['header'] = structure[i][1]
-                ljheading = yapper(structure[i][1])
-            if structure[i][0] == 'date':
-                final_structure[0]['content'] += ('\n<center>{}</center>'
-                    .format(yapper(structure[i][1])))
-            if structure[i][0] == 'editor':
-                final_structure[0]['content'] += ('\n<center>{}</center>'
-                    .format(yapper(structure[i][1])))
-            if structure[i][0] == 'meta':
-                final_structure[0]['content'] += ('\n{}'
-                    .format(yapper(structure[i][1])))
-            i += 1
-
-        if ljheading != '':
-            final_structure[0]['header'] = ljheading
+        if args.splittours:
+            tours = split_into_tours(structure)
+            for tour in tours:
+                lj_process(tour)
         else:
-            final_structure[0]['header'] = heading
-
-        for element in structure[i:]:
-            if element[0] == 'Question':
-                final_structure.append({'header': 'Вопрос {}'
-                    .format(element[1]['number'] if 'number' in
-                        element[1] else gui_compose.counter),
-                    'content': html_format_question(element[1])})
-            if element[0] == 'meta':
-                final_structure.append({'header': '',
-                    'content': yapper(element[1])})
-
-        if debug:
-            with codecs.open('lj.debug', 'w', 'utf8') as f:
-                f.write(pprint.pformat(final_structure)
-                    .decode('unicode_escape'))
-
-        lj_post(final_structure)
+            lj_process(structure)
 
     if not console_mode:
         raw_input("Press Enter to continue...")
