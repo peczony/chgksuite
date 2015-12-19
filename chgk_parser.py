@@ -475,7 +475,7 @@ def generate_imgname(ext):
 def chgk_parse_docx(docxfile, defaultauthor=''):
     os.chdir(os.path.dirname(os.path.abspath(docxfile)))
     input_docx = PyDocX.to_html(docxfile)
-    bsoup = BeautifulSoup(input_docx)
+    bsoup = BeautifulSoup(input_docx, 'html.parser')
 
     if debug:
         with codecs.open('debug.pydocx', 'w', 'utf8') as dbg:
