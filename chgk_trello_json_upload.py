@@ -31,7 +31,7 @@ from collections import defaultdict
 def process_desc(s):
     return s.replace(r'\`','`')
 
-def upload_file(filepath, lid, trello):
+def upload_file(filepath, lid, trello, author=False):
     content = ''
     with codecs.open(filepath, 'r', 'utf8') as f:
         content = f.read()
@@ -40,7 +40,11 @@ def upload_file(filepath, lid, trello):
     for card in cards:
         caption = 'вопрос'
         if re.search('\n! (.+?)\r?\n', card):
-            caption = re.search('\n! (.+?)\r?\n', card).group(1)
+            caption = re.search('\n! (.+?)\.?\r?\n', card).group(1)
+            if author and re.search('\n@ (.+?)\.?\r?\n', card):
+                caption += ' {}'.format(
+                    re.search('\n@ (.+?)\r?\n', card).group(1))
+
         req = requests.post(
             "https://trello.com/1/lists/{}/cards".format(lid),
             {
@@ -60,6 +64,8 @@ def main():
     parser.add_argument('--config', default='trello.json',
         help="Use this if you want to use a file named "
         "differently than the default trello.json")
+    parser.add_argument('--author', action='store_true',
+        help='Display authors in cards captions')
     parser.add_argument('--debug', action='store_true',
         help=argparse.SUPPRESS)
 
@@ -86,7 +92,7 @@ def main():
         for filename in os.listdir(args.filename):
             if filename.endswith(b'.4s'):
                 upload_file(os.path.join(args.filename, filename), 
-                    lid, trello)
+                    lid, trello, author=args.author)
 
 if __name__ == "__main__":
     main()
