@@ -586,7 +586,8 @@ def compose_4s(structure):
                 if label in element[1] and label in types_mapping:
                     tmp += (types_mapping[label]
                         + format_element(element[1][label]) + SEP)
-            tmp = tmp.replace(SEP + SEP, SEP)
+            tmp = re.sub(r'{}+'.format(SEP), SEP, tmp)
+            tmp = tmp.replace('\r\r','\r')
             result += tmp + SEP
     return result
 
