@@ -83,6 +83,8 @@ def main():
     parser.add_argument('--rawtex', action='store_true')
     parser.add_argument('--parsedir', action='store_true')
     parser.add_argument('--defaultauthor', action='store_true')
+    parser.add_argument('--splittours', action='store_true')
+    parser.add_argument('--genimp', action='store_true')
     parser.add_argument('--login', '-l')
     parser.add_argument('--password', '-p')
     parser.add_argument('--community', '-c')

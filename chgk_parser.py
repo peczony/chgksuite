@@ -97,19 +97,19 @@ def chgk_parse(text, defaultauthor=None):
     WHITESPACE = set([' ', ' ', '\n', '\r'])
     PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
 
-    re_tour = re.compile(r'^ТУР ?([0-9IVXLCDM]*)([\.:])?$', re.I | re.U)
-    re_tourrev = re.compile(r'^([0-9]+) ТУР([\.:])?$', re.I | re.U)
-    re_question = re.compile(r'ВОПРОС ?[№N]?([0-9]*) ?([\.:]|\n|\r\n|$)', re.I | re.U)
-    re_answer = re.compile(r'ОТВЕТЫ? ?[№N]?([0-9]+)? ?[:]', re.I | re.U)
-    re_zachet = re.compile(r'ЗАЧ[ЕЁ]Т ?[\.:]', re.I | re.U)
-    re_nezachet = re.compile(r'НЕЗАЧ[ЕЁ]Т ?[\.:]', re.I | re.U)
-    re_comment = re.compile(r'КОММЕНТАРИ[ИЙ] ?[№N]?([0-9]+)? ?[\.:]', re.I | re.U)
-    re_author = re.compile(r'АВТОР\(?Ы?\)? ?[\.:]', re.I | re.U)
-    re_source = re.compile(r'ИСТОЧНИК\(?И?\)? ?[\.:]', re.I | re.U)
-    re_editor = re.compile(r'РЕДАКТОР(Ы|СКАЯ ГРУППА)?( ?[\.:]| [\-–—]+ )', re.I | re.U)
-    re_date = re.compile(r'ДАТА ?[\.:]', re.I | re.U)
-    re_date2 = re.compile(r'(^|\s)ЯНВАР[ЬЯ]|ФЕВРАЛ[ЬЯ]|МАРТА?|АПРЕЛ[ЬЯ]|МА[ЙЯ]|ИЮН[ЬЯ]|ИЮЛ[ЬЯ]|АВГУСТА?|СЕНТЯБР[ЬЯ]|ОКТЯБР[ЬЯ]|НОЯБР[ЬЯ]|ДЕКАБР[ЬЯ](\s|$)', re.I | re.U)
-    re_handout = re.compile(r'РАЗДА(ЧА|ТКА|ТОЧНЫЙ МАТЕРИАЛ) ?[\.:]', re.I | re.U)
+    re_tour = re.compile(r'^Т[Уу][Рр] ?([0-9IVXLCDM]*)([\.:])?$', re.U)
+    re_tourrev = re.compile(r'^([0-9IVXLCDM]+) [Тт][Уу][Рр]([\.:])?$', re.U)
+    re_question = re.compile(r'В[Оо][Пп][Рр][Оо][Сс] ?[№N]?([0-9]*) ?([\.:]|\n|\r\n|$)', re.U)
+    re_answer = re.compile(r'О[Тт][Вв][Ее][Тт][Ыы]? ?[№N]?([0-9]+)? ?[:]', re.U)
+    re_zachet = re.compile(r'З[Аа][Чч][ЕеЁё][Тт] ?[\.:]', re.U)
+    re_nezachet = re.compile(r'Н[Ее][Зз][Аа][Чч][ЕеЁё][Тт] ?[\.:]', re.U)
+    re_comment = re.compile(r'К[Оо][Мм][Мм]?([Ее][Нн][Тт]([Аа][Рр][Ии][ИиЙй]|\.)|\.) ?[№N]?([0-9]+)? ?[\.:]', re.U)
+    re_author = re.compile(r'А[Вв][Тт][Оо][Рр]\(?[Ыы]?\)? ?[\.:]', re.U)
+    re_source = re.compile(r'И[Сс][Тт][Оо][Чч][Нн][Ии][Кк]\(?[Ии]?\)? ?[\.:]', re.U)
+    re_editor = re.compile(r'[Рр][Ее][Дд][Аа][Кк][Тт][Оо][Рр]([Ыы]|[Сс][Кк][Аа][Яя] [Гг][Рр][Уу][Пп][Пп][Аа])?( ?[\.:]| [\-–—]+ )', re.U)
+    re_date = re.compile(r'Д[Аа][Тт][Аа] ?[\.:]', re.U)
+    re_date2 = re.compile(r'(^|\s)[Яя][Нн][Вв][Аа][Рр][ЬьЯя]|[Фф][Ее][Вв][Рр][Аа][Лл][ЬьЯя]|[Мм][Аа][Рр][Тт][Аа]?|[Аа][Пп][Рр][Ее][Лл][Ьь][Яя]|[Мм][Аа][ЙйЯя]|[Ии][Юю][Нн][ЬьЯя]|[Ии][Юю][Лл][ЬьЯя]|[Аа][Вв][Гг][Уу][Сс][Тт][Аа]?|[Сс][Ее][Нн][Тт][Яя][Бб][Рр][ЬьЯя]|[Оо][Кк][Тт][Яя][Бб][Рр][Ьь][Яя]|[Нн][Оо][Яя][Бб][Рр][ЬьЯя]|[Дд][Ее][Кк][Аа][Бб][Рр][ЬьЯя](\s|$)', re.U)
+    re_handout = re.compile(r'Р[Аа][Зз][Дд][Аа]([Чч][Аа]|[Тт][Кк][Аа]|[Тт][Оо][Чч][Нн][Ыы][Йй] [Мм][Аа][Тт][Ее][Рр][Ии][Аа][Лл]) ?[\.:]', re.U)
     re_number = re.compile(r'^[0-9]+[\.\)] *')
 
     regexes = {
@@ -509,7 +509,7 @@ def chgk_parse_docx(docxfile, defaultauthor=''):
         imgname = generate_imgname(imgparse['ext'])
         with open(imgname, 'wb') as f:
             f.write(base64.b64decode(imgparse['b64']))
-        imgpath = os.path.abspath(imgname)
+        imgpath = os.path.basename(imgname)
         tag.insert_before('(img {})'.format(imgpath))
         tag.extract()
     for tag in bsoup.find_all('a'):
@@ -529,6 +529,8 @@ def chgk_parse_docx(docxfile, defaultauthor=''):
         .replace(' )', ')')
         .replace(' ]', ']')
         .replace(' :', ':')
+        .replace('&lt;','<')
+        .replace('&gt;','>')
         )
 
     if debug:
@@ -565,7 +567,7 @@ def compose_4s(structure):
             return remove_double_separators(z)
         elif isinstance(z, list):
             if isinstance(z[1], list):
-                return (remove_double_separators(z[0]) + '- ' + SEP
+                return (remove_double_separators(z[0]) + SEP + '- ' 
                     + ('{}- '.format(SEP)).join((
                         [remove_double_separators(x) for x in z[1]])))
             else:
@@ -584,11 +586,14 @@ def compose_4s(structure):
             result += (types_mapping[element[0]]
                 + format_element(element[1]) + SEP + SEP)
         elif element[0] == 'Question':
+            tmp = ''
             for label in QUESTION_LABELS:
                 if label in element[1] and label in types_mapping:
-                    result += (types_mapping[label]
+                    tmp += (types_mapping[label]
                         + format_element(element[1][label]) + SEP)
-            result += SEP
+            tmp = re.sub(r'{}+'.format(SEP), SEP, tmp)
+            tmp = tmp.replace('\r\r','\r')
+            result += tmp + SEP
     return result
 
 def chgk_parse_wrapper(abspath, args):
