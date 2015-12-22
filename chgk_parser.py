@@ -22,6 +22,7 @@ from parse import parse
 import base64
 import html2text
 from typotools import remove_excessive_whitespace as rew
+from chgk_parser_db import chgk_parse_db
 
 try:
     from Tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
@@ -40,7 +41,7 @@ CONSOLE_ENC = (ENC if sys.platform != 'win32' else 'cp866')
 SEP = os.linesep
 EDITORS = {
     'win32': 'notepad',
-    'linux2': 'gedit',
+    'linux2': 'kate',
     'darwin': 'open -t'
 }
 TEXTEDITOR = EDITORS[sys.platform]
@@ -131,7 +132,7 @@ def chgk_parse(text, defaultauthor=None):
         target = index - 1
         if chgk_parse.structure[target][1]:
             chgk_parse.structure[target][1] = (
-                chgk_parse.structure[target][1] + SEP 
+                chgk_parse.structure[target][1] + SEP
                 + chgk_parse.structure.pop(index)[1])
         else:
             chgk_parse.structure[target][1] = chgk_parse.structure.pop(
@@ -139,7 +140,7 @@ def chgk_parse(text, defaultauthor=None):
 
     def merge_to_next(index):
         target = chgk_parse.structure.pop(index)
-        chgk_parse.structure[index][1] = (target[1] + SEP 
+        chgk_parse.structure[index][1] = (target[1] + SEP
             + chgk_parse.structure[index][1])
 
     def find_next_specific_field(index, fieldname):
@@ -162,7 +163,7 @@ def chgk_parse(text, defaultauthor=None):
         i = 0
         while i < len(chgk_parse.structure):
             if chgk_parse.structure[i][0] == x:
-                while (i+1 < len(chgk_parse.structure) 
+                while (i+1 < len(chgk_parse.structure)
                     and chgk_parse.structure[i+1][0] != y):
                     merge_to_previous(i+1)
             i += 1
@@ -171,7 +172,7 @@ def chgk_parse(text, defaultauthor=None):
         i = 0
         while i < len(chgk_parse.structure):
             if chgk_parse.structure[i][0] == x:
-                while (i+1 < len(chgk_parse.structure) 
+                while (i+1 < len(chgk_parse.structure)
                     and chgk_parse.structure[i+1][0] == ''
                     and find_next_fieldname(i) not in BADNEXTFIELDS):
                     merge_to_previous(i+1)
@@ -181,7 +182,7 @@ def chgk_parse(text, defaultauthor=None):
         i = 0
         while i < len(chgk_parse.structure):
             if chgk_parse.structure[i][0] == x:
-                while (i+1 < len(chgk_parse.structure) 
+                while (i+1 < len(chgk_parse.structure)
                     and chgk_parse.structure[i+1][0] == ''):
                     merge_to_previous(i+1)
             i += 1
@@ -205,13 +206,13 @@ def chgk_parse(text, defaultauthor=None):
     i = 0
     st = chgk_parse.structure
     while i < len(st):
-        matching_regexes = {(regex, regexes[regex].search(st[i][1]).start(0)) 
+        matching_regexes = {(regex, regexes[regex].search(st[i][1]).start(0))
         for regex in regexes if regexes[regex].search(st[i][1])}
-        
-        # If more than one regex matches string, split it and 
+
+        # If more than one regex matches string, split it and
         # insert into structure separately.
-        
-        if len(matching_regexes) == 1: 
+
+        if len(matching_regexes) == 1:
             st[i][0] = matching_regexes.pop()[0]
         elif len(matching_regexes) > 1:
             sorted_r = sorted(matching_regexes, key=lambda x: x[1])
@@ -219,8 +220,8 @@ def chgk_parse(text, defaultauthor=None):
             for j in range(1, len(sorted_r)):
                 slices.append(
                     [sorted_r[j][0], st[i][1][
-                        sorted_r[j][1] 
-                         : 
+                        sorted_r[j][1]
+                         :
                         sorted_r[j+1][1] if j+1 < len(sorted_r)
                                                 else len(st[i][1])]])
             for slice_ in slices:
@@ -252,13 +253,13 @@ def chgk_parse(text, defaultauthor=None):
 
     i = 0
     while i < len(chgk_parse.structure):
-        if (chgk_parse.structure[i][0] == 'answer' 
+        if (chgk_parse.structure[i][0] == 'answer'
             and chgk_parse.structure[i-1][0] not in ('question',
                 'newquestion')):
             chgk_parse.structure.insert(i,['newquestion',''])
             i = 0
         i += 1
-    
+
     i = 0
     while i < len(chgk_parse.structure) - 1:
         if (chgk_parse.structure[i][0] == ''
@@ -291,7 +292,7 @@ def chgk_parse(text, defaultauthor=None):
             rew(element[1]))
             and id + 1 < len(chgk_parse.structure)):
             merge_to_previous(id+1)
-    
+
     merge_to_x_until_nextfield('zachet')
     merge_to_x_until_nextfield('nezachet')
 
@@ -299,7 +300,7 @@ def chgk_parse(text, defaultauthor=None):
         with codecs.open('debug_3.json', 'w', 'utf8') as f:
             f.write(json.dumps(chgk_parse.structure, ensure_ascii=False,
                 indent=4))
-    
+
     # 4.
 
     chgk_parse.structure = [x for x in chgk_parse.structure if [x[0], rew(x[1])]
@@ -332,7 +333,7 @@ def chgk_parse(text, defaultauthor=None):
     # 5.
 
     for id, element in enumerate(chgk_parse.structure):
-        
+
         # typogrify
 
         if element[0] != 'date':
@@ -347,26 +348,26 @@ def chgk_parse(text, defaultauthor=None):
             except:
                 pass
             element[1] = re_number.sub('', element[1])
-        
+
         # detect inner lists
 
-        mo = {m for m 
+        mo = {m for m
             in re.finditer(r'(\s+|^)(\d+)[\.\)]\s*(?!\d)',element[1], re.U)}
         if len(mo) > 1:
             sorted_up = sorted(mo, key=lambda m: int(m.group(2)))
             j = 0
             list_candidate = []
             while j == int(sorted_up[j].group(2)) - 1:
-                list_candidate.append((j+1, sorted_up[j].group(0), 
+                list_candidate.append((j+1, sorted_up[j].group(0),
                     sorted_up[j].start()))
                 if j+1 < len(sorted_up):
                     j += 1
                 else:
                     break
             if len(list_candidate) > 1:
-                if (element[0] != 'question' or 
+                if (element[0] != 'question' or
                     (element[0] == 'question'
-                        and 'дуплет' in element[1].lower() 
+                        and 'дуплет' in element[1].lower()
                             or 'блиц' in element[1].lower())):
                     part = partition(element[1], [x[2] for x in
                         list_candidate])
@@ -381,7 +382,7 @@ def chgk_parse(text, defaultauthor=None):
 
         if (element[0] == 'source' and isinstance(element[1], basestring)
                     and len(re.split(r'\r?\n', element[1])) > 1):
-            element[1] = [re_number.sub('', rew(x)) 
+            element[1] = [re_number.sub('', rew(x))
                 for x in re.split(r'\r?\n', element[1])]
 
     if debug:
@@ -443,14 +444,16 @@ def chgk_parse(text, defaultauthor=None):
     except ValueError:
         pass
 
-
     if debug:
         with codecs.open('debug_final.json', 'w', 'utf8') as f:
             f.write(json.dumps(final_structure, ensure_ascii=False,
                 indent=4))
     return final_structure
 
-class UnknownEncodingException(Exception): pass
+
+class UnknownEncodingException(Exception):
+    pass
+
 
 def chgk_parse_txt(txtfile, encoding=None, defaultauthor=''):
     os.chdir(os.path.dirname(os.path.abspath(txtfile)))
@@ -463,6 +466,8 @@ def chgk_parse_txt(txtfile, encoding=None, defaultauthor=''):
             'please pass encoding directly via command line '
             'or resave with a less exotic encoding'.format(txtfile))
     text = raw.decode(encoding)
+    if text[0:10] == 'Чемпионат:':
+        return chgk_parse_db(text, debug=debug)
     return chgk_parse(text, defaultauthor=defaultauthor)
 
 def generate_imgname(ext):
@@ -475,12 +480,12 @@ def generate_imgname(ext):
 def chgk_parse_docx(docxfile, defaultauthor=''):
     os.chdir(os.path.dirname(os.path.abspath(docxfile)))
     input_docx = PyDocX.to_html(docxfile)
-    bsoup = BeautifulSoup(input_docx)
+    bsoup = BeautifulSoup(input_docx, 'html.parser')
 
     if debug:
         with codecs.open('debug.pydocx', 'w', 'utf8') as dbg:
             dbg.write(input_docx)
-    
+
     for tag in bsoup.find_all('style'):
         tag.extract()
     for tag in bsoup.find_all('p'):
@@ -560,7 +565,7 @@ def compose_4s(structure):
             return remove_double_separators(z)
         elif isinstance(z, list):
             if isinstance(z[1], list):
-                return (remove_double_separators(z[0]) + '- ' + SEP 
+                return (remove_double_separators(z[0]) + '- ' + SEP
                     + ('{}- '.format(SEP)).join((
                         [remove_double_separators(x) for x in z[1]])))
             else:
@@ -576,7 +581,7 @@ def compose_4s(structure):
         if element[0] == 'number' and int(element[1])==0:
             result += '№ '+element[1]+SEP
         if element[0] in types_mapping and types_mapping[element[0]]:
-            result += (types_mapping[element[0]] 
+            result += (types_mapping[element[0]]
                 + format_element(element[1]) + SEP + SEP)
         elif element[0] == 'Question':
             for label in QUESTION_LABELS:
@@ -643,12 +648,12 @@ def gui_parse(args):
             with codecs.open('lastdir','w','utf8') as f:
                 f.write(ld)
             for filename in os.listdir(args.filename):
-                if (filename.endswith(('.docx', '.txt')) 
+                if (filename.endswith(('.docx', '.txt'))
                     and not os.path.isfile(make_filename(
                         os.path.join(args.filename, filename)))):
                     outfilename = chgk_parse_wrapper(
                         os.path.join(args.filename, filename), args)
-                    print('{} -> {}'.format(filename, 
+                    print('{} -> {}'.format(filename,
                         os.path.basename(outfilename)))
             raw_input("Press Enter to continue...")
 

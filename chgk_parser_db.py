@@ -1,0 +1,341 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+import re
+import codecs
+import json
+
+from ply import lex
+
+from typotools import recursive_typography as rt
+
+re_list = re.compile(r'^\s{3}\d+\.\s(.+)$', re.I | re.U)
+
+tokens = (
+    'TITLE',
+    'URL',
+    'DATE',
+    'EDITOR',
+    'INFO',
+    'TOUR',
+    'QUESTION',
+    'ANSWER',
+    'ZACHET',
+    'NEZACHET',
+    'COMMENT',
+    'SOURCE',
+    'AUTHOR',
+    'TEXT'
+)
+
+states = (
+    ('title', 'exclusive'),
+    ('url', 'exclusive'),
+    ('date', 'exclusive'),
+    ('editor', 'exclusive'),
+    ('info', 'exclusive'),
+    ('tour', 'exclusive'),
+    ('question', 'exclusive'),
+    ('answer', 'exclusive'),
+    ('zachet', 'exclusive'),
+    ('nezachet', 'exclusive'),
+    ('comment', 'exclusive'),
+    ('source', 'exclusive'),
+    ('author', 'exclusive')
+)
+
+
+def init_question(lexer):
+    # save old values
+    if lexer.question:
+        # remove empty values
+        question = dict((k, v) for k, v in lexer.question.iteritems() if v)
+        lexer.structure.append(['Question', question])
+    lexer.question_num += 1
+    lexer.question = {'number': lexer.question_num,
+                      'question': [],
+                      'answer': [],
+                      'comment': [],
+                      'source': []}
+
+
+def t_TITLE(t):
+    r'Чемпионат:\n'
+    t.lexer.begin('title')
+    t.lexer.text = ''
+
+
+def t_URL(t):
+    r'URL:\n'
+    t.lexer.begin('url')
+    t.lexer.text = ''
+
+
+def t_DATE(t):
+    r'Дата:\n'
+    t.lexer.begin('date')
+    t.lexer.text = ''
+
+
+def t_EDITOR(t):
+    r'Редактор:\n'
+    t.lexer.begin('editor')
+    t.lexer.text = ''
+
+
+def t_INFO(t):
+    r'Инфо:\n'
+    t.lexer.begin('info')
+    t.lexer.text = ''
+
+
+def t_TOUR(t):
+    r'Тур:\n'
+    t.lexer.begin('tour')
+    init_question(t.lexer)
+    t.lexer.text = ''
+
+
+def t_QUESTION(t):
+    r'Вопрос\s[\d]+:\n'
+    t.lexer.begin('question')
+    init_question(t.lexer)
+    t.lexer.text = ''
+
+
+def t_ANSWER(t):
+    r'Ответ:\n'
+    t.lexer.begin('answer')
+    t.lexer.text = ''
+
+
+def t_ZACHET(t):
+    r'Зачет:\n'
+    t.lexer.begin('zachet')
+    t.lexer.text = ''
+
+
+def t_NEZACHET(t):
+    r'Незачет:\n'
+    t.lexer.begin('nezachet')
+    t.lexer.text = ''
+
+
+def t_COMMENT(t):
+    r'Комментарий:\n'
+    t.lexer.begin('comment')
+    t.lexer.text = ''
+
+
+def t_SOURCE(t):
+    r'Источник:\n'
+    t.lexer.begin('source')
+    t.lexer.text = ''
+
+
+def t_AUTHOR(t):
+    r'Автор:\n'
+    t.lexer.begin('author')
+    t.lexer.text = ''
+
+
+def t_title_end(t):
+    r'\n\n'
+    t.lexer.structure.append(['heading', rt(t.lexer.text)])
+    t.lexer.structure.append(['ljheading', rt(t.lexer.text)])
+    t.lexer.begin('INITIAL')
+
+
+def t_url_end(t):
+    r'\n\n'
+    t.lexer.structure.append(['meta', t.lexer.text])
+    t.lexer.begin('INITIAL')
+
+
+def t_date_end(t):
+    r'\n\n'
+    t.lexer.structure.append(['date', t.lexer.text])
+    t.lexer.begin('INITIAL')
+
+
+def t_info_end(t):
+    r'\n\n'
+    t.lexer.structure.append(['meta', rt(t.lexer.text)])
+    t.lexer.begin('INITIAL')
+
+
+def t_editor_end(t):
+    r'\n\n'
+    t.lexer.structure.append(['editor', rt(t.lexer.text)])
+    t.lexer.begin('INITIAL')
+
+
+def t_tour_end(t):
+    r'\n\n'
+    t.lexer.structure.append(['tour', rt(t.lexer.text)])
+    t.lexer.begin('INITIAL')
+
+
+def t_question_TEXT(t):
+    r'.+'
+    match_list = re_list.search(t.value)
+    if match_list:
+        if t.lexer.text:
+            multi_question_num = len(t.lexer.question['question'])
+            if multi_question_num == 0:
+                t.lexer.question['question'].append(t.lexer.text)
+            elif multi_question_num == 1:
+                t.lexer.question['question'].append([])
+                t.lexer.question['question'][1].append(t.lexer.text)
+            else:
+                t.lexer.question['question'][1].append(t.lexer.text)
+        t.lexer.text = match_list.group(1)
+    else:
+        if t.value[0:3] == '   ':
+            t.lexer.text += '\n' + t.value[3:]
+        else:
+            t.lexer.text += t.value
+
+
+def t_question_end(t):
+    r'\n\n'
+    if len(t.lexer.question['question']) == 2:
+        t.lexer.question['question'][1].append(t.lexer.text)
+    else:
+        t.lexer.question['question'] = t.lexer.text
+    t.lexer.question['question'] = rt(t.lexer.question['question'])
+    t.lexer.begin('INITIAL')
+
+
+def t_answer_TEXT(t):
+    r'.+'
+    match_list = re_list.search(t.value)
+    if match_list:
+        if t.lexer.text:
+            t.lexer.question['answer'].append(t.lexer.text)
+        t.lexer.text = match_list.group(1)
+    else:
+        if t.value[0:3] == '   ':
+            t.lexer.text += '\n' + t.value[3:]
+        else:
+            t.lexer.text += t.value
+
+
+def t_answer_end(t):
+    r'\n\n'
+    if t.lexer.question['answer']:
+        t.lexer.question['answer'].append(t.lexer.text)
+    else:
+        t.lexer.question['answer'] = t.lexer.text
+    t.lexer.question['answer'] = rt(t.lexer.question['answer'])
+    t.lexer.begin('INITIAL')
+
+
+def t_zachet_end(t):
+    r'\n\n'
+    t.lexer.question['zachet'] = rt(t.lexer.text)
+    t.lexer.begin('INITIAL')
+
+
+def t_nezachet_end(t):
+    r'\n\n'
+    t.lexer.question['nezachet'] = rt(t.lexer.text)
+    t.lexer.begin('INITIAL')
+
+
+def t_comment_TEXT(t):
+    r'.+'
+    match_list = re_list.search(t.value)
+    if match_list:
+        if t.lexer.text:
+            t.lexer.question['comment'].append(t.lexer.text)
+        t.lexer.text = match_list.group(1)
+    else:
+        if t.value[0:3] == '   ':
+            t.lexer.text += '\n' + t.value[3:]
+        else:
+            t.lexer.text += t.value
+
+
+def t_comment_end(t):
+    r'\n\n'
+    if t.lexer.question['comment']:
+        t.lexer.question['comment'].append(t.lexer.text)
+    else:
+        t.lexer.question['comment'] = t.lexer.text
+    t.lexer.question['comment'] = rt(t.lexer.question['comment'])
+    t.lexer.begin('INITIAL')
+
+
+def t_source_TEXT(t):
+    r'.+'
+    match_list = re_list.search(t.value)
+    if match_list:
+        if t.lexer.text:
+            t.lexer.question['source'].append(t.lexer.text)
+        t.lexer.text = match_list.group(1)
+    else:
+        if t.value[0:3] == '   ':
+            t.lexer.text += '\n' + t.value[3:]
+        else:
+            t.lexer.text += t.value
+
+
+def t_source_end(t):
+    r'\n\n'
+    if t.lexer.question['source']:
+        t.lexer.question['source'].append(t.lexer.text)
+    else:
+        t.lexer.question['source'] = t.lexer.text
+    t.lexer.question['source'] = rt(t.lexer.question['source'])
+    t.lexer.begin('INITIAL')
+
+
+def t_author_end(t):
+    r'\n\n'
+    t.lexer.question['author'] = rt(t.lexer.text)
+    t.lexer.begin('INITIAL')
+
+
+def t_ANY_TEXT(t):
+    r'.+'
+    if t.value[0:3] == '   ':
+        t.lexer.text += '\n' + t.value[3:]
+    else:
+        t.lexer.text += t.value
+    return t
+
+
+def t_ANY_ENDLINE(t):
+    r'\n'
+    t.lexer.text += ' '
+
+
+def t_ANY_error(t):
+    print("Illegal character '%s'" % t.value[0])
+    t.lexer.skip(1)
+
+
+def chgk_parse_db(text, debug=False):
+    lexer = lex.lex(reflags=re.I | re.U)
+    lexer.text = ''
+    lexer.structure = []
+    lexer.question_num = 0
+    lexer.question = {}
+    lexer.input(text)
+    for _ in iter(lexer.token, None):
+        pass
+    if debug:
+        with codecs.open('debug_final.json', 'w', 'utf8') as f:
+            f.write(json.dumps(lexer.structure, ensure_ascii=False, indent=4))
+
+    return lexer.structure
+
+
+def main():
+    print('This program was not designed to run standalone.')
+    raw_input("Press Enter to continue...")
+
+if __name__ == "__main__":
+    main()

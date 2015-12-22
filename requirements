@@ -8,3 +8,4 @@ pyimgur==0.5.2
 python-docx==0.8.5
 requests==2.8.1
 Pillow==3.0.0
+ply==3.8
