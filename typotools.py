@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 import re
 import traceback
 import urllib
-import pprint
 
 OPENING_QUOTES = set(['«', '„', '“'])
 CLOSING_QUOTES = set(['»', '“', '”'])
@@ -23,7 +22,7 @@ re_bad_wsp_start = re.compile(r'^[{}]+'.format(''.join(WHITESPACE)))
 re_bad_wsp_end = re.compile(r'[{}]+$'.format(''.join(WHITESPACE)))
 re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
 """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
-"""(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""", re.DOTALL) 
+"""(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""", re.DOTALL)
 re_percent = re.compile(r"(%[0-9a-fA-F]{2})+")
 
 def remove_excessive_whitespace(s):
@@ -149,16 +148,16 @@ def get_next_closing_quote_character(s, index):
         i += 1
     return '', ''
 
-def get_quotes_right(s):
-    # s = re.sub(r'(?<=[{}{}{}])["\']'.format(''.join(WHITESPACE), 
+def get_quotes_right(s_in):
+    # s = re.sub(r'(?<=[{}{}{}])["\']'.format(''.join(WHITESPACE),
     #     ''.join(CLOSING_QUOTES), ''.join(PUNCTUATION)), '«', s)
-    # s = re.sub(r'["\'](?=[{}{}{}])'.format(''.join(WHITESPACE), 
+    # s = re.sub(r'["\'](?=[{}{}{}])'.format(''.join(WHITESPACE),
     #     ''.join(OPENING_QUOTES), ''.join(PUNCTUATION)), '»', s)
-    s = re.sub(r'“','"',s)
+    s = re.sub(r'“','"',s_in)
     s = re.sub(r'[{}]'.format(''.join(OPENING_QUOTES)), '«', s)
     s = re.sub(r'[{}]'.format(''.join(CLOSING_QUOTES)), '»', s)
     s = convert_quotes(s)
-    
+
     # alternate quotes
 
     i = 0
@@ -166,7 +165,7 @@ def get_quotes_right(s):
     if get_next_quote_character(s, -1)[0]:
         s[get_next_quote_character(s, -1)[1]] = '«'
     while i < len(s):
-        if (s[i] == '«' 
+        if (s[i] == '«'
             and get_next_quote_character(s, i)[0] == '«'):
             s[get_next_quote_character(s, i)[1]] = '„'
         i += 1
@@ -175,13 +174,13 @@ def get_quotes_right(s):
         s[get_next_quote_character(s, -1)[1]] = '»'
     i = 0
     while i < len(s):
-        if (s[i] == '»' 
+        if (s[i] == '»'
             and get_next_quote_character(s, i)[0] == '»'):
             s[get_next_quote_character(s, i)[1]] = '“'
         i += 1
     s = s[::-1]
-    s = ''.join(s)
-    return s
+    s_out = ''.join(s)
+    return s_out
 
 def get_dashes_right(s):
     s = re.sub(r'(?<=\s)-+(?=\s)','—',s)
@@ -209,7 +208,7 @@ def detect_accent(s):
     return s
 
 def percent_decode(s):
-    grs = sorted([match.group(0) 
+    grs = sorted([match.group(0)
         for match in re_percent.finditer(s)], key=len, reverse=True)
     for gr in grs:
         try:
@@ -228,7 +227,7 @@ def recursive_typography(s):
             new_s.append(recursive_typography(element))
         return new_s
 
-def typography(s, wsp=True, quotes=True, 
+def typography(s, wsp=True, quotes=True,
     dashes=True, accents=True, percent=True):
     if wsp:
         s = remove_excessive_whitespace(s)

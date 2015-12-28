@@ -1,41 +1,38 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-import argparse
 import pprint
-import urllib
 import re
 import os
 import pdb
 import sys
-import chardet
 import codecs
 import json
-import typotools
-import traceback
 import subprocess
 import shlex
-import datetime
+import base64
+import tkFileDialog
+try:
+    from Tkinter import Tk
+except ImportError:
+    from tkinter import Tk
+
+import chardet
 from pydocx import PyDocX
 from bs4 import BeautifulSoup
 from parse import parse
-import base64
 import html2text
+
+import typotools
 from typotools import remove_excessive_whitespace as rew
 from chgk_parser_db import chgk_parse_db
-
-try:
-    from Tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
-except:
-    from tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
-import tkFileDialog
 
 debug = False
 console_mode = False
 
 QUESTION_LABELS = ['handout', 'question', 'answer',
-        'zachet', 'nezachet', 'comment', 'source', 'author', 'number',
-        'setcounter']
+                   'zachet', 'nezachet', 'comment', 'source', 'author', 'number',
+                   'setcounter']
 ENC = ('utf8' if sys.platform != 'win32' else 'cp1251')
 CONSOLE_ENC = (ENC if sys.platform != 'win32' else 'cp866')
 SEP = os.linesep
@@ -52,7 +49,7 @@ def make_filename(s):
     return os.path.splitext(os.path.basename(s))[0]+'.4s'
 
 def debug_print(s):
-    if debug == True:
+    if debug is True:
         sys.stderr.write(s+SEP)
 
 def partition(alist, indices):
@@ -94,8 +91,8 @@ def chgk_parse(text, defaultauthor=None):
 
     BADNEXTFIELDS = set(['question', 'answer'])
 
-    WHITESPACE = set([' ', ' ', '\n', '\r'])
-    PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
+    # WHITESPACE = set([' ', ' ', '\n', '\r'])
+    # PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
 
     re_tour = re.compile(r'^Т[Уу][Рр] ?([0-9IVXLCDM]*)([\.:])?$', re.U)
     re_tourrev = re.compile(r'^([0-9IVXLCDM]+) [Тт][Уу][Рр]([\.:])?$', re.U)
@@ -109,7 +106,7 @@ def chgk_parse(text, defaultauthor=None):
     re_editor = re.compile(r'[Рр][Ее][Дд][Аа][Кк][Тт][Оо][Рр]([Ыы]|[Сс][Кк][Аа][Яя] [Гг][Рр][Уу][Пп][Пп][Аа])?( ?[\.:]| [\-–—]+ )', re.U)
     re_date = re.compile(r'Д[Аа][Тт][Аа] ?[\.:]', re.U)
     re_date2 = re.compile(r'(^|\s)[Яя][Нн][Вв][Аа][Рр][ЬьЯя]|[Фф][Ее][Вв][Рр][Аа][Лл][ЬьЯя]|[Мм][Аа][Рр][Тт][Аа]?|[Аа][Пп][Рр][Ее][Лл][Ьь][Яя]|[Мм][Аа][ЙйЯя]|[Ии][Юю][Нн][ЬьЯя]|[Ии][Юю][Лл][ЬьЯя]|[Аа][Вв][Гг][Уу][Сс][Тт][Аа]?|[Сс][Ее][Нн][Тт][Яя][Бб][Рр][ЬьЯя]|[Оо][Кк][Тт][Яя][Бб][Рр][Ьь][Яя]|[Нн][Оо][Яя][Бб][Рр][ЬьЯя]|[Дд][Ее][Кк][Аа][Бб][Рр][ЬьЯя](\s|$)', re.U)
-    re_handout = re.compile(r'Р[Аа][Зз][Дд][Аа]([Чч][Аа]|[Тт][Кк][Аа]|[Тт][Оо][Чч][Нн][Ыы][Йй] [Мм][Аа][Тт][Ее][Рр][Ии][Аа][Лл]) ?[\.:]', re.U)
+    # re_handout = re.compile(r'Р[Аа][Зз][Дд][Аа]([Чч][Аа]|[Тт][Кк][Аа]|[Тт][Оо][Чч][Нн][Ыы][Йй] [Мм][Аа][Тт][Ее][Рр][Ии][Аа][Лл]) ?[\.:]', re.U)
     re_number = re.compile(r'^[0-9]+[\.\)] *')
 
     regexes = {
@@ -142,12 +139,6 @@ def chgk_parse(text, defaultauthor=None):
         target = chgk_parse.structure.pop(index)
         chgk_parse.structure[index][1] = (target[1] + SEP
             + chgk_parse.structure[index][1])
-
-    def find_next_specific_field(index, fieldname):
-        target = index + 1
-        while chgk_parse.structure[target][0] != fieldname:
-            target += 1
-        return target
 
     def find_next_fieldname(index):
         target = index + 1
@@ -186,11 +177,6 @@ def chgk_parse(text, defaultauthor=None):
                     and chgk_parse.structure[i+1][0] == ''):
                     merge_to_previous(i+1)
             i += 1
-
-    def swap_elements(x, y):
-        z = chgk_parse.structure[y]
-        chgk_parse.structure[y] = chgk_parse.structure[x]
-        chgk_parse.structure[x] = z
 
     if defaultauthor:
         print('The default author is {}. '
@@ -286,12 +272,12 @@ def chgk_parse(text, defaultauthor=None):
 
     dirty_merge_to_x_until_nextfield('source')
 
-    for id, element in enumerate(chgk_parse.structure):
+    for _id, element in enumerate(chgk_parse.structure):
         if (element[0] == 'author' and re.search(r'^{}$'.format(re_author.
             pattern),
             rew(element[1]))
-            and id + 1 < len(chgk_parse.structure)):
-            merge_to_previous(id+1)
+            and _id + 1 < len(chgk_parse.structure)):
+            merge_to_previous(_id+1)
 
     merge_to_x_until_nextfield('zachet')
     merge_to_x_until_nextfield('nezachet')
@@ -310,7 +296,7 @@ def chgk_parse(text, defaultauthor=None):
         rew(chgk_parse.structure[0][1])):
         merge_to_next(0)
 
-    for id, element in enumerate(chgk_parse.structure):
+    for _id, element in enumerate(chgk_parse.structure):
         if element[0] == '':
             element[0] = 'meta'
         if element[0] in regexes and element[0] not in ['tour', 'tourrev',
@@ -318,7 +304,7 @@ def chgk_parse(text, defaultauthor=None):
             if element[0] == 'question':
                 try:
                     num = re_question.search(element[1]).group(1)
-                    chgk_parse.structure.insert(id, ['number', num])
+                    chgk_parse.structure.insert(_id, ['number', num])
                 except:
                     pass
             element[1] = regexes[element[0]].sub('', element[1])
@@ -332,7 +318,7 @@ def chgk_parse(text, defaultauthor=None):
 
     # 5.
 
-    for id, element in enumerate(chgk_parse.structure):
+    for _id, element in enumerate(chgk_parse.structure):
 
         # typogrify
 
@@ -344,7 +330,7 @@ def chgk_parse(text, defaultauthor=None):
         if element[0] == 'question':
             try:
                 num = re_question.search(element[1]).group(1)
-                chgk_parse.structure.insert(id, ['number', num])
+                chgk_parse.structure.insert(_id, ['number', num])
             except:
                 pass
             element[1] = re_number.sub('', element[1])
@@ -399,11 +385,11 @@ def chgk_parse(text, defaultauthor=None):
     for element in chgk_parse.structure:
         if (element[0] in set(['number', 'tour', 'question', 'meta'])
             and 'question' in current_question):
-                if defaultauthor and not 'author' in current_question:
-                    current_question['author'] = defaultauthor
-                check_question(current_question)
-                final_structure.append(['Question', current_question])
-                current_question = {}
+            if defaultauthor and 'author' not in current_question:
+                current_question['author'] = defaultauthor
+            check_question(current_question)
+            final_structure.append(['Question', current_question])
+            current_question = {}
         if element[0] in QUESTION_LABELS:
             if element[0] in current_question:
                 try:
@@ -416,7 +402,7 @@ def chgk_parse(text, defaultauthor=None):
         else:
             final_structure.append([element[0], element[1]])
     if current_question != {}:
-        if defaultauthor and not 'author' in current_question:
+        if defaultauthor and 'author' not in current_question:
             current_question['author'] = defaultauthor
         check_question(current_question)
         final_structure.append(['Question', current_question])
@@ -567,7 +553,7 @@ def compose_4s(structure):
             return remove_double_separators(z)
         elif isinstance(z, list):
             if isinstance(z[1], list):
-                return (remove_double_separators(z[0]) + SEP + '- ' 
+                return (remove_double_separators(z[0]) + SEP + '- '
                     + ('{}- '.format(SEP)).join((
                         [remove_double_separators(x) for x in z[1]])))
             else:
@@ -674,7 +660,7 @@ def gui_parse(args):
         if args.filename:
             ld = os.path.dirname(os.path.abspath(args.filename))
         with codecs.open('lastdir','w','utf8') as f:
-                f.write(ld)
+            f.write(ld)
         if not args.filename:
             print('No file specified.')
             sys.exit(0)

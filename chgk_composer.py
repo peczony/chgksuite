@@ -2,25 +2,14 @@
 #! -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from __future__ import division
-from chgk_parser import QUESTION_LABELS, check_question
-from docx import Document
-from docx.shared import Inches
-from parse import parse
-from typotools import remove_excessive_whitespace as rew
 from xmlrpclib import ServerProxy
-from PIL import Image
-import argparse
-import base64
 import codecs
 import contextlib
 import datetime
-import docx
 import hashlib
-import json
 import os
 import pdb
 import pprint
-import pyimgur
 import random
 import re
 import shlex
@@ -30,16 +19,23 @@ import sys
 import time
 import tempfile
 import traceback
-import typotools
 import urllib
-
-args = None
+import tkFileDialog
 try:
     from Tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
-except:
+except ImportError:
     from tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
-import tkFileDialog
 
+from docx import Document
+from docx.shared import Inches
+from PIL import Image
+import pyimgur
+
+from chgk_parser import QUESTION_LABELS, check_question
+import typotools
+from typotools import remove_excessive_whitespace as rew
+
+args = None
 im = None
 debug = False
 console_mode = False
@@ -113,7 +109,7 @@ def parseimg(s, dimensions='pixels'):
     height = -1
     sp = s.split()
     imgfile = sp[-1]
-    if not os.path.isabs(imgfile): 
+    if not os.path.isabs(imgfile):
         if os.path.isfile(
         os.path.join(TARGETDIR, imgfile)):
             imgfile = os.path.join(TARGETDIR, imgfile)
@@ -133,7 +129,7 @@ def parseimg(s, dimensions='pixels'):
         return imgfile.replace('\\','/'), width, height
 
 def debug_print(s):
-    if debug == True:
+    if debug is True:
         sys.stderr.write(s+'\n')
 
 def partition(alist, indices):
@@ -142,7 +138,7 @@ def partition(alist, indices):
 
 
 def parse_4s_elem(s):
-    
+
     def find_next_unescaped(ss, index):
         j = index + 1
         while j < len(ss):
@@ -161,7 +157,7 @@ def parse_4s_elem(s):
     #     gr0 = gr.group(0)
     #     s = s.replace(gr0, '(sc '+gr0.lower()+')')
 
-    grs = sorted([match.group(0) 
+    grs = sorted([match.group(0)
         for match in re_perc.finditer(s)], key=len, reverse=True)
     for gr in grs:
         try:
@@ -169,7 +165,7 @@ def parse_4s_elem(s):
         except:
             debug_print('error decoding on line {}: {}\n'
                 .format(gr, traceback.format_exc()))
-    
+
     s = list(s)
     i = 0
     topart = []
@@ -186,7 +182,7 @@ def parse_4s_elem(s):
                             i+len('(img')])=='(img'):
             debug_print('img candidate')
             topart.append(i)
-            if not typotools.find_matching_closing_bracket(s, i) is None:
+            if typotools.find_matching_closing_bracket(s, i) is not None:
                 topart.append(
                     typotools.find_matching_closing_bracket(s, i)+1)
                 i = typotools.find_matching_closing_bracket(s, i)+2
@@ -266,13 +262,13 @@ def parse_4s(s, randomize=False):
 
     with codecs.open('raw.debug', 'w', 'utf8') as debugf:
         debugf.write(pprint.pformat(s.split('\n')).decode('unicode_escape'))
-    
+
     for line in s.split('\n'):
         if rew(line) == '':
             structure.append(['', ''])
         else:
             if line.split()[0] in mapping:
-                structure.append([mapping[line.split()[0]], 
+                structure.append([mapping[line.split()[0]],
                     rew(line[
                         len(line.split()[0]):])])
             else:
@@ -288,13 +284,13 @@ def parse_4s(s, randomize=False):
             debugf.write(pprint.pformat(structure).decode('unicode_escape'))
 
     for element in structure:
-        
+
         # find list in element
 
         sp = element[1].split('\n')
         if len(sp) > 1:
             list_candidate = []
-            
+
             for line in sp:
                 if len(rew(line).split())>1 and rew(line).split()[0] == '-':
                     list_candidate.append(
@@ -303,62 +299,62 @@ def parse_4s(s, randomize=False):
                             line
                             )[1:]
                         ))
-            
+
             sp = [spsp for spsp in sp if rew(rew(spsp)[1:]) not in list_candidate]
-            
+
             if len(sp) == 0 or len(sp) == 1 and sp[0] == '':
                 element[1] = list_candidate
             else:
-                element[1] = (['\n'.join(sp), list_candidate] 
-                    if len(list_candidate)>1 
+                element[1] = (['\n'.join(sp), list_candidate]
+                    if len(list_candidate)>1
                     else '\n'.join(element[1].split('\n')))
 
         if element[0] in QUESTION_LABELS:
             if element[0] in current_question:
-                
+
                 if (isinstance(current_question[element[0]], basestring)
                     and isinstance(element[1], basestring)):
                     current_question[element[0]] += '\n' + element[1]
-                
+
                 elif (isinstance(current_question[element[0]], list)
                     and isinstance(element[1], basestring)):
                     current_question[element[0]][0] += '\n' + element[1]
-                
+
                 elif (isinstance(current_question[element[0]], basestring)
                     and isinstance(element[1], list)):
                     current_question[element[0]] = [element[1][0] + '\n'
                         + current_question[element[0]], element[1][1]]
-                
+
                 elif (isinstance(current_question[element[0]], list)
                     and isinstance(element[1], list)):
                     current_question[element[0]][0] += '\n' + element[1][0]
                     current_question[element[0]][1] += element[1][1]
             else:
                 current_question[element[0]] = element[1]
-        
+
         elif element[0] == '':
-            
+
             if current_question != {}:
-                assert all(True for label in REQUIRED_LABELS 
+                assert all(True for label in REQUIRED_LABELS
                     if label in current_question)
                 if 'setcounter' in current_question:
                     counter = int(current_question['setcounter'])
-                if not 'number' in current_question:
+                if 'number' not in current_question:
                     current_question['number'] = counter
                     counter += 1
                 final_structure.append(['Question', current_question])
-            
+
             current_question = {}
 
         else:
             final_structure.append([element[0], element[1]])
-    
+
     if current_question != {}:
-        assert all(True for label in REQUIRED_LABELS 
+        assert all(True for label in REQUIRED_LABELS
                 if label in current_question)
         if 'setcounter' in current_question:
             counter = int(current_question['setcounter'])
-        if not 'number' in current_question:
+        if 'number' not in current_question:
             current_question['number'] = counter
             counter += 1
         final_structure.append(['Question', current_question])
@@ -459,13 +455,13 @@ def gui_get_filetype():
 
 def docx_format(el, para, whiten):
     if isinstance(el, list):
-        
+
         if len(el) > 1 and isinstance(el[1], list):
             docx_format(el[0], para, whiten)
             licount = 0
             for li in el[1]:
                 licount += 1
-                
+
                 p = gui_compose.doc.add_paragraph('{}. '
                     .format(licount))
                 docx_format(li, p, whiten)
@@ -473,7 +469,7 @@ def docx_format(el, para, whiten):
             licount = 0
             for li in el:
                 licount += 1
-                
+
                 p = gui_compose.doc.add_paragraph('{}. '
                     .format(licount))
                 docx_format(li, p, whiten)
@@ -486,25 +482,25 @@ def docx_format(el, para, whiten):
             if el.index('`') + 1 >= len(el):
                 el = el.replace('`', '')
             else:
-                if (el.index('`')+2 < len(el) 
+                if (el.index('`')+2 < len(el)
                     and re.search(r'\s', el[el.index('`')+2])):
                     el = el[:el.index('`')+2]+''+el[el.index('`')+2:]
-                if (el.index('`')+1 < len(el) 
+                if (el.index('`')+1 < len(el)
                     and re_lowercase.search(el[el.index('`')+1])):
                     el = (el[:el.index('`')+1]+''
                         +el[el.index('`')+1]+'\u0301'+el[el.index('`')+2:])
-                elif (el.index('`')+1 < len(el) 
+                elif (el.index('`')+1 < len(el)
                     and re_uppercase.search(el[el.index('`')+1])):
                     el = (el[:el.index('`')+1]+''
                         +el[el.index('`')+1]+'\u0301'+el[el.index('`')+2:])
                 el = el[:el.index('`')]+el[el.index('`')+1:]
         parsed = parse_4s_elem(el)
         images_exist = False
-        
+
         for run in parsed:
             if run[0] == 'img':
                 images_exist = True
-        
+
         for run in parse_4s_elem(el):
             if run[0] == '':
                 r = para.add_run(run[1])
@@ -512,7 +508,7 @@ def docx_format(el, para, whiten):
                     r.style = 'Whitened'
                 if images_exist:
                     para = gui_compose.doc.add_paragraph()
-            
+
             elif run[0] == 'em':
                 r = para.add_run(run[1])
                 r.italic = True
@@ -528,7 +524,7 @@ def docx_format(el, para, whiten):
                     r.style = 'Whitened'
                 if images_exist:
                     para = gui_compose.doc.add_paragraph()
-            
+
             elif run[0] == 'img':
                 imgfile, width, height = parseimg(run[1], dimensions='inches')
                 gui_compose.doc.add_picture(imgfile, width=Inches(width),
@@ -540,11 +536,11 @@ def html_format_question(q):
     if 'setcounter' in q:
         gui_compose.counter = int(q['setcounter'])
     res = (
-    '<strong>Вопрос {}.</strong> {}'.format(gui_compose.counter 
-        if not 'number' in q else q['number'], yapper
+    '<strong>Вопрос {}.</strong> {}'.format(gui_compose.counter
+        if 'number' not in q else q['number'], yapper
         (q['question'])
         +('\n<lj-spoiler>' if not args.nospoilers else '')))
-    if not 'number' in q:
+    if 'number' not in q:
         gui_compose.counter += 1
     res += '\n<strong>Ответ: </strong>{}'.format(
         yapper(q['answer']),
@@ -578,23 +574,23 @@ def htmlrepl(zz):
     zz = zz.replace('&','&amp;')
     zz = zz.replace('<','&lt;')
     zz = zz.replace('>','&gt;')
-    
+
     # while re_scaps.search(zz):
     #     zz = zz.replace(re_scaps.search(zz).group(1),
     #         '\\tsc{'+re_scaps.search(zz).group(1).lower()+'}')
-    
+
     while '`' in zz:
         if zz.index('`') + 1 >= len(zz):
             zz = zz.replace('`', '')
         else:
-            if (zz.index('`')+2 < len(zz) 
+            if (zz.index('`')+2 < len(zz)
                 and re.search(r'\s', zz[zz.index('`')+2])):
                 zz = zz[:zz.index('`')+2]+''+zz[zz.index('`')+2:]
-            if (zz.index('`')+1 < len(zz) 
+            if (zz.index('`')+1 < len(zz)
                 and re_lowercase.search(zz[zz.index('`')+1])):
                 zz = (zz[:zz.index('`')+1]+''
                     +zz[zz.index('`')+1]+'&#x0301;'+zz[zz.index('`')+2:])
-            elif (zz.index('`')+1 < len(zz) 
+            elif (zz.index('`')+1 < len(zz)
                 and re_uppercase.search(zz[zz.index('`')+1])):
                 zz = (zz[:zz.index('`')+1]+''
                     +zz[zz.index('`')+1]+'&#x0301;'+zz[zz.index('`')+2:])
@@ -615,9 +611,9 @@ def htmlformat(s):
                 # with open(imgfile, 'rb') as f:
                 #     imgdata = f.read()
                 # imgfile = 'data:image/{ext};base64,{b64}'.format(
-                #     ext=os.path.splitext(imgfile)[-1][1:], 
+                #     ext=os.path.splitext(imgfile)[-1][1:],
                 #     b64=base64.b64encode(imgdata))
-                uploaded_image = im.upload_image(imgfile, 
+                uploaded_image = im.upload_image(imgfile,
                     title=imgfile)
                 imgfile = uploaded_image.link
 
@@ -676,7 +672,7 @@ def split_into_tours(structure, general_impression=False):
     result = []
     current = []
     mode = 'meta'
-    for i, element in enumerate(structure):
+    for _, element in enumerate(structure):
         if element[0] != 'Question':
             if mode == 'meta':
                 current.append(element)
@@ -698,7 +694,7 @@ def split_into_tours(structure, general_impression=False):
         find_tour(result[0])[1][1])
     for tour in result[1:]:
         if not find_heading(tour):
-            tour.insert(0, ['ljheading','{}, {}'.format(globalheading, 
+            tour.insert(0, ['ljheading','{}, {}'.format(globalheading,
                 find_tour(tour)[1][1])])
     if general_impression:
         result.append(
@@ -762,7 +758,7 @@ def lj_process(structure):
 def lj_post(stru):
 
     lj = ServerProxy('http://www.livejournal.com/interface/xmlrpc').LJ.XMLRPC
-     
+
     chal, response = get_chal(lj, args.password)
 
     now = datetime.datetime.now()
@@ -801,7 +797,7 @@ def lj_post(stru):
         ditemid = post['ditemid']
         print post
 
-        for id, x in enumerate(stru[1:], start=1):
+        for _, x in enumerate(stru[1:], start=1):
             chal, response = get_chal(lj, args.password)
             params = {
                 'username' : args.login,
@@ -874,7 +870,7 @@ def lj_post_getdata():
         root.gi = ch_genimp.get()
         root.quit()
         root.destroy()
-    
+
     Label(root, text='Login').pack(side = 'top')
     loginbox.pack(side = 'top')
     Label(root, text = 'Password').pack(side = 'top')
@@ -907,10 +903,10 @@ def tex_format_question(q):
     if 'setcounter' in q:
         gui_compose.counter = int(q['setcounter'])
     res = ('\n\n\\begin{{samepage}}\n'
-    '\\textbf{{Вопрос {}.}} {}'.format(gui_compose.counter 
-        if not 'number' in q else q['number'], yapper
+    '\\textbf{{Вопрос {}.}} {}'.format(gui_compose.counter
+        if 'number' not in q else q['number'], yapper
         (q['question'])))
-    if not 'number' in q:
+    if 'number' not in q:
         gui_compose.counter += 1
     res += '\n\\textbf{{Ответ: }}{}'.format(yapper
         (q['answer']))
@@ -934,20 +930,20 @@ def tex_format_question(q):
     return res
 
 def texrepl(zz):
-    zz = re.sub(r"{",r"\{",zz) 
+    zz = re.sub(r"{",r"\{",zz)
     zz = re.sub(r"}",r"\}",zz)
-    zz = re.sub("_",r"\_",zz) 
-    zz = re.sub(r"\^",r"{\\textasciicircum}",zz) 
-    zz = re.sub(r"\~",r"{\\textasciitilde}",zz) 
-    zz = re.sub(r"%",r"\%",zz) 
-    zz = re.sub(r"\$",r"\$",zz) 
-    zz = re.sub(r"#",r"\#",zz) 
-    zz = re.sub(r"&",r"\&",zz) 
-    zz = re.sub(r"\\",r"\\",zz) 
+    zz = re.sub("_",r"\_",zz)
+    zz = re.sub(r"\^",r"{\\textasciicircum}",zz)
+    zz = re.sub(r"\~",r"{\\textasciitilde}",zz)
+    zz = re.sub(r"%",r"\%",zz)
+    zz = re.sub(r"\$",r"\$",zz)
+    zz = re.sub(r"#",r"\#",zz)
+    zz = re.sub(r"&",r"\&",zz)
+    zz = re.sub(r"\\",r"\\",zz)
     zz = re.sub(r'((\"(?=[ \.\,;\:\?!\)\]]))|("(?=\Z)))',u'»',zz)
     zz = re.sub(r'(((?<=[ \.\,;\:\?!\(\[)])")|((?<=\A)"))',u'«',zz)
     zz = re.sub('"',"''",zz)
-    
+
     for match in sorted([x for x in re_scaps.finditer(zz)],
         key=lambda x: len(x.group(2)), reverse=True):
         zz = zz.replace(match.group(2),
@@ -959,7 +955,7 @@ def texrepl(zz):
     #         '\\tsc{'+re_scaps.search(zz).group(2).lower()+'}')
 
     torepl = [x.group(0) for x in re.finditer(re_url, zz)]
-    for s in range(len(torepl)):
+    for s in xrange(len(torepl)):
         item = torepl[s]
         while item[-1] in typotools.PUNCTUATION:
             item = item[:-1]
@@ -990,19 +986,19 @@ def texrepl(zz):
     #     torepl.pop(0)
 
     zz = zz.replace(' — ', '{\\hair}—{\\hair}')
-    
+
     while '`' in zz:
         if zz.index('`') + 1 >= len(zz):
             zz = zz.replace('`', '')
         else:
-            if (zz.index('`')+2 < len(zz) 
+            if (zz.index('`')+2 < len(zz)
                 and re.search(r'\s', zz[zz.index('`')+2])):
                 zz = zz[:zz.index('`')+2]+'\\'+zz[zz.index('`')+2:]
-            if (zz.index('`')+1 < len(zz) 
+            if (zz.index('`')+1 < len(zz)
                 and re_lowercase.search(zz[zz.index('`')+1])):
                 zz = (zz[:zz.index('`')+1]+'\\acc{'
                     +zz[zz.index('`')+1]+'}'+zz[zz.index('`')+2:])
-            elif (zz.index('`')+1 < len(zz) 
+            elif (zz.index('`')+1 < len(zz)
                 and re_uppercase.search(zz[zz.index('`')+1])):
                 zz = (zz[:zz.index('`')+1]+'\\cacc{'
                     +zz[zz.index('`')+1]+'}'+zz[zz.index('`')+2:])
@@ -1051,7 +1047,7 @@ def tex_element_layout(e):
     return res
 
 def gui_compose(largs, sourcedir=None):
-    
+
     global im
     global args
     global console_mode
@@ -1074,7 +1070,7 @@ def gui_compose(largs, sourcedir=None):
 
     if args.debug:
         debug = True
-    
+
     argsdict = vars(args)
     debug_print(pprint.pformat(argsdict))
 
@@ -1100,14 +1096,14 @@ def gui_compose(largs, sourcedir=None):
     if args.filename:
         ld = os.path.dirname(os.path.abspath(args.filename))
     with codecs.open('lastdir','w','utf8') as f:
-            f.write(ld)
+        f.write(ld)
     if not args.filename:
         print('No file specified.')
         sys.exit(1)
 
     TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
     filename = os.path.basename(os.path.abspath(args.filename))
-    # if (os.path.abspath(SOURCEDIR.lower()) 
+    # if (os.path.abspath(SOURCEDIR.lower())
     #     != os.path.abspath(TARGETDIR.lower())):
     #     shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
     with make_temp_directory(dir=SOURCEDIR) as tmp_dir:
@@ -1123,9 +1119,9 @@ def process_file(filename, srcdir):
     global args
     SOURCEDIR = srcdir
     os.chdir(SOURCEDIR)
-    with codecs.open(os.path.join(TARGETDIR, filename), 
-        'r', 'utf8') as input_file:
-            input_text = input_file.read()
+    with codecs.open(os.path.join(TARGETDIR, filename),
+                     'r', 'utf8') as input_file:
+        input_text = input_file.read()
 
     input_text = input_text.replace('\r','')
 
@@ -1156,34 +1152,34 @@ def process_file(filename, srcdir):
             .format(args.filetype, 'off' if args.nospoilers else 'on'))
 
     if args.filetype == 'docx':
-        
+
         outfilename = os.path.join(SOURCEDIR,
             make_filename(filename, 'docx'))
         print(os.path.join(SOURCEDIR, 'template.docx'))
         gui_compose.doc = Document(os.path.join(SOURCEDIR, 'template.docx'))
         qcount = 0
         debug_print(pprint.pformat(structure).decode('unicode_escape'))
-        
+
         for element in structure:
             if element[0] == 'meta':
                 p = gui_compose.doc.add_paragraph()
                 docx_format(element[1], p, False)
                 gui_compose.doc.add_paragraph()
-            
+
             if element[0] in ['editor', 'date', 'heading', 'section']:
                 gui_compose.doc.add_paragraph(element[1]).alignment = 1
                 gui_compose.doc.add_paragraph()
-            
+
             if element[0] == 'Question':
                 q = element[1]
                 p = gui_compose.doc.add_paragraph()
-                if not 'number' in q:
+                if 'number' not in q:
                     qcount += 1
                 if 'setcounter' in q:
                     qcount = int(q['setcounter'])
                 p.add_run('Вопрос {}. '.format(qcount
-                    if not 'number' in q else q['number'])).bold = True
-                
+                    if 'number' not in q else q['number'])).bold = True
+
                 if 'handout' in q:
                     p = gui_compose.doc.add_paragraph()
                     p.add_run('[Раздаточный материал: ')
@@ -1192,31 +1188,31 @@ def process_file(filename, srcdir):
                     p.add_run(']')
                 if not args.noparagraph:
                     p = gui_compose.doc.add_paragraph()
-                
+
                 docx_format(q['question'], p, False)
                 p = gui_compose.doc.add_paragraph()
-                
+
                 if not args.noanswers:
                     p.add_run('Ответ: ').bold = True
                     docx_format(q['answer'], p, True)
-                    
+
                     for field in ['zachet', 'nezachet',
                                     'comment', 'source', 'author']:
                         if field in q:
                             p = gui_compose.doc.add_paragraph()
-                            if (field == 'source' 
+                            if (field == 'source'
                                 and isinstance(q[field], list)):
                                 p.add_run('Источники: ').bold = True
                             else:
                                 p.add_run(FIELDS[field]).bold = True
                             docx_format(q[field], p, WHITEN[field])
-                
+
                 gui_compose.doc.add_paragraph()
 
         gui_compose.doc.save(outfilename)
         print('Output: {}'.format(
             os.path.join(TARGETDIR, outfilename)))
-        if (os.path.abspath(SOURCEDIR.lower()) 
+        if (os.path.abspath(SOURCEDIR.lower())
         != os.path.abspath(TARGETDIR.lower())):
             shutil.copy(outfilename, TARGETDIR)
 
@@ -1262,20 +1258,20 @@ def process_file(filename, srcdir):
             'xelatex -synctex=1 -interaction=nonstopmode "{}"'
             .format(outfilename).encode(ENC)))
         print('Output: {}'.format(
-            os.path.join(TARGETDIR, 
+            os.path.join(TARGETDIR,
                 os.path.basename(outfilename))
                 +'\n'
-                + os.path.join(TARGETDIR, 
+                + os.path.join(TARGETDIR,
                     os.path.splitext(os.path.basename(outfilename))[0]
                     +'.pdf')))
-        if (os.path.normpath(SOURCEDIR.lower()) 
+        if (os.path.normpath(SOURCEDIR.lower())
             != os.path.normpath(TARGETDIR.lower())):
             shutil.copy(os.path.splitext(outfilename)[0]+'.pdf', TARGETDIR)
-        if args.rawtex and (os.path.normpath(SOURCEDIR.lower()) 
+        if args.rawtex and (os.path.normpath(SOURCEDIR.lower())
             != os.path.normpath(TARGETDIR.lower())):
             shutil.copy(outfilename, TARGETDIR)
             shutil.copy(os.path.join(SOURCEDIR, 'cheader.tex'), TARGETDIR)
-            shutil.copy(os.path.join(SOURCEDIR, 
+            shutil.copy(os.path.join(SOURCEDIR,
                 'fix-unnumbered-sections.sty'), TARGETDIR)
 
     if args.filetype == 'lj':
@@ -1291,7 +1287,7 @@ def process_file(filename, srcdir):
         elif not args.password:
             import getpass
             args.password = getpass.getpass()
-        
+
         CLIENT_ID = '8da1bd97da30ac1'
         im = pyimgur.Imgur(CLIENT_ID)
 

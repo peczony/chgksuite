@@ -5,7 +5,6 @@ from __future__ import division
 import sys
 import os
 import codecs
-import argparse
 import inspect
 
 currentdir = os.path.dirname(

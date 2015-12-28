@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 from __future__ import division
 import codecs
 import os
-import pdb
 import sys
 import inspect
 import tempfile
@@ -66,7 +65,7 @@ def test_canonical_equality():
                 if (filename1.endswith((b'.jpg', b'.jpeg', b'.png', b'.gif'))
                     and not filename1.startswith(b'ALLOWED')):
                     os.remove(os.path.join(currentdir, filename1))
-            with codecs.open(os.path.join(currentdir, filename), 
+            with codecs.open(os.path.join(currentdir, filename),
                 'r', 'utf8') as f:
                 canonical = f.read()
             assert compose_4s(parsed) == canonical

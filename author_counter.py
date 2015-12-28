@@ -2,11 +2,11 @@
 #! -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from __future__ import division
-import sys
 import codecs
-import chgk_composer
 import argparse
 from collections import Counter
+
+import chgk_composer
 
 parser = argparse.ArgumentParser()
 parser.add_argument('filename')
@@ -25,5 +25,3 @@ for element in structure:
 for au in authors.most_common():
     print('{}\t{}'.format(au[0],au[1]))
 print('Total: {}'.format(sum(authors.values())))
-
-

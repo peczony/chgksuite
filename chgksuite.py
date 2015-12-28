@@ -3,16 +3,14 @@
 from __future__ import unicode_literals
 import argparse
 import os
-import pdb
-from chgk_parser import gui_parse
-from chgk_composer import gui_compose, on_close
 
 try:
-    from Tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
-except:
-    from tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
-import tkFileDialog
-import tkFont
+    from Tkinter import Tk, Frame, IntVar, Button, Checkbutton
+except ImportError:
+    from tkinter import Tk, Frame, IntVar, Button, Checkbutton
+
+from chgk_parser import gui_parse
+from chgk_composer import gui_compose, on_close
 
 debug = False
 
@@ -51,11 +49,11 @@ def gui_choose_action(args):
     bottomframe = Frame(root)
     bottomframe.pack(side = 'bottom')
     Button(frame, command=
-        parsereturn, text = 'Parse file').pack(side = 'left', 
+        parsereturn, text = 'Parse file').pack(side = 'left',
         padx = 20, pady = 20,
         ipadx = 20, ipady = 20,)
     Button(frame, command=
-        parsedirreturn, text = 'Parse directory').pack(side = 'left', 
+        parsedirreturn, text = 'Parse directory').pack(side = 'left',
         padx = 20, pady = 20,
         ipadx = 20, ipady = 20,)
     Button(frame, command=
@@ -92,7 +90,7 @@ def main():
 
     root = Tk()
     root.withdraw()
-    
+
     if not args.action:
         args.action, args.defaultauthor = gui_choose_action(args)
     if args.action == 'parse':
