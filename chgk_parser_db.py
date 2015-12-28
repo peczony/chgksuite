@@ -20,6 +20,7 @@ tokens = (
     'INFO',
     'TOUR',
     'QUESTION',
+    'HANDOUT',
     'ANSWER',
     'ZACHET',
     'NEZACHET',
@@ -37,6 +38,7 @@ states = (
     ('info', 'exclusive'),
     ('tour', 'exclusive'),
     ('question', 'exclusive'),
+    ('handout', 'exclusive'),
     ('answer', 'exclusive'),
     ('zachet', 'exclusive'),
     ('nezachet', 'exclusive'),
@@ -177,6 +179,18 @@ def t_tour_end(t):
     t.lexer.begin('INITIAL')
 
 
+def t_question_HANDOUT(t):
+    r'\s{3}<раздатка>\n'
+    t.lexer.text += '[Раздаточный материал:'
+    t.lexer.begin('handout')
+
+
+def t_handout_end(t):
+    r'\s{3}</раздатка>\n'
+    t.lexer.text += '\n]'
+    t.lexer.begin('question')
+
+
 def t_question_TEXT(t):
     r'.+'
     match_list = re_list.search(t.value)
@@ -301,6 +315,7 @@ def t_author_end(t):
 def t_ANY_TEXT(t):
     r'.+'
     if t.value[0:3] == '   ':
+        # new line start
         t.lexer.text += '\n' + t.value[3:]
     else:
         t.lexer.text += t.value
