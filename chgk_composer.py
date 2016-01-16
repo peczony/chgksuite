@@ -1099,7 +1099,7 @@ def gui_compose(largs, sourcedir=None):
             initialdir=ld)
     if args.filename:
         ld = os.path.dirname(os.path.abspath(args.filename))
-    with codecs.open('lastdir','w','utf8') as f:
+    with codecs.open(os.path.join(SOURCEDIR, 'lastdir'),'w','utf8') as f:
             f.write(ld)
     if not args.filename:
         print('No file specified.')
