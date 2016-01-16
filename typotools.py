@@ -32,7 +32,7 @@ def remove_excessive_whitespace(s):
     return s
 
 
-# This function is taken from SmartyPants 
+# This function is adapted from SmartyPants 
 # https://bitbucket.org/livibetter/smartypants.py
 def convert_quotes(text):
     """
