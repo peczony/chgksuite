@@ -29,21 +29,6 @@ def workaround_chgk_parse(filename):
         return chgk_parse_docx(filename)
     return
 
-# def test_identity():
-#     for doc_ in os.listdir(currentdir):
-#         parsed = ''
-#         print doc_
-#         print currentdir
-#         doc = os.path.join(currentdir, doc_)
-#         print os.path.abspath(doc)
-#         if doc.endswith(('.txt', '.docx')):
-#             assert os.path.isfile(doc)
-#             if doc.endswith('.txt'):
-#                 parsed = chgk_parse_txt(doc)
-#             elif doc.endswith('.docx'):
-#                 parsed = chgk_parse_docx(doc)
-#             assert parse_4s(compose_4s(parsed)) == parsed
-
 # def test_parse_empty():
 #     for elem in {'', ' ', ' \n ', '\ufeff'}:
 #         chgk_parse(elem)
