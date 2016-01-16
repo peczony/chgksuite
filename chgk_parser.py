@@ -320,11 +320,6 @@ def chgk_parse(text, defaultauthor=None):
 
     for _id, element in enumerate(chgk_parse.structure):
 
-        # typogrify
-
-        if element[0] != 'date':
-            element[1] = typotools.recursive_typography(element[1])
-
         # remove question numbers
 
         if element[0] == 'question':
@@ -370,6 +365,12 @@ def chgk_parse(text, defaultauthor=None):
                     and len(re.split(r'\r?\n', element[1])) > 1):
             element[1] = [re_number.sub('', rew(x))
                 for x in re.split(r'\r?\n', element[1])]
+
+        # typogrify
+
+        if element[0] != 'date':
+            element[1] = typotools.recursive_typography(element[1])
+
 
     if debug:
         with codecs.open('debug_5.json', 'w', 'utf8') as f:
