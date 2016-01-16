@@ -123,6 +123,7 @@ def convert_quotes(text):
 
     # Any remaining quotes should be opening ones.
     text = re.sub('"', '«', text)
+    text = text.replace('»s', '’s')
 
     return text
 
