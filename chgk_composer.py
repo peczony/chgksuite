@@ -1088,25 +1088,37 @@ def gui_compose(largs, sourcedir=None):
             ld = f.read().rstrip()
         if not os.path.isdir(ld):
             ld = '.'
-    if args.filename is None:
+    if not args.filename:
         print('Choose .4s file to load:')
         args.filename = tkFileDialog.askopenfilenames(
             filetypes=[('chgksuite markup files','*.4s')],
             initialdir=ld)
+        if isinstance(args.filename, tuple):
+            args.filename = list(args.filename)
     if args.filename:
-        ld = os.path.dirname(os.path.abspath(args.filename))
+        if isinstance(args.filename, list):
+            ld = os.path.dirname(os.path.abspath(args.filename[0]))
+        else:
+            ld = os.path.dirname(os.path.abspath(args.filename))
     with codecs.open('lastdir','w','utf8') as f:
         f.write(ld)
     if not args.filename:
         print('No file specified.')
         sys.exit(1)
 
-    TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
-    filename = os.path.basename(os.path.abspath(args.filename))
-    # if (os.path.abspath(SOURCEDIR.lower())
-    #     != os.path.abspath(TARGETDIR.lower())):
-    #     shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
-    process_file_wrapper(filename)
+    if isinstance(args.filename, list):
+        if not args.merge:
+            for fn in args.filename:
+                TARGETDIR = os.path.dirname(os.path.abspath(fn))
+                filename = os.path.basename(os.path.abspath(fn))
+                process_file_wrapper(fn)
+        else:
+            TARGETDIR = os.path.dirname(os.path.abspath(args.filename[0]))
+            process_file_wrapper(args.filename)
+    else:
+        TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
+        filename = os.path.basename(os.path.abspath(args.filename))
+        process_file_wrapper(filename)
 
 def process_file_wrapper(filename):
     with make_temp_directory(dir=SOURCEDIR) as tmp_dir:
@@ -1128,7 +1140,15 @@ def process_file(filename, srcdir):
     SOURCEDIR = srcdir
     os.chdir(SOURCEDIR)
 
-    structure = parse_filepath(os.path.join(TARGETDIR, filename))
+    if isinstance(filename, list):
+        structure = []
+        for x in filename:
+            structure.extend(parse_filepath(x))
+        filename = '_'.join(os.path.splitext(os.path.basename(x))[0] 
+            for x in filename)
+    else:
+        structure = parse_filepath(os.path.join(TARGETDIR, filename))
+
 
     if args.debug:
         with codecs.open(

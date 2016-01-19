@@ -20,16 +20,21 @@ def gui_choose_action(args):
         ch_defaultauthor.set(1)
     else:
         ch_defaultauthor.set(0)
+    ch_merge = IntVar()
+    if args.merge:
+        ch_merge.set(1)
+    else:
+        ch_merge.set(0)
     def parsereturn():
-        root.ret = 'parse', ch_defaultauthor.get()
+        root.ret = 'parse', ch_defaultauthor.get(), ch_merge.get()
         root.quit()
         root.destroy()
     def parsedirreturn():
-        root.ret = 'parsedir', ch_defaultauthor.get()
+        root.ret = 'parsedir', ch_defaultauthor.get(), ch_merge.get()
         root.quit()
         root.destroy()
     def composereturn():
-        root.ret = 'compose', ch_defaultauthor.get()
+        root.ret = 'compose', ch_defaultauthor.get(), ch_merge.get()
         root.quit()
         root.destroy()
     def toggle_da():
@@ -37,6 +42,11 @@ def gui_choose_action(args):
             ch_defaultauthor.set(1)
         else:
             ch_defaultauthor.set(0)
+    def toggle_mrg():
+        if ch_merge.get() == 0:
+            ch_merge.set(1)
+        else:
+            ch_merge.set(0)
     root = Tk()
     root.title('chgksuite')
     root.eval('tk::PlaceWindow {} center'.format(
@@ -49,7 +59,7 @@ def gui_choose_action(args):
     bottomframe = Frame(root)
     bottomframe.pack(side = 'bottom')
     Button(frame, command=
-        parsereturn, text = 'Parse file').pack(side = 'left',
+        parsereturn, text = 'Parse file(s)').pack(side = 'left',
         padx = 20, pady = 20,
         ipadx = 20, ipady = 20,)
     Button(frame, command=
@@ -62,8 +72,13 @@ def gui_choose_action(args):
         ipadx = 20, ipady = 20,)
     da = Checkbutton(bottomframe, text='Default author while parsing',
         variable=ch_defaultauthor, command=toggle_da)
+    mrg = Checkbutton(bottomframe, text='Merge several source files',
+        variable=ch_merge, command=toggle_mrg)
     if args.defaultauthor:
         da.select()
+    if args.merge:
+        mrg.select()
+    mrg.pack(side = 'bottom')
     da.pack(side = 'bottom')
     root.mainloop()
     return root.ret
@@ -71,7 +86,7 @@ def gui_choose_action(args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('action', nargs='?')
-    parser.add_argument('filename', nargs='?')
+    parser.add_argument('filename', nargs='*')
     parser.add_argument('filetype', nargs='?')
     parser.add_argument('--debug', '-d', action='store_true')
     parser.add_argument('--nospoilers', '-n', action='store_true')
@@ -82,6 +97,7 @@ def main():
     parser.add_argument('--parsedir', action='store_true')
     parser.add_argument('--defaultauthor', action='store_true')
     parser.add_argument('--splittours', action='store_true')
+    parser.add_argument('--merge', action='store_true')
     parser.add_argument('--genimp', action='store_true')
     parser.add_argument('--login', '-l')
     parser.add_argument('--password', '-p')
@@ -92,7 +108,7 @@ def main():
     root.withdraw()
 
     if not args.action:
-        args.action, args.defaultauthor = gui_choose_action(args)
+        args.action, args.defaultauthor, args.merge = gui_choose_action(args)
     if args.action == 'parse':
         gui_parse(args)
     if args.action == 'parsedir':
