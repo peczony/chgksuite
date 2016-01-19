@@ -1114,18 +1114,19 @@ def gui_compose(largs, sourcedir=None):
         os.chdir(SOURCEDIR)
         # pdb.set_trace()
 
+def parse_filepath(filepath):
+    with codecs.open(filepath, 'r', 'utf8') as input_file:
+        input_text = input_file.read()
+    input_text = input_text.replace('\r','')
+    return parse_4s(input_text, randomize=args.randomize)
+
 def process_file(filename, srcdir):
     global im
     global args
     SOURCEDIR = srcdir
     os.chdir(SOURCEDIR)
-    with codecs.open(os.path.join(TARGETDIR, filename),
-                     'r', 'utf8') as input_file:
-        input_text = input_file.read()
 
-    input_text = input_text.replace('\r','')
-
-    structure = parse_4s(input_text, randomize=args.randomize)
+    structure = parse_filepath(os.path.join(TARGETDIR, filename))
 
     if args.debug:
         with codecs.open(
