@@ -334,7 +334,8 @@ def parse_4s(s, randomize=False):
 
         elif element[0] == '':
 
-            if current_question != {}:
+            if (current_question != {} 
+                and set(current_question.keys()) != {'setcounter'}):
                 assert all(True for label in REQUIRED_LABELS
                     if label in current_question)
                 if 'setcounter' in current_question:
@@ -344,7 +345,7 @@ def parse_4s(s, randomize=False):
                     counter += 1
                 final_structure.append(['Question', current_question])
 
-            current_question = {}
+                current_question = {}
 
         else:
             final_structure.append([element[0], element[1]])
