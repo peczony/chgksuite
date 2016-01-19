@@ -1090,7 +1090,7 @@ def gui_compose(largs, sourcedir=None):
             ld = '.'
     if args.filename is None:
         print('Choose .4s file to load:')
-        args.filename = tkFileDialog.askopenfilename(
+        args.filename = tkFileDialog.askopenfilenames(
             filetypes=[('chgksuite markup files','*.4s')],
             initialdir=ld)
     if args.filename:
