@@ -86,8 +86,8 @@ def gui_choose_action(args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('action', nargs='?')
-    parser.add_argument('filename', nargs='*')
     parser.add_argument('filetype', nargs='?')
+    parser.add_argument('filename', nargs='*')
     parser.add_argument('--debug', '-d', action='store_true')
     parser.add_argument('--nospoilers', '-n', action='store_true')
     parser.add_argument('--noanswers', action='store_true')
