@@ -1106,13 +1106,15 @@ def gui_compose(largs, sourcedir=None):
     # if (os.path.abspath(SOURCEDIR.lower())
     #     != os.path.abspath(TARGETDIR.lower())):
     #     shutil.copy(os.path.abspath(args.filename), SOURCEDIR)
+    process_file_wrapper(filename)
+
+def process_file_wrapper(filename):
     with make_temp_directory(dir=SOURCEDIR) as tmp_dir:
         for fn in ['template.docx', 'fix-unnumbered-sections.sty',
                     'cheader.tex']:
             shutil.copy(os.path.join(SOURCEDIR, fn), tmp_dir)
         process_file(filename, tmp_dir)
         os.chdir(SOURCEDIR)
-        # pdb.set_trace()
 
 def parse_filepath(filepath):
     with codecs.open(filepath, 'r', 'utf8') as input_file:
