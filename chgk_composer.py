@@ -1135,6 +1135,13 @@ def parse_filepath(filepath):
     input_text = input_text.replace('\r','')
     return parse_4s(input_text, randomize=args.randomize)
 
+def make_merged_filename(filelist):
+    filelist = [os.path.splitext(
+        os.path.basename(x))[0] for x in filelist]
+    prefix = os.path.commonprefix(filelist)
+    suffix = '_'.join(x[len(prefix):] for x in filelist)
+    return prefix + suffix
+
 def process_file(filename, srcdir):
     global im
     global args
@@ -1145,8 +1152,7 @@ def process_file(filename, srcdir):
         structure = []
         for x in filename:
             structure.extend(parse_filepath(x))
-        filename = '_'.join(os.path.splitext(os.path.basename(x))[0] 
-            for x in filename)
+        filename = make_merged_filename(filename)
     else:
         structure = parse_filepath(os.path.join(TARGETDIR, filename))
 
