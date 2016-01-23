@@ -3,8 +3,7 @@
 ```
 beautifulsoup4==4.4.1
 chardet==2.3.0
-html2text==2015.6.21
-lxml==3.4.4
+html2text==2016.1.8
 parse==1.6.6
 PyDocX==0.9.5
 pyimgur==0.5.2
