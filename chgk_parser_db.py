@@ -2,15 +2,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import os
 import re
 import codecs
 import json
+from urlparse import urljoin
+from urllib import urlretrieve
 
 from ply import lex
 
 from typotools import recursive_typography as rt
 
 re_list = re.compile(r'^\s{3}\d+\.\s(.+)$', re.I | re.U)
+re_pic = re.compile(r'^\(pic:\s([\d\.\w]+)\)$', re.I | re.U)
 
 tokens = (
     'TITLE',
@@ -21,6 +25,7 @@ tokens = (
     'TOUR',
     'QUESTION',
     'HANDOUT',
+    'PIC',
     'ANSWER',
     'ZACHET',
     'NEZACHET',
@@ -39,6 +44,7 @@ states = (
     ('tour', 'exclusive'),
     ('question', 'exclusive'),
     ('handout', 'exclusive'),
+    ('pic', 'exclusive'),
     ('answer', 'exclusive'),
     ('zachet', 'exclusive'),
     ('nezachet', 'exclusive'),
@@ -46,6 +52,8 @@ states = (
     ('source', 'exclusive'),
     ('author', 'exclusive')
 )
+
+DB_PIC_BASE_URL = 'http://db.chgk.info/images/db/'
 
 
 def init_question(lexer):
@@ -189,6 +197,26 @@ def t_handout_end(t):
     r'\s{3}</раздатка>\n'
     t.lexer.text += '\n]'
     t.lexer.begin('question')
+
+
+def t_question_PIC(t):
+    r'\(pic:\s([\d\.\w]+)\)\n'
+    print t.value
+    print t
+    t.lexer.text += '[Раздаточный материал:'
+    match_pic = re_pic.search(t.value)
+    if match_pic:
+        pic_name = match_pic.group(1)
+        pic_path = os.path.abspath(pic_name)
+        if not os.path.exists(pic_path):
+            pic_url = urljoin(DB_PIC_BASE_URL, pic_name)
+            print pic_url
+            try:
+                urlretrieve(pic_url, pic_path)
+            except Exception as e:
+                print str(e)
+        t.lexer.text += '(img %s)' % pic_path
+    t.lexer.text += ']'
 
 
 def t_question_TEXT(t):
