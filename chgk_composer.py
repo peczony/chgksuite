@@ -334,7 +334,7 @@ def parse_4s(s, randomize=False):
 
         elif element[0] == '':
 
-            if (current_question != {}
+            if (current_question != {} 
                 and set(current_question.keys()) != {'setcounter'}):
                 assert all(True for label in REQUIRED_LABELS
                     if label in current_question)
@@ -1112,7 +1112,7 @@ def gui_compose(largs, sourcedir=None):
             for fn in args.filename:
                 TARGETDIR = os.path.dirname(os.path.abspath(fn))
                 filename = os.path.basename(os.path.abspath(fn))
-                process_file_wrapper(filename)
+                process_file_wrapper(fn)
         else:
             TARGETDIR = os.path.dirname(os.path.abspath(args.filename[0]))
             process_file_wrapper(args.filename)
@@ -1155,6 +1155,7 @@ def process_file(filename, srcdir):
         filename = make_merged_filename(filename)
     else:
         structure = parse_filepath(os.path.join(TARGETDIR, filename))
+
 
     if args.debug:
         with codecs.open(
