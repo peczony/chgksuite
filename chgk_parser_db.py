@@ -201,8 +201,6 @@ def t_handout_end(t):
 
 def t_question_PIC(t):
     r'\(pic:\s([\d\.\w]+)\)\n'
-    print t.value
-    print t
     t.lexer.text += '[Раздаточный материал:'
     match_pic = re_pic.search(t.value)
     if match_pic:
@@ -210,7 +208,6 @@ def t_question_PIC(t):
         pic_path = os.path.abspath(pic_name)
         if not os.path.exists(pic_path):
             pic_url = urljoin(DB_PIC_BASE_URL, pic_name)
-            print pic_url
             try:
                 urlretrieve(pic_url, pic_path)
             except Exception as e:
