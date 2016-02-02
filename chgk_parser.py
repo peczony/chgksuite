@@ -633,7 +633,7 @@ def gui_parse(args):
         if not os.path.isdir(ld):
             ld = '.'
     if args.parsedir:
-        if args.filename is None:
+        if not args.filename:
             args.filename = tkFileDialog.askdirectory(initialdir=ld)
         if os.path.isdir(args.filename):
             ld = args.filename
@@ -653,7 +653,7 @@ def gui_parse(args):
             print('No directory specified.')
             sys.exit(0)
     else:
-        if args.filename is None:
+        if not args.filename:
             args.filename = tkFileDialog.askopenfilename(
                 filetypes=[
                 ('chgksuite parsable files',('*.docx','*.txt'))
