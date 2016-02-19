@@ -641,8 +641,8 @@ def gui_parse(args):
                 f.write(ld)
             for filename in os.listdir(args.filename):
                 if (filename.endswith(('.docx', '.txt'))
-                    and not os.path.isfile(make_filename(
-                        os.path.join(args.filename, filename)))):
+                    and not os.path.isfile(
+                        os.path.join(args.filename, make_filename(filename)))):
                     outfilename = chgk_parse_wrapper(
                         os.path.join(args.filename, filename), args)
                     print('{} -> {}'.format(filename,
