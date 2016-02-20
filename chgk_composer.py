@@ -2,7 +2,10 @@
 #! -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from __future__ import division
-from xmlrpclib import ServerProxy
+try:
+    from xmlrpclib import ServerProxy
+except ImportError:
+    from xmlrpc.client import ServerProxy
 import codecs
 import contextlib
 import datetime
