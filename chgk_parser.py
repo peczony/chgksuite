@@ -50,6 +50,15 @@ TEXTEDITOR = EDITORS[sys.platform]
 SOURCEDIR = os.path.dirname(os.path.abspath(__file__))
 TARGETDIR = os.getcwd()
 
+class DummyLogger(object):
+    def info(self, s):
+        pass
+    def debug(self, s):
+        pass
+    def error(self, s):
+        pass
+logger = DummyLogger()
+
 def make_filename(s):
     return os.path.splitext(os.path.basename(s))[0]+'.4s'
 
@@ -620,6 +629,7 @@ def gui_parse(args):
     _file_ = os.path.basename(__file__)     # in python 2
 
     global debug
+    global logger
 
     logger = logging.getLogger('parser')
     logger.setLevel(logging.DEBUG)
