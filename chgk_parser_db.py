@@ -6,8 +6,14 @@ import os
 import re
 import codecs
 import json
-from urlparse import urljoin
-from urllib import urlretrieve
+try:
+    from urlparse import urljoin
+except ImportError:
+    from urllib.parse import urljoin
+try:
+    from urllib import urlretrieve
+except ImportError:
+    from urllib.request import urlretrieve
 
 from ply import lex
 
