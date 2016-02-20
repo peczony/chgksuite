@@ -10,6 +10,7 @@ import codecs
 import json
 import subprocess
 import shlex
+import logging
 import base64
 try:
     from Tkinter import Tk

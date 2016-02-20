@@ -8,6 +8,7 @@ except ImportError:
     from xmlrpc.client import ServerProxy
 import codecs
 import contextlib
+import logging
 import datetime
 import hashlib
 import os
@@ -1071,6 +1072,22 @@ def gui_compose(largs, sourcedir=None):
 
     if sourcedir:
         SOURCEDIR = sourcedir
+
+    logger = logging.getLogger('composer')
+    logger.setLevel(logging.DEBUG)
+    fh = logging.FileHandler('composer.log')
+    fh.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    if debug:
+        ch.setLevel(logging.INFO)
+    else:
+        ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        '%(asctime)s | (%(threadName)-10s) %(message)s')
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+    logger.addHandler(fh)
+    logger.addHandler(ch)
 
     root = Tk()
     root.withdraw()
