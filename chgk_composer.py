@@ -88,6 +88,8 @@ class DummyLogger(object):
         pass
     def error(self, s):
         pass
+    def warning(self, s):
+        pass
 logger = DummyLogger()
 
 def make_filename(s, ext):
