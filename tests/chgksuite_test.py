@@ -23,9 +23,9 @@ ljlogin, ljpassword = open(
     os.path.join(currentdir, 'ljcredentials')).read().split('\t')
 
 def workaround_chgk_parse(filename):
-    if filename.endswith(b'.txt'):
+    if filename.endswith('.txt'):
         return chgk_parse_txt(filename)
-    elif filename.endswith(b'.docx'):
+    elif filename.endswith('.docx'):
         return chgk_parse_docx(filename)
     return
 
@@ -42,13 +42,13 @@ def make_temp_directory(**kwargs):
 
 def test_canonical_equality():
     for filename in os.listdir(currentdir):
-        if filename.endswith(b'.canon'):
-            print(b'Testing {}...'.format(filename[:-6]))
+        if filename.endswith('.canon'):
+            print('Testing {}...'.format(filename[:-6]))
             parsed = workaround_chgk_parse(os.path.join(
                 currentdir, filename[:-6]))
             for filename1 in os.listdir(currentdir):
-                if (filename1.endswith((b'.jpg', b'.jpeg', b'.png', b'.gif'))
-                    and not filename1.startswith(b'ALLOWED')):
+                if (filename1.endswith(('.jpg', '.jpeg', '.png', '.gif'))
+                    and not filename1.startswith('ALLOWED')):
                     os.remove(os.path.join(currentdir, filename1))
             with codecs.open(os.path.join(currentdir, filename),
                 'r', 'utf8') as f:
@@ -57,23 +57,23 @@ def test_canonical_equality():
 
 def test_composition():
     for filename in os.listdir(currentdir):
-        if filename.endswith((b'.docx', b'.txt')) and filename == b'Kubok_knyagini_Olgi-2015.docx':
-            print(b'Testing {}...'.format(filename))
+        if filename.endswith(('.docx', '.txt')) and filename == 'Kubok_knyagini_Olgi-2015.docx':
+            print('Testing {}...'.format(filename))
             with make_temp_directory(dir='.') as temp_dir:
                 shutil.copy(os.path.join(currentdir, filename), temp_dir)
                 os.chdir(temp_dir)
                 parsed = workaround_chgk_parse(filename)
-                file4s = os.path.splitext(filename)[0]+b'.4s'
+                file4s = os.path.splitext(filename)[0]+'.4s'
                 with codecs.open(
                     file4s,'w','utf8') as f:
                     f.write(compose_4s(parsed))
                 abspath = os.path.abspath(file4s)
                 os.chdir(currentdir)
                 os.chdir('..')
-                subprocess.call([b'python', b'chgksuite.py', b'compose',
-                    b'{}'.format(abspath), b'docx'])
-                subprocess.call([b'python', b'chgksuite.py', b'compose',
-                    b'{}'.format(abspath), b'tex'])
-                # subprocess.call([b'python', b'chgksuite.py', b'compose',
-                #     b'{}'.format(abspath), b'lj', b'-l', ljlogin, b'-p', ljpassword])
+                subprocess.call(['python', 'chgksuite.py', 'compose',
+                    '{}'.format(abspath), 'docx'])
+                subprocess.call(['python', 'chgksuite.py', 'compose',
+                    '{}'.format(abspath), 'tex'])
+                # subprocess.call(['python', 'chgksuite.py', 'compose',
+                #     '{}'.format(abspath), 'lj', '-l', ljlogin, '-p', ljpassword])
                 os.chdir(currentdir)
