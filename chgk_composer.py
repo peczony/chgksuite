@@ -20,11 +20,12 @@ import time
 import tempfile
 import traceback
 import urllib
-import tkFileDialog
 try:
     from Tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
+    import tkFileDialog as filedialog
 except ImportError:
     from tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
+    from tkinter import filedialog
 
 from docx import Document
 from docx.shared import Inches
@@ -1091,7 +1092,7 @@ def gui_compose(largs, sourcedir=None):
             ld = '.'
     if not args.filename:
         print('Choose .4s file to load:')
-        args.filename = tkFileDialog.askopenfilenames(
+        args.filename = filedialog.askopenfilenames(
             filetypes=[('chgksuite markup files','*.4s')],
             initialdir=ld)
         if isinstance(args.filename, tuple):
