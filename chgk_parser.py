@@ -67,6 +67,7 @@ def check_question(question):
     if len(warnings) > 0:
         print('WARNING: question {} lacks the following fields: {}{}'
             .format(question, ', '.join(warnings), SEP)
+            .encode('utf8', errors='replace')
             .decode('unicode_escape')
             .encode(CONSOLE_ENC, errors='replace'))
 
