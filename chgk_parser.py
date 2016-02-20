@@ -414,7 +414,8 @@ def chgk_parse(text, defaultauthor=None):
                     current_question[element[0]] += SEP + element[1]
                 except:
                     logger.info( # TODO: fix this weird spot
-                        '{}'.format(current_question).decode('unicode_escape'))
+                        '{}'.format(current_question).encode(
+                            'utf8',errors='replace').decode('unicode_escape'))
                     pdb.set_trace()
             else:
                 current_question[element[0]] = element[1]

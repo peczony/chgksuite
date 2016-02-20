@@ -213,7 +213,8 @@ def parse_4s_elem(s):
     topart = sorted(topart)
 
     parts = [['', ''.join(x)] for x in partition(s, topart)]
-    logger.debug(pprint.pformat(parts).decode('unicode_escape'))
+    logger.debug(pprint.pformat(parts).encode(
+        'utf8',errors='replace').decode('unicode_escape'))
 
     for part in parts:
         if part == ['', '']:
@@ -244,7 +245,9 @@ def parse_4s_elem(s):
             part[1] = part[1].replace('\\_', '_')
         except:
             sys.stderr.write('Error on part {}: {}'
-                .format(pprint.pformat(part).decode('unicode_escape'),
+                .format(pprint.pformat(part)
+                    .encode('utf8', errors='replace')
+                    .decode('unicode_escape'),
                 traceback.format_exc() ))
 
     return parts
@@ -275,7 +278,9 @@ def parse_4s(s, randomize=False):
         s = s[1:]
 
     with codecs.open('raw.debug', 'w', 'utf8') as debugf:
-        debugf.write(pprint.pformat(s.split('\n')).decode('unicode_escape'))
+        debugf.write(pprint.pformat(s.split('\n'))
+            .encode('utf8', errors='replace')
+            .decode('unicode_escape'))
 
     for line in s.split('\n'):
         if rew(line) == '':
@@ -295,7 +300,9 @@ def parse_4s(s, randomize=False):
 
     if debug:
         with codecs.open('debug1st.debug', 'w', 'utf8') as debugf:
-            debugf.write(pprint.pformat(structure).decode('unicode_escape'))
+            debugf.write(pprint.pformat(structure)
+                .encode('utf8', errors='replace')
+                .decode('unicode_escape'))
 
     for element in structure:
 
@@ -491,7 +498,9 @@ def docx_format(el, para, whiten):
 
     if isinstance(el, basestring):
         logger.debug('parsing element {}:'
-            .format(pprint.pformat(el).decode('unicode_escape')))
+            .format(pprint.pformat(el)
+                .encode('utf8', errors='replace')
+                .decode('unicode_escape')))
 
         while '`' in el:
             if el.index('`') + 1 >= len(el):
@@ -766,6 +775,7 @@ def lj_process(structure):
     if debug:
         with codecs.open('lj.debug', 'w', 'utf8') as f:
             f.write(pprint.pformat(final_structure)
+                .encode('utf8', errors='replace')
                 .decode('unicode_escape'))
 
     lj_post(final_structure)
@@ -1195,7 +1205,9 @@ def process_file(filename, srcdir):
         with codecs.open(
             make_filename(filename, 'dbg'), 'w', 'utf8') as output_file:
             output_file.write(
-                pprint.pformat(structure).decode('unicode_escape'))
+                pprint.pformat(structure)
+                .encode('utf8', errors='replace')
+                .decode('unicode_escape'))
 
     if args.filetype is None:
         print('Choose type of export:')
@@ -1222,7 +1234,9 @@ def process_file(filename, srcdir):
         logger.debug(os.path.join(SOURCEDIR, 'template.docx'))
         gui_compose.doc = Document(os.path.join(SOURCEDIR, 'template.docx'))
         qcount = 0
-        logger.debug(pprint.pformat(structure).decode('unicode_escape'))
+        logger.debug(pprint.pformat(structure)
+            .encode('utf8', errors='replace')
+            .decode('unicode_escape'))
 
         for element in structure:
             if element[0] == 'meta':
