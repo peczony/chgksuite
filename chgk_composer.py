@@ -29,6 +29,10 @@ try:
 except ImportError:
     from tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
     from tkinter import filedialog
+try:
+    basestring
+except NameError:
+    basestring = str
 
 from docx import Document
 from docx.shared import Inches

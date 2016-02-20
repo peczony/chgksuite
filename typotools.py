@@ -4,6 +4,10 @@ from __future__ import unicode_literals
 import re
 import traceback
 import urllib
+try:
+    basestring
+except NameError:
+    basestring = str
 
 OPENING_QUOTES = set(['«', '„', '“'])
 CLOSING_QUOTES = set(['»', '“', '”'])

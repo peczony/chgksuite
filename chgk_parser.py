@@ -16,6 +16,10 @@ try:
     import tkFileDialog as filedialog
 except ImportError:
     from tkinter import Tk, filedialog
+try:
+    basestring
+except NameError:
+    basestring = str
 
 import chardet
 from pydocx import PyDocX
