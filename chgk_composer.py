@@ -820,7 +820,7 @@ def lj_post(stru):
                 'subject' : x['header']
                 }
             print(lj.addcomment(params))
-            time.sleep(5)
+            time.sleep(random.randint(5, 15))
     except:
         sys.stderr.write('Error issued by LJ API: {}'.format(
             traceback.format_exc()))
