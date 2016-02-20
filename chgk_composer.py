@@ -137,14 +137,8 @@ def parseimg(s, dimensions='pixels'):
                 height = spspsp[1]
         return imgfile.replace('\\','/'), width, height
 
-def debug_print(s):
-    if debug is True:
-        sys.stderr.write(s+'\n')
-
 def partition(alist, indices):
     return [alist[i:j] for i, j in zip([0]+indices, indices+[None])]
-
-
 
 def parse_4s_elem(s):
 
@@ -172,7 +166,7 @@ def parse_4s_elem(s):
         try:
             s = s.replace(gr,urllib.unquote(gr.encode('utf8')).decode('utf8'))
         except:
-            debug_print('error decoding on line {}: {}\n'
+            logger.debug('error decoding on line {}: {}\n'
                 .format(gr, traceback.format_exc()))
 
     s = list(s)
@@ -180,7 +174,7 @@ def parse_4s_elem(s):
     topart = []
     while i < len(s):
         if s[i] == '_' and (i == 0 or s[i-1] != '\\'):
-            debug_print('found _ at {} of line {}'
+            logger.debug('found _ at {} of line {}'
                 .format(i, s))
             topart.append(i)
             if find_next_unescaped(s, i) != -1:
@@ -189,7 +183,7 @@ def parse_4s_elem(s):
                 continue
         if (s[i] == '(' and i + len('(img') < len(s) and ''.join(s[i:
                             i+len('(img')])=='(img'):
-            debug_print('img candidate')
+            logger.debug('img candidate')
             topart.append(i)
             if typotools.find_matching_closing_bracket(s, i) is not None:
                 topart.append(
@@ -208,7 +202,7 @@ def parse_4s_elem(s):
     topart = sorted(topart)
 
     parts = [['', ''.join(x)] for x in partition(s, topart)]
-    debug_print(pprint.pformat(parts).decode('unicode_escape'))
+    logger.debug(pprint.pformat(parts).decode('unicode_escape'))
 
     for part in parts:
         if part == ['', '']:
@@ -226,7 +220,7 @@ def parse_4s_elem(s):
                 part[1] = typotools.remove_excessive_whitespace(
                     part[1][4:-1])
                 part[0] = 'img'
-                debug_print('found img at {}'
+                logger.debug('found img at {}'
                     .format(pprint.pformat(part[1])))
             if len(part[1]) > 3 and part[1][:4] == '(sc':
                 if part[1][-1] != ')':
@@ -234,7 +228,7 @@ def parse_4s_elem(s):
                 part[1] = typotools.remove_excessive_whitespace(
                     part[1][3:-1])
                 part[0] = 'sc'
-                debug_print('found img at {}'
+                logger.debug('found img at {}'
                     .format(pprint.pformat(part[1])))
             part[1] = part[1].replace('\\_', '_')
         except:
@@ -485,7 +479,7 @@ def docx_format(el, para, whiten):
                 docx_format(li, p, whiten)
 
     if isinstance(el, basestring):
-        debug_print('parsing element {}:'
+        logger.debug('parsing element {}:'
             .format(pprint.pformat(el).decode('unicode_escape')))
 
         while '`' in el:
@@ -805,7 +799,8 @@ def lj_post(stru):
         time.sleep(5)
         post = lj.postevent(params)
         ditemid = post['ditemid']
-        print(post)
+        logger.info('Created a post')
+        logger.debug(post)
 
         for _, x in enumerate(stru[1:], start=1):
             chal, response = get_chal(lj, args.password)
@@ -820,7 +815,9 @@ def lj_post(stru):
                 'body' : x['content'],
                 'subject' : x['header']
                 }
-            print(lj.addcomment(params))
+            comment = lj.addcomment(params)
+            logger.info('Added a comment')
+            logger.debug(comment)
             time.sleep(random.randint(5, 15))
     except:
         sys.stderr.write('Error issued by LJ API: {}'.format(
@@ -1083,7 +1080,7 @@ def gui_compose(largs, sourcedir=None):
     else:
         ch.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
-        '%(asctime)s | (%(threadName)-10s) %(message)s')
+        '%(asctime)s | %(message)s')
     fh.setFormatter(formatter)
     ch.setFormatter(formatter)
     logger.addHandler(fh)
@@ -1098,7 +1095,7 @@ def gui_compose(largs, sourcedir=None):
         debug = True
 
     argsdict = vars(args)
-    debug_print(pprint.pformat(argsdict))
+    logger.debug(pprint.pformat(argsdict))
 
     if (args.filename
         and args.filetype):
@@ -1203,17 +1200,17 @@ def process_file(filename, srcdir):
             args.nospoilers = False
         else:
             args.nospoilers = True
-        print('Exporting to {}, spoilers are {}...\n'
+        logger.info('Exporting to {}, spoilers are {}...\n'
             .format(args.filetype, 'off' if args.nospoilers else 'on'))
 
     if args.filetype == 'docx':
 
         outfilename = os.path.join(SOURCEDIR,
             make_filename(filename, 'docx'))
-        print(os.path.join(SOURCEDIR, 'template.docx'))
+        logger.debug(os.path.join(SOURCEDIR, 'template.docx'))
         gui_compose.doc = Document(os.path.join(SOURCEDIR, 'template.docx'))
         qcount = 0
-        debug_print(pprint.pformat(structure).decode('unicode_escape'))
+        logger.debug(pprint.pformat(structure).decode('unicode_escape'))
 
         for element in structure:
             if element[0] == 'meta':
@@ -1265,7 +1262,7 @@ def process_file(filename, srcdir):
                 gui_compose.doc.add_paragraph()
 
         gui_compose.doc.save(outfilename)
-        print('Output: {}'.format(
+        logger.info('Output: {}'.format(
             os.path.join(TARGETDIR, outfilename)))
         if (os.path.abspath(SOURCEDIR.lower())
         != os.path.abspath(TARGETDIR.lower())):
@@ -1312,7 +1309,7 @@ def process_file(filename, srcdir):
         subprocess.call(shlex.split(
             'xelatex -synctex=1 -interaction=nonstopmode "{}"'
             .format(outfilename).encode(ENC)))
-        print('Output: {}'.format(
+        logger.info('Output: {}'.format(
             os.path.join(TARGETDIR,
                 os.path.basename(outfilename))
                 +'\n'
