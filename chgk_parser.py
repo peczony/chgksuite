@@ -621,6 +621,22 @@ def gui_parse(args):
 
     global debug
 
+    logger = logging.getLogger('parser')
+    logger.setLevel(logging.DEBUG)
+    fh = logging.FileHandler('parser.log')
+    fh.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    if debug:
+        ch.setLevel(logging.INFO)
+    else:
+        ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        '%(asctime)s | %(message)s')
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+
     root = Tk()
     root.withdraw()
 
