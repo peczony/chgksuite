@@ -11,11 +11,11 @@ import json
 import subprocess
 import shlex
 import base64
-import tkFileDialog
 try:
     from Tkinter import Tk
+    import tkFileDialog as filedialog
 except ImportError:
-    from tkinter import Tk
+    from tkinter import Tk, filedialog
 
 import chardet
 from pydocx import PyDocX
@@ -634,7 +634,7 @@ def gui_parse(args):
             ld = '.'
     if args.parsedir:
         if not args.filename:
-            args.filename = tkFileDialog.askdirectory(initialdir=ld)
+            args.filename = filedialog.askdirectory(initialdir=ld)
         if os.path.isdir(args.filename):
             ld = args.filename
             with codecs.open('lastdir','w','utf8') as f:
@@ -654,7 +654,7 @@ def gui_parse(args):
             sys.exit(0)
     else:
         if not args.filename:
-            args.filename = tkFileDialog.askopenfilename(
+            args.filename = filedialog.askopenfilename(
                 filetypes=[
                 ('chgksuite parsable files',('*.docx','*.txt'))
                 ], initialdir=ld)
