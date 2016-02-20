@@ -77,7 +77,7 @@ def check_question(question):
         if el not in question:
             warnings.append(el)
     if len(warnings) > 0:
-        print('WARNING: question {} lacks the following fields: {}{}'
+        logger.warning('WARNING: question {} lacks the following fields: {}{}'
             .format(question, ', '.join(warnings), SEP)
             .encode('utf8', errors='replace')
             .decode('unicode_escape')
@@ -160,7 +160,7 @@ def chgk_parse(text, defaultauthor=None):
     def find_next_fieldname(index):
         target = index + 1
         if target < len(chgk_parse.structure):
-            debug_print(pprint.pformat(
+            logger.debug(pprint.pformat(
                 chgk_parse.structure[target]))
             while (target < len(chgk_parse.structure)-1
                 and chgk_parse.structure[target][0] == ''):
@@ -196,7 +196,7 @@ def chgk_parse(text, defaultauthor=None):
             i += 1
 
     if defaultauthor:
-        print('The default author is {}. '
+        logger.info('The default author is {}. '
             'Missing authors will be substituted with them'
             .format(defaultauthor))
 
@@ -413,7 +413,8 @@ def chgk_parse(text, defaultauthor=None):
                 try:
                     current_question[element[0]] += SEP + element[1]
                 except:
-                    print('{}'.format(current_question).decode('unicode_escape'))
+                    logger.info( # TODO: fix this weird spot
+                        '{}'.format(current_question).decode('unicode_escape'))
                     pdb.set_trace()
             else:
                 current_question[element[0]] = element[1]
@@ -615,7 +616,7 @@ def chgk_parse_wrapper(abspath, args):
         sys.stderr.write('Error: unsupported file format.' + SEP)
         sys.exit()
     outfilename = make_filename(abspath)
-    print('Output: {}'.format(
+    logger.info('Output: {}'.format(
             os.path.abspath(outfilename)))
     with codecs.open(
         outfilename, 'w', 'utf8') as output_file:
@@ -679,7 +680,7 @@ def gui_parse(args):
                         os.path.join(args.filename, make_filename(filename)))):
                     outfilename = chgk_parse_wrapper(
                         os.path.join(args.filename, filename), args)
-                    print('{} -> {}'.format(filename,
+                    logger.info('{} -> {}'.format(filename,
                         os.path.basename(outfilename)))
             raw_input("Press Enter to continue...")
 
