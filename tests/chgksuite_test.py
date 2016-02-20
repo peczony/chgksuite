@@ -40,6 +40,9 @@ def make_temp_directory(**kwargs):
     yield temp_dir
     shutil.rmtree(os.path.abspath(temp_dir))
 
+def normalize(string):
+    return string.replace('\r\n', '\n')
+
 def test_canonical_equality():
     for filename in os.listdir(currentdir):
         if filename.endswith('.canon'):
@@ -53,7 +56,7 @@ def test_canonical_equality():
             with codecs.open(os.path.join(currentdir, filename),
                 'r', 'utf8') as f:
                 canonical = f.read()
-            assert compose_4s(parsed) == canonical
+            assert normalize(compose_4s(parsed)) == normalize(canonical)
 
 def test_composition():
     for filename in os.listdir(currentdir):
