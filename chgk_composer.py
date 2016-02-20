@@ -796,7 +796,7 @@ def lj_post(stru):
         time.sleep(5)
         post = lj.postevent(params)
         ditemid = post['ditemid']
-        print post
+        print(post)
 
         for _, x in enumerate(stru[1:], start=1):
             chal, response = get_chal(lj, args.password)
@@ -811,7 +811,7 @@ def lj_post(stru):
                 'body' : x['content'],
                 'subject' : x['header']
                 }
-            print lj.addcomment(params)
+            print(lj.addcomment(params))
             time.sleep(5)
     except:
         sys.stderr.write('Error issued by LJ API: {}'.format(
@@ -1166,7 +1166,7 @@ def process_file(filename, srcdir):
     if args.filetype is None:
         print('Choose type of export:')
         answer = gui_get_filetype()
-        print format(answer)
+        print(format(answer))
         if not answer:
             print('No type of export specified.')
             sys.exit(1)
