@@ -81,6 +81,15 @@ WHITEN = {
     'author': False,
 }
 
+class DummyLogger(object):
+    def info(self, s):
+        pass
+    def debug(self, s):
+        pass
+    def error(self, s):
+        pass
+logger = DummyLogger()
+
 def make_filename(s, ext):
     now = datetime.datetime.now()
     bn = os.path.basename(s)
@@ -1066,6 +1075,7 @@ def gui_compose(largs, sourcedir=None):
     global debug
     global TARGETDIR
     global SOURCEDIR
+    global logger
 
     if sourcedir:
         SOURCEDIR = sourcedir
