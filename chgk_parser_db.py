@@ -108,7 +108,7 @@ def t_TOUR(t):
 
 
 def t_QUESTION(t):
-    r'Вопрос\s[\d]+:\n'
+    r'Вопрос\s+[\d]+:\n'
     t.lexer.begin('question')
     init_question(t.lexer)
     t.lexer.text = ''
@@ -118,6 +118,9 @@ def t_ANSWER(t):
     r'Ответ:\n'
     t.lexer.begin('answer')
     t.lexer.text = ''
+    if t.lexer.question['answer']:
+        print("Bad format: several Answer fields. Previous Answer was:"
+              " '%s'" % t.lexer.question['answer'])
 
 
 def t_ZACHET(t):
@@ -136,12 +139,19 @@ def t_COMMENT(t):
     r'Комментарий:\n'
     t.lexer.begin('comment')
     t.lexer.text = ''
+    if t.lexer.question['comment']:
+        print("Bad format: several Comment fields. Previous Comment was:"
+              " '%s'" % t.lexer.question['comment'])
+
 
 
 def t_SOURCE(t):
     r'Источник:\n'
     t.lexer.begin('source')
     t.lexer.text = ''
+    if t.lexer.question['source']:
+        print("Bad format: several Source fields. Previous Source was:"
+              " '%s'" % t.lexer.question['source'])
 
 
 def t_AUTHOR(t):
@@ -201,8 +211,6 @@ def t_handout_end(t):
 
 def t_question_PIC(t):
     r'\(pic:\s([\d\.\w]+)\)\n'
-    print t.value
-    print t
     t.lexer.text += '[Раздаточный материал:'
     match_pic = re_pic.search(t.value)
     if match_pic:
@@ -210,11 +218,10 @@ def t_question_PIC(t):
         pic_path = os.path.abspath(pic_name)
         if not os.path.exists(pic_path):
             pic_url = urljoin(DB_PIC_BASE_URL, pic_name)
-            print pic_url
             try:
                 urlretrieve(pic_url, pic_path)
             except Exception as e:
-                print str(e)
+                print(str(e))
         t.lexer.text += '(img %s)' % pic_path
     t.lexer.text += ']'
 
@@ -267,7 +274,11 @@ def t_answer_TEXT(t):
 def t_answer_end(t):
     r'\n\n'
     if t.lexer.question['answer']:
-        t.lexer.question['answer'].append(t.lexer.text)
+        if isinstance(t.lexer.question['answer'], list):
+            t.lexer.question['answer'].append(t.lexer.text)
+        else:
+            # bad format: several Answer fields for given question
+            t.lexer.question['answer'] += '\n' + t.lexer.text
     else:
         t.lexer.question['answer'] = t.lexer.text
     t.lexer.question['answer'] = rt(t.lexer.question['answer'])
@@ -288,12 +299,21 @@ def t_nezachet_end(t):
 
 def t_comment_TEXT(t):
     r'.+'
-    match_list = re_list.search(t.value)
+    match_list = None
+
+    # check if Comment already started, interpret list items as text
+    if isinstance(t.lexer.question['comment'], list):
+        match_list = re_list.search(t.value)
+
     if match_list:
         if t.lexer.text:
             t.lexer.question['comment'].append(t.lexer.text)
         t.lexer.text = match_list.group(1)
     else:
+        if isinstance(t.lexer.question['comment'], list) and\
+           not t.lexer.question['comment'] and not t.lexer.text:
+            # Comment started with some text, interpret it as text
+            t.lexer.question['comment'] = ''
         if t.value[0:3] == '   ':
             t.lexer.text += '\n' + t.value[3:]
         else:
@@ -303,7 +323,12 @@ def t_comment_TEXT(t):
 def t_comment_end(t):
     r'\n\n'
     if t.lexer.question['comment']:
-        t.lexer.question['comment'].append(t.lexer.text)
+        if isinstance(t.lexer.question['comment'], list):
+            # multicomment (doublet, blitz, etc.)
+            t.lexer.question['comment'].append(t.lexer.text)
+        else:
+            # bad format: several Comment fields for given question
+            t.lexer.question['comment'] += '\n' + t.lexer.text
     else:
         t.lexer.question['comment'] = t.lexer.text
     t.lexer.question['comment'] = rt(t.lexer.question['comment'])
@@ -314,6 +339,10 @@ def t_source_TEXT(t):
     r'.+'
     match_list = re_list.search(t.value)
     if match_list:
+        if not isinstance(t.lexer.question['source'], list):
+            # bad format: several Source fields for given question
+            t.lexer.question['source'] = [t.lexer.question['source']]
+
         if t.lexer.text:
             t.lexer.question['source'].append(t.lexer.text)
         t.lexer.text = match_list.group(1)
@@ -327,7 +356,12 @@ def t_source_TEXT(t):
 def t_source_end(t):
     r'\n\n'
     if t.lexer.question['source']:
-        t.lexer.question['source'].append(t.lexer.text)
+        if isinstance(t.lexer.question['source'], list):
+            # list of sources
+            t.lexer.question['source'].append(t.lexer.text)
+        else:
+            # bad format: several Source fields for given question
+            t.lexer.question['source'] += '\n' + t.lexer.text
     else:
         t.lexer.question['source'] = t.lexer.text
     t.lexer.question['source'] = rt(t.lexer.question['source'])
