@@ -6,6 +6,7 @@ import os
 import re
 import codecs
 import json
+import logging
 from urlparse import urljoin
 from urllib import urlretrieve
 
@@ -54,6 +55,8 @@ states = (
 )
 
 DB_PIC_BASE_URL = 'http://db.chgk.info/images/db/'
+
+logger = None
 
 
 def init_question(lexer):
@@ -119,8 +122,8 @@ def t_ANSWER(t):
     t.lexer.begin('answer')
     t.lexer.text = ''
     if t.lexer.question['answer']:
-        print("Bad format: several Answer fields. Previous Answer was:"
-              " '%s'" % t.lexer.question['answer'])
+        logger.warning("Bad format: several Answer fields. Previous Answer was:"
+                       " '%s'", t.lexer.question['answer'])
 
 
 def t_ZACHET(t):
@@ -140,8 +143,8 @@ def t_COMMENT(t):
     t.lexer.begin('comment')
     t.lexer.text = ''
     if t.lexer.question['comment']:
-        print("Bad format: several Comment fields. Previous Comment was:"
-              " '%s'" % t.lexer.question['comment'])
+        logger.warning("Bad format: several Comment fields. Previous Comment was:"
+                       " '%s'", t.lexer.question['comment'])
 
 
 
@@ -150,8 +153,8 @@ def t_SOURCE(t):
     t.lexer.begin('source')
     t.lexer.text = ''
     if t.lexer.question['source']:
-        print("Bad format: several Source fields. Previous Source was:"
-              " '%s'" % t.lexer.question['source'])
+        logger.warning("Bad format: several Source fields. Previous Source was:"
+                       " '%s'", t.lexer.question['source'])
 
 
 def t_AUTHOR(t):
@@ -221,7 +224,8 @@ def t_question_PIC(t):
             try:
                 urlretrieve(pic_url, pic_path)
             except Exception as e:
-                print(str(e))
+                logger.warning("Can't get pic from %s to %s: %s",
+                               pic_url, pic_path, str(e))
         t.lexer.text += '(img %s)' % pic_path
     t.lexer.text += ']'
 
@@ -390,11 +394,29 @@ def t_ANY_ENDLINE(t):
 
 
 def t_ANY_error(t):
-    print("Illegal character '%s'" % t.value[0])
+    logger.warning("Illegal character '%s'", t.value[0])
     t.lexer.skip(1)
 
 
 def chgk_parse_db(text, debug=False):
+    global logger
+
+    if not logger:
+        logger = logging.getLogger('parser_db')
+        logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler('parser_db.log')
+        fh.setLevel(logging.DEBUG)
+        ch = logging.StreamHandler()
+        if debug:
+            ch.setLevel(logging.INFO)
+        else:
+            ch.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s | %(levelname)s: %(message)s')
+        fh.setFormatter(formatter)
+        ch.setFormatter(formatter)
+        logger.addHandler(fh)
+        logger.addHandler(ch)
+
     lexer = lex.lex(reflags=re.I | re.U)
     lexer.text = ''
     lexer.structure = []
