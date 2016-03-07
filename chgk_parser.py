@@ -463,7 +463,7 @@ class UnknownEncodingException(Exception):
 
 def chgk_parse_txt(txtfile, encoding=None, defaultauthor=''):
     os.chdir(os.path.dirname(os.path.abspath(txtfile)))
-    raw = open(txtfile,'r').read()
+    raw = open(txtfile,'rb').read()
     if not encoding and chardet.detect(raw)['confidence'] > 0.8:
         encoding = chardet.detect(raw)['encoding']
     else:
