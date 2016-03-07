@@ -213,8 +213,6 @@ def parse_4s_elem(s):
     topart = sorted(topart)
 
     parts = [['', ''.join(x)] for x in partition(s, topart)]
-    logger.debug(pprint.pformat(parts).encode(
-        'utf8',errors='replace').decode('unicode_escape'))
 
     for part in parts:
         if part == ['', '']:
@@ -672,7 +670,9 @@ def md5(s):
 
 def get_chal(lj, passwd):
     chal = lj.getchallenge()['challenge']
-    response = md5(chal + md5(passwd))
+    response = md5(chal.encode('utf8') + md5(
+        passwd.encode('utf8')
+        ).encode('utf8'))
     return (chal,response)
 
 def find_heading(structure):
@@ -777,7 +777,6 @@ def lj_process(structure):
             f.write(pprint.pformat(final_structure)
                 .encode('utf8', errors='replace')
                 .decode('unicode_escape'))
-
     lj_post(final_structure)
 
 def lj_post(stru):
@@ -815,13 +814,11 @@ def lj_post(stru):
     journal = args.community if args.community else args.login
 
     try:
-        if args.debug:
-            pdb.set_trace()
         time.sleep(5)
         post = lj.postevent(params)
         ditemid = post['ditemid']
         logger.info('Created a post')
-        logger.debug(post)
+        logger.debug(str(post))
 
         for _, x in enumerate(stru[1:], start=1):
             chal, response = get_chal(lj, args.password)
@@ -838,7 +835,7 @@ def lj_post(stru):
                 }
             comment = lj.addcomment(params)
             logger.info('Added a comment')
-            logger.debug(comment)
+            logger.debug(str(comment))
             time.sleep(random.randint(5, 15))
     except:
         sys.stderr.write('Error issued by LJ API: {}'.format(
@@ -1097,10 +1094,10 @@ def gui_compose(largs, sourcedir=None):
     fh = logging.FileHandler('composer.log')
     fh.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
-    if debug:
-        ch.setLevel(logging.INFO)
-    else:
+    if args.debug:
         ch.setLevel(logging.DEBUG)
+    else:
+        ch.setLevel(logging.INFO)
     formatter = logging.Formatter(
         '%(asctime)s | %(message)s')
     fh.setFormatter(formatter)
