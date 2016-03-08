@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import argparse
 import os
 import pdb
+import sys
 
 try:
     from Tkinter import Tk, Frame, IntVar, Button, Checkbutton
