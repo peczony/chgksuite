@@ -3,7 +3,12 @@
 from __future__ import unicode_literals
 import re
 import traceback
-import urllib
+try:
+    import urllib
+    unquote = urllib.unquote
+except AttributeError:
+    import urllib.parse
+    unquote = urllib.parse.unquote_to_bytes
 try:
     basestring
 except NameError:
@@ -219,7 +224,7 @@ def percent_decode(s):
         for match in re_percent.finditer(s)], key=len, reverse=True)
     for gr in grs:
         try:
-            s = s.replace(gr,urllib.unquote(gr.encode('utf8')).decode('utf8'))
+            s = s.replace(gr,unquote(gr.encode('utf8')).decode('utf8'))
         except:
             pass
     return s
