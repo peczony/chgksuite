@@ -56,6 +56,7 @@ def gui_choose_action(args):
     root.ret = 'None', '0'
     root.grexit = lambda: on_close(root)
     root.protocol("WM_DELETE_WINDOW", root.grexit)
+    root.attributes("-topmost", True)
     frame = Frame(root)
     frame.pack()
     bottomframe = Frame(root)
