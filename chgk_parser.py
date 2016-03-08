@@ -604,6 +604,7 @@ def compose_4s(structure):
 
 def chgk_parse_wrapper(abspath, args):
     os.chdir(os.path.dirname(os.path.abspath(abspath)))
+    abspath = os.path.basename(abspath)
     defaultauthor = ''
     if args.defaultauthor:
         defaultauthor = os.path.splitext(os.path.basename(abspath))[0]
