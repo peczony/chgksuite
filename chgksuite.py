@@ -107,7 +107,8 @@ def main():
     subparsers = parser.add_subparsers(dest='action')
 
     cmdparse = subparsers.add_parser('parse')
-    cmdparse.add_argument('filename', help='file to parse.')
+    cmdparse.add_argument('filename', help='file to parse.',
+        nargs='?')
     cmdparse.add_argument('--defaultauthor', action='store_true',
         help='pick default author from filename where author is missing.')
     cmdparse.add_argument('--parsedir', action='store_true',
