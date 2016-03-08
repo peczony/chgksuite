@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 import argparse
 import os
+import pdb
 
 try:
     from Tkinter import Tk, Frame, IntVar, Button, Checkbutton
@@ -16,14 +17,14 @@ debug = False
 
 def gui_choose_action(args):
     ch_defaultauthor = IntVar()
-    if args.defaultauthor:
-        ch_defaultauthor.set(1)
-    else:
+    try:
+        ch_defaultauthor.set(int(args.defaultauthor))
+    except TypeError:
         ch_defaultauthor.set(0)
     ch_merge = IntVar()
-    if args.merge:
-        ch_merge.set(1)
-    else:
+    try:
+        ch_merge.set(int(args.merge))
+    except TypeError:
         ch_merge.set(0)
     def parsereturn():
         root.ret = 'parse', ch_defaultauthor.get(), ch_merge.get()
@@ -74,45 +75,97 @@ def gui_choose_action(args):
         variable=ch_defaultauthor, command=toggle_da)
     mrg = Checkbutton(bottomframe, text='Merge several source files',
         variable=ch_merge, command=toggle_mrg)
-    if args.defaultauthor:
+    if ch_defaultauthor.get() == 1:
         da.select()
-    if args.merge:
+    if ch_merge.get() == 1:
         mrg.select()
     mrg.pack(side = 'bottom')
     da.pack(side = 'bottom')
     root.mainloop()
     return root.ret
 
+class DefaultNamespace(argparse.Namespace):
+    def __init__(self, *args, **kwargs):
+        if isinstance(args[0], argparse.Namespace):
+            for name in vars(args[0]):
+                setattr(self, name, vars(args[0])[name])
+        else:
+            for name in kwargs:
+                setattr(self, name, kwargs[name])
+    def __getattribute__(self, name):
+        try:
+            return argparse.Namespace.__getattribute__(self, name)
+        except AttributeError:
+            return
+
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('action', nargs='?')
-    parser.add_argument('filetype', nargs='?')
-    parser.add_argument('filename', nargs='*')
-    parser.add_argument('--debug', '-d', action='store_true')
-    parser.add_argument('--nospoilers', '-n', action='store_true')
-    parser.add_argument('--noanswers', action='store_true')
-    parser.add_argument('--noparagraph', action='store_true')
-    parser.add_argument('--randomize', action='store_true')
-    parser.add_argument('--rawtex', action='store_true')
-    parser.add_argument('--parsedir', action='store_true')
-    parser.add_argument('--defaultauthor', action='store_true')
-    parser.add_argument('--splittours', action='store_true')
-    parser.add_argument('--merge', action='store_true')
-    parser.add_argument('--genimp', action='store_true')
-    parser.add_argument('--login', '-l')
-    parser.add_argument('--password', '-p')
-    parser.add_argument('--community', '-c')
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(prog='chgksuite')
+    parser.add_argument('--debug', '-d', action='store_true',
+        help=argparse.SUPPRESS)
+    subparsers = parser.add_subparsers(dest='action')
+
+    cmdparse = subparsers.add_parser('parse')
+    cmdparse.add_argument('filename', help='file to parse.')
+    cmdparse.add_argument('--defaultauthor', action='store_true',
+        help='pick default author from filename where author is missing.')
+    cmdparse.add_argument('--parsedir', action='store_true',
+        help='parse directory instead of file.')
+
+    cmdcompose = subparsers.add_parser('compose')
+    cmdcompose.add_argument('--merge', action='store_true',
+        help='merge several source files before output.')
+    cmdcompose_filetype = cmdcompose.add_subparsers(dest='filetype')
+    cmdcompose_docx = cmdcompose_filetype.add_parser('docx')
+    cmdcompose_docx.add_argument('filename', nargs='*',
+        help='file(s) to compose from.')
+    cmdcompose_docx.add_argument('--nospoilers', '-n', action='store_true',
+        help='do not whiten (spoiler) answers.')
+    cmdcompose_docx.add_argument('--noanswers', action='store_true',
+        help='do not print answers (not even spoilered).')
+    cmdcompose_docx.add_argument('--noparagraph', action='store_true',
+        help='disable paragraph break after \'Question N.\'')
+    cmdcompose_docx.add_argument('--randomize', action='store_true',
+        help='randomize order of questions.')
+
+    cmdcompose_tex = cmdcompose_filetype.add_parser('tex')
+    cmdcompose_tex.add_argument('filename', nargs='*',
+        help='file(s) to compose from.')
+    cmdcompose_tex.add_argument('--rawtex', action='store_true')
+
+    cmdcompose_lj = cmdcompose_filetype.add_parser('lj')
+    cmdcompose_lj.add_argument('filename', nargs='*',
+        help='file(s) to compose from.')
+    cmdcompose_lj.add_argument('--nospoilers', '-n', action='store_true',
+        help='disable spoilers.')
+    cmdcompose_lj.add_argument('--splittours', action='store_true',
+        help='make a separate post for each tour.')
+    cmdcompose_lj.add_argument('--genimp', action='store_true',
+        help='make a \'general impressions\' post.')
+    cmdcompose_lj.add_argument('--login', '-l',
+        help='livejournal login')
+    cmdcompose_lj.add_argument('--password', '-p',
+        help='livejournal password')
+    cmdcompose_lj.add_argument('--community', '-c',
+        help='livejournal community to post to.')
+
+    args = DefaultNamespace(parser.parse_args())
 
     root = Tk()
     root.withdraw()
 
     if not args.action:
-        args.action, args.defaultauthor, args.merge = gui_choose_action(args)
+        action, defaultauthor, merge = gui_choose_action(args)
+        if action == 'parse':
+            args.action = 'parse'
+            args.defaultauthor = defaultauthor
+        if action == 'parsedir':
+            args.action = 'parse'
+            args.defaultauthor = defaultauthor
+            args.parsedir = True
+        if action == 'compose':
+            args.action = 'compose'
+            args.merge = merge
     if args.action == 'parse':
-        gui_parse(args)
-    if args.action == 'parsedir':
-        args.parsedir = True
         gui_parse(args)
     if args.action == 'compose':
         gui_compose(args, sourcedir=os.path.dirname(
