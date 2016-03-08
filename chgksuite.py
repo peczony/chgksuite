@@ -86,9 +86,10 @@ def gui_choose_action(args):
 
 class DefaultNamespace(argparse.Namespace):
     def __init__(self, *args, **kwargs):
-        if isinstance(args[0], argparse.Namespace):
-            for name in vars(args[0]):
-                setattr(self, name, vars(args[0])[name])
+        for ns in args:
+            if isinstance(ns, argparse.Namespace):
+                for name in vars(ns):
+                    setattr(self, name, vars(ns)[name])
         else:
             for name in kwargs:
                 setattr(self, name, kwargs[name])
@@ -148,7 +149,10 @@ def main():
     cmdcompose_lj.add_argument('--community', '-c',
         help='livejournal community to post to.')
 
-    args = DefaultNamespace(parser.parse_args())
+    if len(sys.argv) == 1:
+        args = DefaultNamespace()
+    else:
+        args = DefaultNamespace(parser.parse_args())
 
     root = Tk()
     root.withdraw()
