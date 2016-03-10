@@ -57,7 +57,7 @@ def main():
     
     _lists = defaultdict(lambda: [])
 
-    json_ = json.loads(req.content)
+    json_ = json.loads(req.content.decode('utf8'))
     for card in json_['cards']:
         _lists[card['idList']].append(
             (card['name'] if args.si else '')+process_desc(card['desc']))

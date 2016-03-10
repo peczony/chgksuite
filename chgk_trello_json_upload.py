@@ -79,11 +79,9 @@ def main():
         data={'token': trello['params']['token'], 'key': trello['params']['key']})
     if req.status_code != 200:
         print('Error: {}'.format(req.text))
-        if args.debug:
-            pdb.set_trace()
         sys.exit(1)
-    
-    lists = json.loads(req.content)
+
+    lists = json.loads(req.content.decode('utf8'))
     lid = lists[0]['id']
 
     if os.path.isfile(args.filename):
