@@ -1108,8 +1108,6 @@ def gui_compose(largs, sourcedir=None):
     root = Tk()
     root.withdraw()
 
-    sys.stderr = codecs.getwriter('utf8')(sys.stderr)
-
     if args.debug:
         debug = True
 

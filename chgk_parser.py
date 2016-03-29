@@ -655,8 +655,6 @@ def gui_parse(args):
     root = Tk()
     root.withdraw()
 
-    sys.stderr = codecs.getwriter('utf8')(sys.stderr)
-
     if args.debug:
         debug = True
 
