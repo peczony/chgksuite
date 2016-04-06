@@ -65,12 +65,16 @@ DB_PIC_BASE_URL = 'http://db.chgk.info/images/db/'
 logger = None
 
 
-def init_question(lexer):
-    # save old values
+def append_question(lexer):
     if lexer.question:
         # remove empty values
         question = dict((k, v) for k, v in iter(lexer.question.items()) if v)
         lexer.structure.append(['Question', question])
+
+
+def init_question(lexer):
+    # save old values
+    append_question(lexer)
     lexer.question_num += 1
     lexer.question = {'number': lexer.question_num,
                       'question': [],
@@ -431,6 +435,10 @@ def chgk_parse_db(text, debug=False):
     lexer.input(text)
     for _ in iter(lexer.token, None):
         pass
+
+    # save last question
+    append_question(lexer)
+
     if debug:
         with codecs.open('debug_final.json', 'w', 'utf8') as f:
             f.write(json.dumps(lexer.structure, ensure_ascii=False, indent=4))
