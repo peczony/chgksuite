@@ -21,7 +21,6 @@ from ply import lex
 from typotools import recursive_typography as rt
 
 re_list = re.compile(r'^\s{3}\d+\.\s(.+)$', re.I | re.U)
-re_pic = re.compile(r'^\(pic:\s([\d\.\w]+)\)$', re.I | re.U)
 
 tokens = (
     'TITLE',
@@ -223,21 +222,8 @@ def t_handout_end(t):
 
 
 def t_question_PIC(t):
-    r'\(pic:\s([\d\.\w]+)\)\n'
-    t.lexer.text += '[Раздаточный материал:'
-    match_pic = re_pic.search(t.value)
-    if match_pic:
-        pic_name = match_pic.group(1)
-        pic_path = os.path.abspath(pic_name)
-        if not os.path.exists(pic_path):
-            pic_url = urljoin(DB_PIC_BASE_URL, pic_name)
-            try:
-                urlretrieve(pic_url, pic_path)
-            except Exception as e:
-                logger.warning("Can't get pic from %s to %s: %s",
-                               pic_url, pic_path, str(e))
-        t.lexer.text += '(img %s)' % os.path.basename(pic_path)
-    t.lexer.text += ']'
+    r'(?:\(img\s(?:[\d\.\w]+)\)\s*)+\n'
+    t.lexer.text += '[Раздаточный материал:%s]' % t.value.strip()
 
 
 def t_question_TEXT(t):
@@ -408,6 +394,19 @@ def t_ANY_error(t):
     t.lexer.skip(1)
 
 
+def replace_pics(match_pic):
+    pic_name = match_pic.group(1)
+    pic_path = os.path.abspath(pic_name)
+    if not os.path.exists(pic_path):
+        pic_url = urljoin(DB_PIC_BASE_URL, pic_name)
+        try:
+            urlretrieve(pic_url, pic_path)
+        except Exception as e:
+            logger.warning("Can't get pic from %s to %s: %s",
+                           pic_url, pic_path, str(e))
+    return '(img %s)' % pic_name
+
+
 def chgk_parse_db(text, debug=False):
     global logger
 
@@ -426,6 +425,9 @@ def chgk_parse_db(text, debug=False):
         ch.setFormatter(formatter)
         logger.addHandler(fh)
         logger.addHandler(ch)
+
+    re_handout = re.compile(r'\(pic:\s([\d\.\w]+)\)', re.I | re.U)
+    text = re_handout.sub(replace_pics, text)
 
     lexer = lex.lex(reflags=re.I | re.U)
     lexer.text = ''
