@@ -222,7 +222,7 @@ def t_handout_end(t):
 
 
 def t_question_PIC(t):
-    r'(?:\(img\s(?:[\d\.\w]+)\)\s*)+\n'
+    r'(?:\((?:img|aud)\s(?:[\d\.\w]+)\)\s*)+\n'
     t.lexer.text += '[Раздаточный материал:%s]' % t.value.strip()
 
 
@@ -394,17 +394,18 @@ def t_ANY_error(t):
     t.lexer.skip(1)
 
 
-def replace_pics(match_pic):
-    pic_name = match_pic.group(1)
-    pic_path = os.path.abspath(pic_name)
-    if not os.path.exists(pic_path):
-        pic_url = urljoin(DB_PIC_BASE_URL, pic_name)
+def replace_handouts(match_handout):
+    handout_type = 'img' if match_handout.group(1) == 'pic' else 'aud'
+    handout_name = match_handout.group(2)
+    handout_path = os.path.abspath(handout_name)
+    if not os.path.exists(handout_path):
+        handout_url = urljoin(DB_PIC_BASE_URL, handout_name)
         try:
-            urlretrieve(pic_url, pic_path)
+            urlretrieve(handout_url, handout_path)
         except Exception as e:
-            logger.warning("Can't get pic from %s to %s: %s",
-                           pic_url, pic_path, str(e))
-    return '(img %s)' % pic_name
+            logger.warning("Can't get file from %s to %s: %s",
+                           handout_url, handout_path, str(e))
+    return '(%s %s)' % (handout_type, handout_name)
 
 
 def chgk_parse_db(text, debug=False):
@@ -426,8 +427,8 @@ def chgk_parse_db(text, debug=False):
         logger.addHandler(fh)
         logger.addHandler(ch)
 
-    re_handout = re.compile(r'\(pic:\s([\d\.\w]+)\)', re.I | re.U)
-    text = re_handout.sub(replace_pics, text)
+    re_handout = re.compile(r'\((pic|aud):\s([\d\.\w]+)\)', re.I | re.U)
+    text = re_handout.sub(replace_handouts, text)
 
     lexer = lex.lex(reflags=re.I | re.U)
     lexer.text = ''
