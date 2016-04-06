@@ -43,7 +43,8 @@ CONSOLE_ENC = (ENC if sys.platform != 'win32' else 'cp866')
 SEP = os.linesep
 EDITORS = {
     'win32': 'notepad',
-    'linux2': 'kate',
+    'linux2': 'xdg-open',  # python2
+    'linux': 'xdg-open',  # python3
     'darwin': 'open -t'
 }
 TEXTEDITOR = EDITORS[sys.platform]
