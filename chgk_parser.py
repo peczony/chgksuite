@@ -72,17 +72,14 @@ def debug_print(s):
 def partition(alist, indices):
     return [alist[i:j] for i, j in zip([0]+indices, indices+[None])]
 
-def check_question(question):
+def check_question(question, logger=None):
     warnings = []
     for el in {'question', 'answer', 'source', 'author'}:
         if el not in question:
             warnings.append(el)
     if len(warnings) > 0:
         logger.warning('WARNING: question {} lacks the following fields: {}{}'
-            .format(question, ', '.join(warnings), SEP)
-            .encode('utf8', errors='replace')
-            .decode('unicode_escape')
-            .encode(CONSOLE_ENC, errors='replace'))
+            .format(question, ', '.join(warnings), SEP))
 
 def chgk_parse(text, defaultauthor=None):
 
@@ -406,7 +403,7 @@ def chgk_parse(text, defaultauthor=None):
             and 'question' in current_question):
             if defaultauthor and 'author' not in current_question:
                 current_question['author'] = defaultauthor
-            check_question(current_question)
+            check_question(current_question, logger=logger)
             final_structure.append(['Question', current_question])
             current_question = {}
         if element[0] in QUESTION_LABELS:
@@ -425,7 +422,7 @@ def chgk_parse(text, defaultauthor=None):
     if current_question != {}:
         if defaultauthor and 'author' not in current_question:
             current_question['author'] = defaultauthor
-        check_question(current_question)
+        check_question(current_question, logger=logger)
         final_structure.append(['Question', current_question])
 
 

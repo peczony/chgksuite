@@ -355,8 +355,15 @@ def parse_4s(s, randomize=False):
 
             if (current_question != {} 
                 and set(current_question.keys()) != {'setcounter'}):
-                assert all(True for label in REQUIRED_LABELS
-                    if label in current_question)
+                
+                try:
+                    assert all((True if label in current_question else False)
+                        for label in REQUIRED_LABELS)
+                except AssertionError:
+                    logger.error('Question {} misses '
+                        'some of the required fields and will therefore '
+                        'be omitted.'.format(current_question))
+                    continue
                 if 'setcounter' in current_question:
                     counter = int(current_question['setcounter'])
                 if 'number' not in current_question:
@@ -370,14 +377,19 @@ def parse_4s(s, randomize=False):
             final_structure.append([element[0], element[1]])
 
     if current_question != {}:
-        assert all(True for label in REQUIRED_LABELS
-                if label in current_question)
-        if 'setcounter' in current_question:
-            counter = int(current_question['setcounter'])
-        if 'number' not in current_question:
-            current_question['number'] = counter
-            counter += 1
-        final_structure.append(['Question', current_question])
+        try:
+            assert all((True if label in current_question else False)
+                for label in REQUIRED_LABELS)
+            if 'setcounter' in current_question:
+                counter = int(current_question['setcounter'])
+            if 'number' not in current_question:
+                current_question['number'] = counter
+                counter += 1
+            final_structure.append(['Question', current_question])
+        except AssertionError:
+            logger.error('Question {} misses '
+                'some of the required fields and will therefore '
+                'be omitted.'.format(current_question))
 
     if randomize:
         random.shuffle(final_structure, lambda: 0.3)
@@ -393,7 +405,7 @@ def parse_4s(s, randomize=False):
 
     for element in final_structure:
         if element[0] == 'Question':
-            check_question(element[1])
+            check_question(element[1], logger=logger)
 
     return final_structure
 
