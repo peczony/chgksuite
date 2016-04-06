@@ -440,7 +440,10 @@ def chgk_parse_db(text, debug=False):
 
 def main():
     print('This program was not designed to run standalone.')
-    raw_input("Press Enter to continue...")
+    try:
+        raw_input("Press Enter to continue...")
+    except NameError:
+        input("Press Enter to continue...")
 
 if __name__ == "__main__":
     main()
