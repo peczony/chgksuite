@@ -40,159 +40,45 @@ def remove_excessive_whitespace(s):
     s = re.sub(r'\s+\n\s+', '\n', s)
     return s
 
-
-# This function is adapted from SmartyPants 
-# https://bitbucket.org/livibetter/smartypants.py
-def convert_quotes(text):
-    """
-    Convert quotes in *text* into HTML curly quote entities.
-
-    >>> print(convert_quotes('"Isn\\'t this fun?"'))
-    &#8220;Isn&#8217;t this fun?&#8221;
-    """
-
-    punct_class = r"""[!"#\$\%'()*+,-.\/:;<=>?\@\[\\\]\^_`{|}~]"""
-
-    # Special case if the very first character is a quote
-    # followed by punctuation at a non-word-break. Close the quotes by brute
-    # force:
-    text = re.sub(r"""^"(?=%s\\B)""" % (punct_class,), '«', text)
-
-    # Special case for double sets of quotes, e.g.:
-    #   <p>He said, "'Quoted' words in a larger quote."</p>
-    text = re.sub(r""""'(?=\w)""", '««', text)
-    text = re.sub(r"""'"(?=\w)""", '««', text)
-
-    # Special case for decade abbreviations (the '80s):
-    text = re.sub(r"""\b'(?=\d{2}s)""", '’', text)
-
-    close_class = r'[^\ \t\r\n\[\{\(\-]'
-    dec_dashes = '–|—'
-
-    # Get most opening single quotes:
-    opening_single_quotes_regex = re.compile(r"""
-            (
-                \s          |   # a whitespace char, or
-                &nbsp;|     |   # a non-breaking space entity, or
-                --          |   # dashes, or
-                &[mn]dash;  |   # named dash entities
-                %s          |   # or decimal entities
-                &\#x201[34];    # or hex
-            )
-            '                 # the quote
-            (?=\w)            # followed by a word character
-            """ % (dec_dashes,), re.VERBOSE)
-    text = opening_single_quotes_regex.sub(r'\1«', text)
-
-    closing_single_quotes_regex = re.compile(r"""
-            (%s)
-            '
-            (?!\s | s\b | \d)
-            """ % (close_class,), re.VERBOSE)
-    text = closing_single_quotes_regex.sub(r'\1»', text)
-
-    closing_single_quotes_regex = re.compile(r"""
-            (%s)
-            '
-            (\s | s\b)
-            """ % (close_class,), re.VERBOSE)
-    text = closing_single_quotes_regex.sub(r'\1»\2', text)
-
-    # Get most opening double quotes:
-    opening_double_quotes_regex = re.compile(r"""
-            (
-                \s          |   # a whitespace char, or
-                &nbsp;      |   # a non-breaking space entity, or
-                --          |   # dashes, or
-                &[mn]dash;  |   # named dash entities
-                %s          |   # or decimal entities
-                &\#x201[34];    # or hex
-            )
-            "                 # the quote
-            (?=\w)            # followed by a word character
-            """ % (dec_dashes,), re.VERBOSE)
-    text = opening_double_quotes_regex.sub(r'\1«', text)
-
-    # Double closing quotes:
-    closing_double_quotes_regex = re.compile(r"""
-            #(%s)?   # character that indicates the quote should be closing
-            "
-            (?=\s)
-            """ % (close_class,), re.VERBOSE)
-    try:
-        text = closing_double_quotes_regex.sub('»', text)
-    except:
-        print(repr(traceback.format_exc()))
-
-    closing_double_quotes_regex = re.compile(r"""
-            (%s)   # character that indicates the quote should be closing
-            "
-            """ % (close_class,), re.VERBOSE)
-    text = closing_double_quotes_regex.sub(r'\1»', text)
-
-    # Any remaining quotes should be opening ones.
-    text = re.sub('"', '«', text)
-    text = text.replace('»s', '’s')
-
-    return text
-
-def get_next_opening_quote_character(s, index):
-    i = index + 1
-    while i < len(s):
-        if s[i] in OPENING_QUOTES:
-            return s[i], i
-        i += 1
-    return '', ''
-
-def get_next_quote_character(s, index):
-    i = index + 1
-    while i < len(s):
-        if s[i] in QUOTES:
-            return s[i], i
-        i += 1
-    return '', ''
-
-def get_next_closing_quote_character(s, index):
-    i = index + 1
-    while i < len(s):
-        if s[i] in CLOSING_QUOTES:
-            return s[i], i
-        i += 1
-    return '', ''
-
 def get_quotes_right(s_in):
-    # s = re.sub(r'(?<=[{}{}{}])["\']'.format(''.join(WHITESPACE),
-    #     ''.join(CLOSING_QUOTES), ''.join(PUNCTUATION)), '«', s)
-    # s = re.sub(r'["\'](?=[{}{}{}])'.format(''.join(WHITESPACE),
-    #     ''.join(OPENING_QUOTES), ''.join(PUNCTUATION)), '»', s)
-    s = re.sub(r'“','"',s_in)
+    s = s_in
     s = re.sub(r'[{}]'.format(''.join(OPENING_QUOTES)), '«', s)
     s = re.sub(r'[{}]'.format(''.join(CLOSING_QUOTES)), '»', s)
-    s = convert_quotes(s)
+    s = re.sub(r'^"', '«', s)
+    s = re.sub(r'"$', '»', s)
+    s = re.sub(r'(\w)(")([^\w]|$)', r'\1»\3', s, flags=re.U)
+    s = re.sub(r'(^|[^\w])(")(\w)', r'\1«\3', s, flags=re.U)
+    s = re.sub(r'([^\w\s])(")([^\w\s])', r'\1»\3', s, flags=re.U)
+    s = re.sub(r'" ', '» ', s)
+    s = re.sub(r' "', ' «', s)
+    cntr = 0
 
-    # alternate quotes
-
-    i = 0
     s = list(s)
-    if get_next_quote_character(s, -1)[0]:
-        s[get_next_quote_character(s, -1)[1]] = '«'
-    while i < len(s):
-        if (s[i] == '«'
-            and get_next_quote_character(s, i)[0] == '«'):
-            s[get_next_quote_character(s, i)[1]] = '„'
-        i += 1
-    s = s[::-1]
-    if get_next_quote_character(s, -1)[0]:
-        s[get_next_quote_character(s, -1)[1]] = '»'
-    i = 0
-    while i < len(s):
-        if (s[i] == '»'
-            and get_next_quote_character(s, i)[0] == '»'):
-            s[get_next_quote_character(s, i)[1]] = '“'
-        i += 1
-    s = s[::-1]
-    s_out = ''.join(s)
-    return s_out
+    for i, c in enumerate(s):
+        if c == '"':
+            if cntr:
+                s[i] = '»'
+                cntr -= 1
+            else:
+                s[i] = '«'
+                cntr += 1
+
+    cntr = 0
+    for i, c in enumerate(s):
+        if c == '«':
+            cntr += 1
+            if cntr % 2 == 0:
+                s[i] = '„'
+        if c == '»':
+            if cntr % 2 == 0:
+                s[i] = '“'
+            cntr -= 1
+    s = ''.join(s)
+
+    s = re.sub(r"(\w)'", r'\1’', s, flags=re.U)
+    s = re.sub(r"'(\w)", r'‘\1', s, flags=re.U)
+
+    return s
 
 def get_dashes_right(s):
     s = re.sub(r'(?<=\s)-+(?=\s)','—',s)
