@@ -684,7 +684,7 @@ def gui_parse(args):
                         os.path.join(args.filename, filename), args)
                     logger.info('{} -> {}'.format(filename,
                         os.path.basename(outfilename)))
-            raw_input("Press Enter to continue...")
+            input("Press Enter to continue...")
 
         else:
             print('No directory specified.')
@@ -711,11 +711,11 @@ def gui_parse(args):
                 .format(
                     TEXTEDITOR,
                     outfilename).encode(ENC,errors='replace')))
-            raw_input("Press Enter to continue...")
+            input("Press Enter to continue...")
 
 def main():
     print('This program was not designed to run standalone.')
-    raw_input("Press Enter to continue...")
+    input("Press Enter to continue...")
 
 if __name__ == "__main__":
     main()

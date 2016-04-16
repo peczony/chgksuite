@@ -1389,11 +1389,11 @@ def process_file(filename, srcdir):
             lj_process(structure)
 
     if not console_mode:
-        raw_input("Press Enter to continue...")
+        input("Press Enter to continue...")
 
 def main():
     print('This program was not designed to run standalone.')
-    raw_input("Press Enter to continue...")
+    input("Press Enter to continue...")
 
 if __name__ == '__main__':
     main()
