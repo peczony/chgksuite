@@ -60,6 +60,7 @@ states = (
 )
 
 DB_PIC_BASE_URL = 'http://db.chgk.info/images/db/'
+DB_AUD_BASE_URL = 'http://db.chgk.info/sounds/db/'
 
 logger = None
 
@@ -396,10 +397,12 @@ def t_ANY_error(t):
 
 def replace_handouts(match_handout):
     handout_type = 'img' if match_handout.group(1) == 'pic' else 'aud'
+    db_base_url = (DB_PIC_BASE_URL
+        if match_handout.group(1) == 'pic' else DB_AUD_BASE_URL)
     handout_name = match_handout.group(2)
     handout_path = os.path.abspath(handout_name)
     if not os.path.exists(handout_path):
-        handout_url = urljoin(DB_PIC_BASE_URL, handout_name)
+        handout_url = urljoin(db_base_url, handout_name)
         try:
             urlretrieve(handout_url, handout_path)
         except Exception as e:
