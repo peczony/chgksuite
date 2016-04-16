@@ -112,6 +112,8 @@ def main():
         nargs='?')
     cmdparse.add_argument('--defaultauthor', action='store_true',
         help='pick default author from filename where author is missing.')
+    cmdparse.add_argument('--encoding', default=None,
+        help="Encoding of text file (use if auto-detect fails).")
     cmdparse.add_argument('--parsedir', action='store_true',
         help='parse directory instead of file.')
 

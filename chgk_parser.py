@@ -466,13 +466,14 @@ class UnknownEncodingException(Exception):
 def chgk_parse_txt(txtfile, encoding=None, defaultauthor=''):
     os.chdir(os.path.dirname(os.path.abspath(txtfile)))
     raw = open(txtfile,'rb').read()
-    if not encoding and chardet.detect(raw)['confidence'] > 0.8:
-        encoding = chardet.detect(raw)['encoding']
-    else:
-        raise UnknownEncodingException(
-            'Encoding of file {} cannot be verified, '
-            'please pass encoding directly via command line '
-            'or resave with a less exotic encoding'.format(txtfile))
+    if not encoding:
+        if chardet.detect(raw)['confidence'] > 0.7:
+            encoding = chardet.detect(raw)['encoding']
+        else:
+            raise UnknownEncodingException(
+                'Encoding of file {} cannot be verified, '
+                'please pass encoding directly via command line '
+                'or resave with a less exotic encoding'.format(txtfile))
     text = raw.decode(encoding)
     if text[0:10] == 'Чемпионат:':
         return chgk_parse_db(text, debug=debug)
@@ -612,7 +613,8 @@ def chgk_parse_wrapper(abspath, args):
         defaultauthor = os.path.splitext(os.path.basename(abspath))[0]
     if os.path.splitext(abspath)[1] == '.txt':
         final_structure = chgk_parse_txt(abspath,
-            defaultauthor=defaultauthor)
+            defaultauthor=defaultauthor,
+            encoding=args.encoding)
     elif os.path.splitext(abspath)[1] == '.docx':
         final_structure = chgk_parse_docx(abspath,
             defaultauthor=defaultauthor)
