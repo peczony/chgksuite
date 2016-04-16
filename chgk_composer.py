@@ -1167,7 +1167,7 @@ def gui_compose(largs, sourcedir=None):
             for fn in args.filename:
                 TARGETDIR = os.path.dirname(os.path.abspath(fn))
                 filename = os.path.basename(os.path.abspath(fn))
-                process_file_wrapper(fn)
+                process_file_wrapper(filename)
         else:
             TARGETDIR = os.path.dirname(os.path.abspath(args.filename[0]))
             process_file_wrapper(args.filename)
