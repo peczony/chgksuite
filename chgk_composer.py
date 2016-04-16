@@ -219,15 +219,19 @@ def parse_4s_elem(s):
     parts = [['', ''.join(x)] for x in partition(s, topart)]
 
     for part in parts:
-        if part == ['', '']:
+        if not part[1]:
             continue
         try:
             if part[1][-1] == '_':
                 part[1] = part[1][1:]
                 part[0] = 'em'
+            if not part[1]:
+                continue
             if part[1][-1] == '_':
                 part[1] = part[1][:-1]
                 part[0] = 'em'
+            if not part[1]:
+                continue
             if len(part[1]) > 4 and part[1][:4] == '(img':
                 if part[1][-1] != ')':
                     part[1] = part[1] + ')'
