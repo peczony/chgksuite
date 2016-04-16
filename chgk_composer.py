@@ -34,6 +34,10 @@ try:
     basestring
 except NameError:
     basestring = str
+try:
+    input = raw_input
+except NameError:
+    pass
 
 from docx import Document
 from docx.shared import Inches
