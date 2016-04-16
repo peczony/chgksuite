@@ -203,7 +203,7 @@ def parse_4s_elem(s):
             if typotools.find_matching_closing_bracket(s, i) is not None:
                 topart.append(
                     typotools.find_matching_closing_bracket(s, i)+1)
-                i = typotools.find_matching_closing_bracket(s, i)+2
+                i = typotools.find_matching_closing_bracket(s, i)
         # if (s[i] == '(' and i + len('(sc') < len(s) and ''.join(s[i:
         #                     i+len('(sc')])=='(sc'):
         #     debug_print('sc candidate')
