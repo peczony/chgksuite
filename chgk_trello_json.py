@@ -30,6 +30,9 @@ from collections import defaultdict
 def process_desc(s):
     return s.replace(r'\`','`')
 
+def getlabels(s):
+    return {x['name'] for x in s['labels']}
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--si', action='store_true', 
@@ -38,10 +41,14 @@ def main():
     parser.add_argument('--config', default='trello.json',
         help="Use this if you want to use a file named "
         "differently than the default trello.json")
+    parser.add_argument('--labels', action='store_true',
+        help="Use this if you also want to have lists based on labels.")
     parser.add_argument('--debug', action='store_true',
         help=argparse.SUPPRESS)
 
     args = parser.parse_args()
+    if args.si:
+        from docx import Document
     with open(args.config, 'r') as f:
         trello = json.loads(f.read())
     board_id = trello['board_id']
@@ -58,17 +65,46 @@ def main():
     _lists = defaultdict(lambda: [])
 
     json_ = json.loads(req.content.decode('utf8'))
-    for card in json_['cards']:
-        _lists[card['idList']].append(
-            (card['name'] if args.si else '')+process_desc(card['desc']))
     _names = {}
     for list_ in json_['lists']:
         _names[list_['id']] = list_['name']
     for name in _names:
         _names[name] = _names[name].replace('/','_')
+    if args.si:
+        _docs = defaultdict(lambda: Document('template.docx'))
+    for card in json_['cards']:
+        if args.si:
+            p = _docs[_names[card['idList']]].add_paragraph()
+            p.add_run(
+                'Тема {}. '.format(
+                    len(_lists[_names[card['idList']]])+1
+                    )+card['name']).bold = True
+            p = _docs[_names[card['idList']]].add_paragraph()
+            p = _docs[_names[card['idList']]].add_paragraph()
+            p.add_run(process_desc(card['desc']))
+            p = _docs[_names[card['idList']]].add_paragraph()
+            p = _docs[_names[card['idList']]].add_paragraph()
+        _lists[_names[card['idList']]].append(
+            ('Тема {}. '.format(
+                len(_lists[_names[card['idList']]]) + 1
+                )
+                + card['name']+'\n\n' if args.si else '')
+            + process_desc(card['desc']
+            )
+            )
+        if args.labels:
+            for label in getlabels(card):
+                _lists[label].append(
+                    (card['name'] if args.si else '')
+                    + process_desc(card['desc']))
+    if args.si:
+        for doc in _docs:
+            _docs[doc].save('{}.docx'.format(doc))
 
     for _list in _lists:
-        with codecs.open(_names[_list]+'.4s','w','utf8') as f:
+        filename = '{}.4s'.format(_list)
+        print('outputting {}'.format(filename))
+        with codecs.open(filename,'w','utf8') as f:
            for item in _lists[_list]:
               f.write('\n'+item+'\n')
 
