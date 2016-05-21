@@ -1,8 +1,7 @@
 #!usr/bin/env python
-#! -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import re
-import traceback
 try:
     import urllib
     unquote = urllib.unquote
@@ -30,15 +29,18 @@ BAD_BEGINNINGS = set(['Мак', 'мак', "О'", 'о’', 'О’', "о'"])
 re_bad_wsp_start = re.compile(r'^[{}]+'.format(''.join(WHITESPACE)))
 re_bad_wsp_end = re.compile(r'[{}]+$'.format(''.join(WHITESPACE)))
 re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
-"""|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
-"""(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""", re.DOTALL)
+                    """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
+                    """(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""",
+                    re.DOTALL)
 re_percent = re.compile(r"(%[0-9a-fA-F]{2})+")
+
 
 def remove_excessive_whitespace(s):
     s = re_bad_wsp_start.sub('', s)
     s = re_bad_wsp_end.sub('', s)
     s = re.sub(r'\s+\n\s+', '\n', s)
     return s
+
 
 def get_quotes_right(s_in):
     s = s_in
@@ -80,40 +82,45 @@ def get_quotes_right(s_in):
 
     return s
 
+
 def get_dashes_right(s):
-    s = re.sub(r'(?<=\s)-+(?=\s)','—',s)
+    s = re.sub(r'(?<=\s)-+(?=\s)', '—', s)
     # s = re.sub(r'(?<=\d)-(?<=\d)','–',s)
     # s = re.sub(r'-(?=\d)','−',s)
     return s
 
+
 def detect_accent(s):
     for word in re.split(r'[^{}{}]+'.format(
-        ''.join(LOWERCASE_RUSSIAN),''.join(UPPERCASE_RUSSIAN)),s):
+            ''.join(LOWERCASE_RUSSIAN), ''.join(UPPERCASE_RUSSIAN)), s):
         if word.upper() != word and len(word) > 1:
             try:
                 i = 1
                 word_new = word
                 while i < len(word_new):
-                    if (word_new[i] in POTENTIAL_ACCENTS and word_new[:i] not in
-                            BAD_BEGINNINGS):
-                        word_new = word_new[:i] + '`' + word_new[i].lower() + word_new[i+1:]
+                    if (word_new[i] in POTENTIAL_ACCENTS and
+                            word_new[:i] not in BAD_BEGINNINGS):
+                        word_new = word_new[:i] + '`' + \
+                            word_new[i].lower() + word_new[i + 1:]
                     i += 1
                 if word != word_new:
-                    s = (s[:s.index(word)] + word_new
-                        + s[s.index(word)+len(word):])
+                    s = (s[:s.index(word)] + word_new +
+                         s[s.index(word) + len(word):])
             except:
                 print(repr(word))
     return s
 
+
 def percent_decode(s):
     grs = sorted([match.group(0)
-        for match in re_percent.finditer(s)], key=len, reverse=True)
+                  for match in re_percent.finditer(s)], key=len, reverse=True)
     for gr in grs:
         try:
-            s = s.replace(gr,unquote(gr.encode('utf8')).decode('utf8'))
+            s = s.replace(gr, unquote(gr.encode('utf8')).decode('utf8'))
         except:
             pass
     return s
+
 
 def recursive_typography(s):
     if isinstance(s, basestring):
@@ -125,8 +132,9 @@ def recursive_typography(s):
             new_s.append(recursive_typography(element))
         return new_s
 
+
 def typography(s, wsp=True, quotes=True,
-    dashes=True, accents=True, percent=True):
+               dashes=True, accents=True, percent=True):
     if wsp:
         s = remove_excessive_whitespace(s)
     if quotes:
@@ -139,11 +147,13 @@ def typography(s, wsp=True, quotes=True,
         s = percent_decode(s)
     return s
 
+
 def matching_bracket(s):
     assert s in OPENING_BRACKETS or s in CLOSING_BRACKETS
     if s in OPENING_BRACKETS:
         return CLOSING_BRACKETS[OPENING_BRACKETS.index(s)]
     return OPENING_BRACKETS[CLOSING_BRACKETS.index(s)]
+
 
 def find_matching_closing_bracket(s, index):
     s = list(s)
@@ -161,6 +171,7 @@ def find_matching_closing_bracket(s, index):
                 return i
         i += 1
     return None
+
 
 def find_matching_opening_bracket(s, index):
     s = list(s)
@@ -180,4 +191,3 @@ def find_matching_opening_bracket(s, index):
                 return i
         i -= 1
     return None
-
