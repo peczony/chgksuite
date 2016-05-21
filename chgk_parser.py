@@ -55,6 +55,7 @@ EDITORS = {
 TEXTEDITOR = EDITORS[sys.platform]
 SOURCEDIR = os.path.dirname(os.path.abspath(__file__))
 TARGETDIR = os.getcwd()
+regexes = {}
 
 
 class DummyLogger(object):
@@ -123,40 +124,14 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     # WHITESPACE = set([' ', ' ', '\n', '\r'])
     # PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
 
-    re_tour = re.compile(r'^Т[Уу][Рр] ?([0-9IVXLCDM]*)([\.:])?$', re.U)
-    re_tourrev = re.compile(r'^([0-9IVXLCDM]+) [Тт][Уу][Рр]([\.:])?$', re.U)
-    re_question = re.compile(
-        r'В[Оо][Пп][Рр][Оо][Сс] ?[№N]?([0-9]*) ?([\.:]|\n|\r\n|$)', re.U)
-    re_answer = re.compile(
-        r'О[Тт][Вв][Ее][Тт][Ыы]? ?[№N]?([0-9]+)? ?[:]', re.U)
-    re_zachet = re.compile(r'З[Аа][Чч][ЕеЁё][Тт] ?[\.:]', re.U)
-    re_nezachet = re.compile(r'Н[Ее][Зз][Аа][Чч][ЕеЁё][Тт] ?[\.:]', re.U)
-    re_comment = re.compile(
-        r'К[Оо][Мм][Мм]?([Ее][Нн][Тт]([Аа][Рр][Ии][ИиЙй]|\.)|\.) ?[№N]?([0-9]+)? ?[\.:]', re.U)
-    re_author = re.compile(r'А[Вв][Тт][Оо][Рр]\(?[Ыы]?\)? ?[\.:]', re.U)
-    re_source = re.compile(
-        r'И[Сс][Тт][Оо][Чч][Нн][Ии][Кк]\(?[Ии]?\)? ?[\.:]', re.U)
-    re_editor = re.compile(
-        r'[Рр][Ее][Дд][Аа][Кк][Тт][Оо][Рр]([Ыы]|[Сс][Кк][Аа][Яя] [Гг][Рр][Уу][Пп][Пп][Аа])?( ?[\.:]| [\-–—]+ )', re.U)
-    re_date = re.compile(r'Д[Аа][Тт][Аа] ?[\.:]', re.U)
-    re_date2 = re.compile(r'(^|\s)[Яя][Нн][Вв][Аа][Рр][ЬьЯя]|[Фф][Ее][Вв][Рр][Аа][Лл][ЬьЯя]|[Мм][Аа][Рр][Тт][Аа]?|[Аа][Пп][Рр][Ее][Лл][Ьь][Яя]|[Мм][Аа][ЙйЯя]|[Ии][Юю][Нн][ЬьЯя]|[Ии][Юю][Лл][ЬьЯя]|[Аа][Вв][Гг][Уу][Сс][Тт][Аа]?|[Сс][Ее][Нн][Тт][Яя][Бб][Рр][ЬьЯя]|[Оо][Кк][Тт][Яя][Бб][Рр][Ьь][Яя]|[Нн][Оо][Яя][Бб][Рр][ЬьЯя]|[Дд][Ее][Кк][Аа][Бб][Рр][ЬьЯя](\s|$)', re.U)
-    re_number = re.compile(r'^[0-9]+[\.\)] *')
-
-    regexes = {
-        'tour': re_tour,
-        'tourrev': re_tourrev,
-        'question': re_question,
-        'answer': re_answer,
-        'zachet': re_zachet,
-        'nezachet': re_nezachet,
-        'comment': re_comment,
-        'author': re_author,
-        'source': re_source,
-        'editor': re_editor,
-        'date': re_date,
-    }
-
     chgk_parse.structure = []
+
+    if not regexes:
+        with codecs.open('{}/regexes.json'
+                         .format(os.path.dirname(os.path.abspath(__file__))),
+                         'r', 'utf8') as f:
+            regexes = json.loads(f.read())
+        regexes = {k: re.compile(v) for k, v in regexes.items()}
 
     def merge_to_previous(index):
         target = index - 1
@@ -226,7 +201,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     st = chgk_parse.structure
     while i < len(st):
         matching_regexes = {(regex, regexes[regex].search(st[i][1]).start(0))
-                            for regex in regexes
+                            for regex in set(regexes) - {'number', 'date2'}
                             if regexes[regex].search(st[i][1])}
 
         # If more than one regex matches string, split it and
@@ -284,17 +259,17 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
         if (chgk_parse.structure[i][0] == '' and
                 chgk_parse.structure[i + 1][0] == 'newquestion'):
             merge_to_next(i)
-            if (re_number.search(
+            if (regexes['number'].search(
                     rew(chgk_parse.structure[i][1])) and
-                    not re_number.search(
+                    not regexes['number'].search(
                     rew(chgk_parse.structure[i - 1][1]))):
                 chgk_parse.structure[i][0] = 'question'
-                chgk_parse.structure[i][1] = re_number.sub('', rew(
+                chgk_parse.structure[i][1] = regexes['number'].sub('', rew(
                     chgk_parse.structure[i][1]))
                 try:
                     chgk_parse.structure.insert(i,
                                                 ['number', int(
-                                                    re_number.search(
+                                                    regexes['number'].search(
                                                         rew(
                                                             chgk_parse
                                                             .structure[i][1]
@@ -314,7 +289,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
 
     for _id, element in enumerate(chgk_parse.structure):
         if (element[0] == 'author' and
-            re.search(r'^{}$'.format(re_author.pattern),
+            re.search(r'^{}$'.format(regexes['author'].pattern),
                       rew(element[1])) and
                 _id + 1 < len(chgk_parse.structure)):
             merge_to_previous(_id + 1)
@@ -332,7 +307,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     chgk_parse.structure = [x for x in chgk_parse.structure
                             if [x[0], rew(x[1])] != ['', '']]
 
-    if chgk_parse.structure[0][0] == '' and re_number.search(
+    if chgk_parse.structure[0][0] == '' and regexes['number'].search(
             rew(chgk_parse.structure[0][1])):
         merge_to_next(0)
 
@@ -343,7 +318,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                                                         'editor']:
             if element[0] == 'question':
                 try:
-                    num = re_question.search(element[1]).group(1)
+                    num = regexes['question'].search(element[1]).group(1)
                     chgk_parse.structure.insert(_id, ['number', num])
                 except:
                     pass
@@ -364,11 +339,11 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
 
         if element[0] == 'question':
             try:
-                num = re_question.search(element[1]).group(1)
+                num = regexes['question'].search(element[1]).group(1)
                 chgk_parse.structure.insert(_id, ['number', num])
             except:
                 pass
-            element[1] = re_number.sub('', element[1])
+            element[1] = regexes['question'].sub('', element[1])
 
         # detect inner lists
 
@@ -405,7 +380,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
 
         if (element[0] == 'source' and isinstance(element[1], basestring) and
                 len(re.split(r'\r?\n', element[1])) > 1):
-            element[1] = [re_number.sub('', rew(x))
+            element[1] = [regexes['number'].sub('', rew(x))
                           for x in re.split(r'\r?\n', element[1])]
 
         # typogrify
@@ -464,7 +439,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
             final_structure.insert(0, ['ljheading', final_structure[0][1]])
         i = 0
         while not datedefined and i < fq:
-            if re_date2.search(final_structure[i][1]):
+            if regexes['date2'].search(final_structure[i][1]):
                 final_structure[i][0] = 'date'
                 datedefined = True
             i += 1
@@ -482,7 +457,7 @@ class UnknownEncodingException(Exception):
     pass
 
 
-def chgk_parse_txt(txtfile, encoding=None, defaultauthor=''):
+def chgk_parse_txt(txtfile, encoding=None, defaultauthor='', regexes=None):
     os.chdir(os.path.dirname(os.path.abspath(txtfile)))
     raw = open(txtfile, 'rb').read()
     if not encoding:
@@ -496,7 +471,7 @@ def chgk_parse_txt(txtfile, encoding=None, defaultauthor=''):
     text = raw.decode(encoding)
     if text[0:10] == 'Чемпионат:':
         return chgk_parse_db(text, debug=debug)
-    return chgk_parse(text, defaultauthor=defaultauthor)
+    return chgk_parse(text, defaultauthor=defaultauthor, regexes=regexes)
 
 
 def generate_imgname(ext):
@@ -507,7 +482,7 @@ def generate_imgname(ext):
     return '{:03}.{}'.format(imgcounter, ext)
 
 
-def chgk_parse_docx(docxfile, defaultauthor=''):
+def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
     os.chdir(os.path.dirname(os.path.abspath(docxfile)))
     input_docx = PyDocX.to_html(docxfile)
     bsoup = BeautifulSoup(input_docx, 'html.parser')
@@ -567,7 +542,8 @@ def chgk_parse_docx(docxfile, defaultauthor=''):
         with codecs.open('debug.debug', 'w', 'utf8') as dbg:
             dbg.write(txt)
 
-    final_structure = chgk_parse(txt, defaultauthor=defaultauthor)
+    final_structure = chgk_parse(txt, defaultauthor=defaultauthor,
+                                 regexes=regexes)
     return final_structure
 
 
@@ -630,7 +606,7 @@ def compose_4s(structure):
     return result
 
 
-def chgk_parse_wrapper(abspath, args):
+def chgk_parse_wrapper(abspath, args, regexes=None):
     os.chdir(os.path.dirname(os.path.abspath(abspath)))
     abspath = os.path.basename(abspath)
     defaultauthor = ''
@@ -639,10 +615,12 @@ def chgk_parse_wrapper(abspath, args):
     if os.path.splitext(abspath)[1] == '.txt':
         final_structure = chgk_parse_txt(abspath,
                                          defaultauthor=defaultauthor,
-                                         encoding=args.encoding)
+                                         encoding=args.encoding,
+                                         regexes=regexes)
     elif os.path.splitext(abspath)[1] == '.docx':
         final_structure = chgk_parse_docx(abspath,
-                                          defaultauthor=defaultauthor)
+                                          defaultauthor=defaultauthor,
+                                          regexes=regexes)
     else:
         sys.stderr.write('Error: unsupported file format.' + SEP)
         sys.exit()
@@ -664,6 +642,7 @@ def gui_parse(args):
 
     global debug
     global logger
+    global regexes
 
     logger = logging.getLogger('parser')
     logger.setLevel(logging.DEBUG)
@@ -683,6 +662,10 @@ def gui_parse(args):
 
     root = Tk()
     root.withdraw()
+
+    with codecs.open(args.regexes, 'r', 'utf8') as f:
+        regexes = json.loads(f.read())
+    regexes = {k: re.compile(v) for k, v in regexes.items()}
 
     if args.debug:
         debug = True
@@ -708,7 +691,8 @@ def gui_parse(args):
                     not os.path.isfile(
                         os.path.join(args.filename, make_filename(filename)))):
                     outfilename = chgk_parse_wrapper(
-                        os.path.join(args.filename, filename), args)
+                        os.path.join(args.filename, filename), args,
+                        regexes=regexes)
                     logger.info('{} -> {}'.format(
                         filename,
                         os.path.basename(outfilename)
@@ -732,7 +716,7 @@ def gui_parse(args):
             print('No file specified.')
             sys.exit(0)
 
-        outfilename = chgk_parse_wrapper(args.filename, args)
+        outfilename = chgk_parse_wrapper(args.filename, args, regexes=regexes)
         if outfilename and not console_mode:
             print('Please review the resulting file {}:'.format(
                 make_filename(args.filename)))

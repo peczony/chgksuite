@@ -124,6 +124,9 @@ def main():
     cmdparse.add_argument('--encoding', default=None,
                           help='Encoding of text file '
                           '(use if auto-detect fails).')
+    cmdparse.add_argument('--regexes', default=None,
+                          help='A file containing regexes '
+                          '(the default is regexes.json).')
     cmdparse.add_argument('--parsedir', action='store_true',
                           help='parse directory instead of file.')
 
@@ -179,6 +182,8 @@ def main():
 
     if not args.action:
         action, defaultauthor, merge = gui_choose_action(args)
+        if not args.regexes:
+            args.regexes = 'regexes.json'
         if action == 'parse':
             args.action = 'parse'
             args.defaultauthor = defaultauthor
