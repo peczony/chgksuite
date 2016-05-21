@@ -132,7 +132,8 @@ def t_ANSWER(t):
     t.lexer.begin('answer')
     t.lexer.text = ''
     if t.lexer.question['answer']:
-        logger.warning("Bad format: several Answer fields. Previous Answer was:"
+        logger.warning("Bad format: several Answer fields. "
+                       "Previous Answer was:"
                        " '%s'", t.lexer.question['answer'])
 
 
@@ -153,9 +154,9 @@ def t_COMMENT(t):
     t.lexer.begin('comment')
     t.lexer.text = ''
     if t.lexer.question['comment']:
-        logger.warning("Bad format: several Comment fields. Previous Comment was:"
+        logger.warning("Bad format: several Comment fields. "
+                       "Previous Comment was:"
                        " '%s'", t.lexer.question['comment'])
-
 
 
 def t_SOURCE(t):
@@ -163,7 +164,8 @@ def t_SOURCE(t):
     t.lexer.begin('source')
     t.lexer.text = ''
     if t.lexer.question['source']:
-        logger.warning("Bad format: several Source fields. Previous Source was:"
+        logger.warning("Bad format: several Source fields. "
+                       "Previous Source was:"
                        " '%s'", t.lexer.question['source'])
 
 
@@ -398,7 +400,8 @@ def t_ANY_error(t):
 def replace_handouts(match_handout):
     handout_type = 'img' if match_handout.group(1) == 'pic' else 'aud'
     db_base_url = (DB_PIC_BASE_URL
-        if match_handout.group(1) == 'pic' else DB_AUD_BASE_URL)
+                   if match_handout.group(1) == 'pic'
+                   else DB_AUD_BASE_URL)
     handout_name = match_handout.group(2)
     handout_path = os.path.abspath(handout_name)
     if not os.path.exists(handout_path):
@@ -424,7 +427,8 @@ def chgk_parse_db(text, debug=False):
             ch.setLevel(logging.INFO)
         else:
             ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s | %(levelname)s: %(message)s')
+        formatter = logging.Formatter(
+            '%(asctime)s | %(levelname)s: %(message)s')
         fh.setFormatter(formatter)
         ch.setFormatter(formatter)
         logger.addHandler(fh)
