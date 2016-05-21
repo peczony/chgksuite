@@ -25,7 +25,7 @@
 
 ## Я не программист. Что мне делать?
 
-Специально для вас есть [инструкция с картинками](https://bitbucket.org/pecheny/chgksuite/src/tip/nontechies.md) (устарела, применима к v0.1). Читайте и пользуйтесь!
+Специально для вас есть [инструкция с картинками](https://bitbucket.org/pecheny/chgksuite/src/tip/nontechies.md). Читайте и пользуйтесь!
 
 ## Как установить
 
