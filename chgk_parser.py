@@ -40,7 +40,8 @@ debug = False
 console_mode = False
 
 QUESTION_LABELS = ['handout', 'question', 'answer',
-                   'zachet', 'nezachet', 'comment', 'source', 'author', 'number',
+                   'zachet', 'nezachet', 'comment',
+                   'source', 'author', 'number',
                    'setcounter']
 ENC = ('utf8' if sys.platform != 'win32' else 'cp1251')
 CONSOLE_ENC = (ENC if sys.platform != 'win32' else 'cp866')
@@ -55,26 +56,35 @@ TEXTEDITOR = EDITORS[sys.platform]
 SOURCEDIR = os.path.dirname(os.path.abspath(__file__))
 TARGETDIR = os.getcwd()
 
+
 class DummyLogger(object):
+
     def info(self, s):
         pass
+
     def debug(self, s):
         pass
+
     def error(self, s):
         pass
+
     def warning(self, s):
         pass
 logger = DummyLogger()
 
+
 def make_filename(s):
-    return os.path.splitext(os.path.basename(s))[0]+'.4s'
+    return os.path.splitext(os.path.basename(s))[0] + '.4s'
+
 
 def debug_print(s):
     if debug is True:
-        sys.stderr.write(s+SEP)
+        sys.stderr.write(s + SEP)
+
 
 def partition(alist, indices):
-    return [alist[i:j] for i, j in zip([0]+indices, indices+[None])]
+    return [alist[i:j] for i, j in zip([0] + indices, indices + [None])]
+
 
 def check_question(question, logger=None):
     warnings = []
@@ -83,10 +93,10 @@ def check_question(question, logger=None):
             warnings.append(el)
     if len(warnings) > 0:
         logger.warning('WARNING: question {} lacks the following fields: {}{}'
-            .format(question, ', '.join(warnings), SEP))
+                       .format(question, ', '.join(warnings), SEP))
 
-def chgk_parse(text, defaultauthor=None):
 
+def chgk_parse(text, defaultauthor=None, regexes=None):
     """
     Parsing rationale: every Question has two required fields: 'question' and
     the immediately following 'answer'. All the rest are optional, as is
@@ -115,31 +125,35 @@ def chgk_parse(text, defaultauthor=None):
 
     re_tour = re.compile(r'^Т[Уу][Рр] ?([0-9IVXLCDM]*)([\.:])?$', re.U)
     re_tourrev = re.compile(r'^([0-9IVXLCDM]+) [Тт][Уу][Рр]([\.:])?$', re.U)
-    re_question = re.compile(r'В[Оо][Пп][Рр][Оо][Сс] ?[№N]?([0-9]*) ?([\.:]|\n|\r\n|$)', re.U)
-    re_answer = re.compile(r'О[Тт][Вв][Ее][Тт][Ыы]? ?[№N]?([0-9]+)? ?[:]', re.U)
+    re_question = re.compile(
+        r'В[Оо][Пп][Рр][Оо][Сс] ?[№N]?([0-9]*) ?([\.:]|\n|\r\n|$)', re.U)
+    re_answer = re.compile(
+        r'О[Тт][Вв][Ее][Тт][Ыы]? ?[№N]?([0-9]+)? ?[:]', re.U)
     re_zachet = re.compile(r'З[Аа][Чч][ЕеЁё][Тт] ?[\.:]', re.U)
     re_nezachet = re.compile(r'Н[Ее][Зз][Аа][Чч][ЕеЁё][Тт] ?[\.:]', re.U)
-    re_comment = re.compile(r'К[Оо][Мм][Мм]?([Ее][Нн][Тт]([Аа][Рр][Ии][ИиЙй]|\.)|\.) ?[№N]?([0-9]+)? ?[\.:]', re.U)
+    re_comment = re.compile(
+        r'К[Оо][Мм][Мм]?([Ее][Нн][Тт]([Аа][Рр][Ии][ИиЙй]|\.)|\.) ?[№N]?([0-9]+)? ?[\.:]', re.U)
     re_author = re.compile(r'А[Вв][Тт][Оо][Рр]\(?[Ыы]?\)? ?[\.:]', re.U)
-    re_source = re.compile(r'И[Сс][Тт][Оо][Чч][Нн][Ии][Кк]\(?[Ии]?\)? ?[\.:]', re.U)
-    re_editor = re.compile(r'[Рр][Ее][Дд][Аа][Кк][Тт][Оо][Рр]([Ыы]|[Сс][Кк][Аа][Яя] [Гг][Рр][Уу][Пп][Пп][Аа])?( ?[\.:]| [\-–—]+ )', re.U)
+    re_source = re.compile(
+        r'И[Сс][Тт][Оо][Чч][Нн][Ии][Кк]\(?[Ии]?\)? ?[\.:]', re.U)
+    re_editor = re.compile(
+        r'[Рр][Ее][Дд][Аа][Кк][Тт][Оо][Рр]([Ыы]|[Сс][Кк][Аа][Яя] [Гг][Рр][Уу][Пп][Пп][Аа])?( ?[\.:]| [\-–—]+ )', re.U)
     re_date = re.compile(r'Д[Аа][Тт][Аа] ?[\.:]', re.U)
     re_date2 = re.compile(r'(^|\s)[Яя][Нн][Вв][Аа][Рр][ЬьЯя]|[Фф][Ее][Вв][Рр][Аа][Лл][ЬьЯя]|[Мм][Аа][Рр][Тт][Аа]?|[Аа][Пп][Рр][Ее][Лл][Ьь][Яя]|[Мм][Аа][ЙйЯя]|[Ии][Юю][Нн][ЬьЯя]|[Ии][Юю][Лл][ЬьЯя]|[Аа][Вв][Гг][Уу][Сс][Тт][Аа]?|[Сс][Ее][Нн][Тт][Яя][Бб][Рр][ЬьЯя]|[Оо][Кк][Тт][Яя][Бб][Рр][Ьь][Яя]|[Нн][Оо][Яя][Бб][Рр][ЬьЯя]|[Дд][Ее][Кк][Аа][Бб][Рр][ЬьЯя](\s|$)', re.U)
-    # re_handout = re.compile(r'Р[Аа][Зз][Дд][Аа]([Чч][Аа]|[Тт][Кк][Аа]|[Тт][Оо][Чч][Нн][Ыы][Йй] [Мм][Аа][Тт][Ее][Рр][Ии][Аа][Лл]) ?[\.:]', re.U)
     re_number = re.compile(r'^[0-9]+[\.\)] *')
 
     regexes = {
-        'tour' : re_tour,
-        'tourrev' : re_tourrev,
-        'question' : re_question,
-        'answer' : re_answer,
-        'zachet' : re_zachet,
-        'nezachet' : re_nezachet,
-        'comment' : re_comment,
-        'author' : re_author,
-        'source' : re_source,
-        'editor' : re_editor,
-        'date' : re_date,
+        'tour': re_tour,
+        'tourrev': re_tourrev,
+        'question': re_question,
+        'answer': re_answer,
+        'zachet': re_zachet,
+        'nezachet': re_nezachet,
+        'comment': re_comment,
+        'author': re_author,
+        'source': re_source,
+        'editor': re_editor,
+        'date': re_date,
     }
 
     chgk_parse.structure = []
@@ -148,24 +162,24 @@ def chgk_parse(text, defaultauthor=None):
         target = index - 1
         if chgk_parse.structure[target][1]:
             chgk_parse.structure[target][1] = (
-                chgk_parse.structure[target][1] + SEP
-                + chgk_parse.structure.pop(index)[1])
+                chgk_parse.structure[target][1] + SEP +
+                chgk_parse.structure.pop(index)[1])
         else:
             chgk_parse.structure[target][1] = chgk_parse.structure.pop(
                 index)[1]
 
     def merge_to_next(index):
         target = chgk_parse.structure.pop(index)
-        chgk_parse.structure[index][1] = (target[1] + SEP
-            + chgk_parse.structure[index][1])
+        chgk_parse.structure[index][1] = (target[1] + SEP +
+                                          chgk_parse.structure[index][1])
 
     def find_next_fieldname(index):
         target = index + 1
         if target < len(chgk_parse.structure):
             logger.debug(pprint.pformat(
                 chgk_parse.structure[target]))
-            while (target < len(chgk_parse.structure)-1
-                and chgk_parse.structure[target][0] == ''):
+            while (target < len(chgk_parse.structure) - 1 and
+                   chgk_parse.structure[target][0] == ''):
                 target += 1
             return chgk_parse.structure[target][0]
 
@@ -173,46 +187,47 @@ def chgk_parse(text, defaultauthor=None):
         i = 0
         while i < len(chgk_parse.structure):
             if chgk_parse.structure[i][0] == x:
-                while (i+1 < len(chgk_parse.structure)
-                    and chgk_parse.structure[i+1][0] != y):
-                    merge_to_previous(i+1)
+                while (i + 1 < len(chgk_parse.structure) and
+                       chgk_parse.structure[i + 1][0] != y):
+                    merge_to_previous(i + 1)
             i += 1
 
     def merge_to_x_until_nextfield(x):
         i = 0
         while i < len(chgk_parse.structure):
             if chgk_parse.structure[i][0] == x:
-                while (i+1 < len(chgk_parse.structure)
-                    and chgk_parse.structure[i+1][0] == ''
-                    and find_next_fieldname(i) not in BADNEXTFIELDS):
-                    merge_to_previous(i+1)
+                while (i + 1 < len(chgk_parse.structure) and
+                       chgk_parse.structure[i + 1][0] == '' and
+                       find_next_fieldname(i) not in BADNEXTFIELDS):
+                    merge_to_previous(i + 1)
             i += 1
 
     def dirty_merge_to_x_until_nextfield(x):
         i = 0
         while i < len(chgk_parse.structure):
             if chgk_parse.structure[i][0] == x:
-                while (i+1 < len(chgk_parse.structure)
-                    and chgk_parse.structure[i+1][0] == ''):
-                    merge_to_previous(i+1)
+                while (i + 1 < len(chgk_parse.structure) and
+                       chgk_parse.structure[i + 1][0] == ''):
+                    merge_to_previous(i + 1)
             i += 1
 
     if defaultauthor:
         logger.info('The default author is {}. '
-            'Missing authors will be substituted with them'
-            .format(defaultauthor))
+                    'Missing authors will be substituted with them'
+                    .format(defaultauthor))
 
     # 1.
 
-    for x in re.split(r'\r?\n',text):
+    for x in re.split(r'\r?\n', text):
         if x != '':
-            chgk_parse.structure.append(['',rew(x)])
+            chgk_parse.structure.append(['', rew(x)])
 
     i = 0
     st = chgk_parse.structure
     while i < len(st):
         matching_regexes = {(regex, regexes[regex].search(st[i][1]).start(0))
-        for regex in regexes if regexes[regex].search(st[i][1])}
+                            for regex in regexes
+                            if regexes[regex].search(st[i][1])}
 
         # If more than one regex matches string, split it and
         # insert into structure separately.
@@ -225,13 +240,12 @@ def chgk_parse(text, defaultauthor=None):
             for j in range(1, len(sorted_r)):
                 slices.append(
                     [sorted_r[j][0], st[i][1][
-                        sorted_r[j][1]
-                         :
-                        sorted_r[j+1][1] if j+1 < len(sorted_r)
-                                                else len(st[i][1])]])
+                        sorted_r[j][1]:
+                        sorted_r[j + 1][1] if j + 1 < len(sorted_r)
+                        else len(st[i][1])]])
             for slice_ in slices:
                 chgk_parse.structure.insert(
-                    i+1, slice_)
+                    i + 1, slice_)
             st[i][0] = sorted_r[0][0]
             st[i][1] = st[i][1][:sorted_r[1][1]]
         i += 1
@@ -241,45 +255,52 @@ def chgk_parse(text, defaultauthor=None):
     if debug:
         with codecs.open('debug_1.json', 'w', 'utf8') as f:
             f.write(json.dumps(chgk_parse.structure, ensure_ascii=False,
-                indent=4))
+                               indent=4))
 
     # 2.
 
-    merge_y_to_x('question','answer')
+    merge_y_to_x('question', 'answer')
     merge_to_x_until_nextfield('answer')
     merge_to_x_until_nextfield('comment')
 
     if debug:
         with codecs.open('debug_2.json', 'w', 'utf8') as f:
             f.write(json.dumps(chgk_parse.structure, ensure_ascii=False,
-                indent=4))
+                               indent=4))
 
     # 3.
 
     i = 0
     while i < len(chgk_parse.structure):
-        if (chgk_parse.structure[i][0] == 'answer'
-            and chgk_parse.structure[i-1][0] not in ('question',
-                'newquestion')):
-            chgk_parse.structure.insert(i,['newquestion',''])
+        if (chgk_parse.structure[i][0] == 'answer' and
+            chgk_parse.structure[i - 1][0] not in ('question',
+                                                   'newquestion')):
+            chgk_parse.structure.insert(i, ['newquestion', ''])
             i = 0
         i += 1
 
     i = 0
     while i < len(chgk_parse.structure) - 1:
-        if (chgk_parse.structure[i][0] == ''
-            and chgk_parse.structure[i+1][0] == 'newquestion'):
+        if (chgk_parse.structure[i][0] == '' and
+                chgk_parse.structure[i + 1][0] == 'newquestion'):
             merge_to_next(i)
             if (re_number.search(
-                            rew(chgk_parse.structure[i][1])) and
-            not re_number.search(
-                rew(chgk_parse.structure[i-1][1]))):
+                    rew(chgk_parse.structure[i][1])) and
+                    not re_number.search(
+                    rew(chgk_parse.structure[i - 1][1]))):
                 chgk_parse.structure[i][0] = 'question'
-                chgk_parse.structure[i][1] = re_number.sub('',rew(
+                chgk_parse.structure[i][1] = re_number.sub('', rew(
                     chgk_parse.structure[i][1]))
                 try:
-                    chgk_parse.structure.insert(i, ['number', int(re_number.search(
-                            rew(chgk_parse.structure[i][1])).group(0))])
+                    chgk_parse.structure.insert(i,
+                                                ['number', int(
+                                                    re_number.search(
+                                                        rew(
+                                                            chgk_parse
+                                                            .structure[i][1]
+                                                        )
+                                                    ).group(0))]
+                                                )
                 except:
                     pass
             i = 0
@@ -292,11 +313,11 @@ def chgk_parse(text, defaultauthor=None):
     dirty_merge_to_x_until_nextfield('source')
 
     for _id, element in enumerate(chgk_parse.structure):
-        if (element[0] == 'author' and re.search(r'^{}$'.format(re_author.
-            pattern),
-            rew(element[1]))
-            and _id + 1 < len(chgk_parse.structure)):
-            merge_to_previous(_id+1)
+        if (element[0] == 'author' and
+            re.search(r'^{}$'.format(re_author.pattern),
+                      rew(element[1])) and
+                _id + 1 < len(chgk_parse.structure)):
+            merge_to_previous(_id + 1)
 
     merge_to_x_until_nextfield('zachet')
     merge_to_x_until_nextfield('nezachet')
@@ -304,22 +325,22 @@ def chgk_parse(text, defaultauthor=None):
     if debug:
         with codecs.open('debug_3.json', 'w', 'utf8') as f:
             f.write(json.dumps(chgk_parse.structure, ensure_ascii=False,
-                indent=4))
+                               indent=4))
 
     # 4.
 
-    chgk_parse.structure = [x for x in chgk_parse.structure if [x[0], rew(x[1])]
-        != ['', '']]
+    chgk_parse.structure = [x for x in chgk_parse.structure
+                            if [x[0], rew(x[1])] != ['', '']]
 
     if chgk_parse.structure[0][0] == '' and re_number.search(
-        rew(chgk_parse.structure[0][1])):
+            rew(chgk_parse.structure[0][1])):
         merge_to_next(0)
 
     for _id, element in enumerate(chgk_parse.structure):
         if element[0] == '':
             element[0] = 'meta'
         if element[0] in regexes and element[0] not in ['tour', 'tourrev',
-            'editor']:
+                                                        'editor']:
             if element[0] == 'question':
                 try:
                     num = re_question.search(element[1]).group(1)
@@ -333,7 +354,7 @@ def chgk_parse(text, defaultauthor=None):
     if debug:
         with codecs.open('debug_4.json', 'w', 'utf8') as f:
             f.write(json.dumps(chgk_parse.structure, ensure_ascii=False,
-                indent=4))
+                               indent=4))
 
     # 5.
 
@@ -352,50 +373,50 @@ def chgk_parse(text, defaultauthor=None):
         # detect inner lists
 
         mo = {m for m
-            in re.finditer(r'(\s+|^)(\d+)[\.\)]\s*(?!\d)',element[1], re.U)}
+              in re.finditer(r'(\s+|^)(\d+)[\.\)]\s*(?!\d)', element[1], re.U)}
         if len(mo) > 1:
             sorted_up = sorted(mo, key=lambda m: int(m.group(2)))
             j = 0
             list_candidate = []
             while j == int(sorted_up[j].group(2)) - 1:
-                list_candidate.append((j+1, sorted_up[j].group(0),
-                    sorted_up[j].start()))
-                if j+1 < len(sorted_up):
+                list_candidate.append((j + 1, sorted_up[j].group(0),
+                                       sorted_up[j].start()))
+                if j + 1 < len(sorted_up):
                     j += 1
                 else:
                     break
             if len(list_candidate) > 1:
                 if (element[0] != 'question' or
-                    (element[0] == 'question'
-                        and 'дуплет' in element[1].lower()
-                            or 'блиц' in element[1].lower())):
+                        (element[0] == 'question' and
+                            'дуплет' in element[1].lower() or
+                            'блиц' in element[1].lower())):
                     part = partition(element[1], [x[2] for x in
-                        list_candidate])
+                                                  list_candidate])
                     lc = 0
                     while lc < len(list_candidate):
-                        part[lc+1] = part[lc+1].replace(list_candidate[lc][1], '')
+                        part[lc + 1] = part[lc + 1].replace(
+                            list_candidate[lc][1], ''
+                        )
                         lc += 1
                     element[1] = ([part[0], part[1:]] if part[0] != ''
-                                            else part[1:])
+                                  else part[1:])
 
         # turn source into list if necessary
 
-        if (element[0] == 'source' and isinstance(element[1], basestring)
-                    and len(re.split(r'\r?\n', element[1])) > 1):
+        if (element[0] == 'source' and isinstance(element[1], basestring) and
+                len(re.split(r'\r?\n', element[1])) > 1):
             element[1] = [re_number.sub('', rew(x))
-                for x in re.split(r'\r?\n', element[1])]
+                          for x in re.split(r'\r?\n', element[1])]
 
         # typogrify
 
         if element[0] != 'date':
             element[1] = typotools.recursive_typography(element[1])
 
-
     if debug:
         with codecs.open('debug_5.json', 'w', 'utf8') as f:
             f.write(json.dumps(chgk_parse.structure, ensure_ascii=False,
-                indent=4))
-
+                               indent=4))
 
     # 6.
 
@@ -403,8 +424,8 @@ def chgk_parse(text, defaultauthor=None):
     current_question = {}
 
     for element in chgk_parse.structure:
-        if (element[0] in set(['number', 'tour', 'question', 'meta'])
-            and 'question' in current_question):
+        if (element[0] in set(['number', 'tour', 'question', 'meta']) and
+                'question' in current_question):
             if defaultauthor and 'author' not in current_question:
                 current_question['author'] = defaultauthor
             check_question(current_question, logger=logger)
@@ -415,10 +436,9 @@ def chgk_parse(text, defaultauthor=None):
                 try:
                     current_question[element[0]] += SEP + element[1]
                 except:
-                    logger.info( # TODO: fix this weird spot
+                    logger.info(  # TODO: fix this weird spot
                         '{}'.format(current_question).encode(
-                            'utf8',errors='replace').decode('unicode_escape'))
-                    pdb.set_trace()
+                            'utf8', errors='replace').decode('unicode_escape'))
             else:
                 current_question[element[0]] = element[1]
         else:
@@ -428,7 +448,6 @@ def chgk_parse(text, defaultauthor=None):
             current_question['author'] = defaultauthor
         check_question(current_question, logger=logger)
         final_structure.append(['Question', current_question])
-
 
     # 7.
     try:
@@ -455,7 +474,7 @@ def chgk_parse(text, defaultauthor=None):
     if debug:
         with codecs.open('debug_final.json', 'w', 'utf8') as f:
             f.write(json.dumps(final_structure, ensure_ascii=False,
-                indent=4))
+                               indent=4))
     return final_structure
 
 
@@ -465,7 +484,7 @@ class UnknownEncodingException(Exception):
 
 def chgk_parse_txt(txtfile, encoding=None, defaultauthor=''):
     os.chdir(os.path.dirname(os.path.abspath(txtfile)))
-    raw = open(txtfile,'rb').read()
+    raw = open(txtfile, 'rb').read()
     if not encoding:
         if chardet.detect(raw)['confidence'] > 0.7:
             encoding = chardet.detect(raw)['encoding']
@@ -479,12 +498,14 @@ def chgk_parse_txt(txtfile, encoding=None, defaultauthor=''):
         return chgk_parse_db(text, debug=debug)
     return chgk_parse(text, defaultauthor=defaultauthor)
 
+
 def generate_imgname(ext):
     imgcounter = 1
     while os.path.isfile('{:03}.{}'
-        .format(imgcounter, ext)):
+                         .format(imgcounter, ext)):
         imgcounter += 1
     return '{:03}.{}'.format(imgcounter, ext)
+
 
 def chgk_parse_docx(docxfile, defaultauthor=''):
     os.chdir(os.path.dirname(os.path.abspath(docxfile)))
@@ -531,16 +552,16 @@ def chgk_parse_docx(docxfile, defaultauthor=''):
     h = html2text.HTML2Text()
     h.body_width = 0
     txt = (h.handle(bsoup.prettify())
-        .replace('\\-','')
-        .replace('\\.','.')
-        .replace('( ', '(')
-        .replace('[ ', '[')
-        .replace(' )', ')')
-        .replace(' ]', ']')
-        .replace(' :', ':')
-        .replace('&lt;','<')
-        .replace('&gt;','>')
-        )
+           .replace('\\-', '')
+           .replace('\\.', '.')
+           .replace('( ', '(')
+           .replace('[ ', '[')
+           .replace(' )', ')')
+           .replace(' ]', ']')
+           .replace(' :', ':')
+           .replace('&lt;', '<')
+           .replace('&gt;', '>')
+           )
 
     if debug:
         with codecs.open('debug.debug', 'w', 'utf8') as dbg:
@@ -549,14 +570,16 @@ def chgk_parse_docx(docxfile, defaultauthor=''):
     final_structure = chgk_parse(txt, defaultauthor=defaultauthor)
     return final_structure
 
+
 def remove_double_separators(s):
     return re.sub(r'({})+'.format(SEP), SEP, s)
 
+
 def compose_4s(structure):
     types_mapping = {
-        'meta' : '# ',
-        'tour' : '## ',
-        'tourrev' : '## ',
+        'meta': '# ',
+        'tour': '## ',
+        'tourrev': '## ',
         'editor': '#EDITOR ',
         'heading': '### ',
         'ljheading': '###LJ ',
@@ -571,14 +594,15 @@ def compose_4s(structure):
         'handout': '> ',
         'Question': None,
     }
+
     def format_element(z):
         if isinstance(z, basestring):
             return remove_double_separators(z)
         elif isinstance(z, list):
             if isinstance(z[1], list):
-                return (remove_double_separators(z[0]) + SEP + '- '
-                    + ('{}- '.format(SEP)).join((
-                        [remove_double_separators(x) for x in z[1]])))
+                return (remove_double_separators(z[0]) + SEP + '- ' +
+                        ('{}- '.format(SEP)).join((
+                            [remove_double_separators(x) for x in z[1]])))
             else:
                 return SEP + '- ' + ('{}- '.format(SEP)).join(
                     [remove_double_separators(x) for x in z])
@@ -586,24 +610,25 @@ def compose_4s(structure):
     for element in structure:
         if element[0] in ['tour', 'tourrev']:
             checkNumber = True
-        if element[0] == 'number' and checkNumber and int(element[1])!=0:
+        if element[0] == 'number' and checkNumber and int(element[1]) != 0:
             checkNumber = False
-            result += '№№ '+element[1]+SEP
-        if element[0] == 'number' and int(element[1])==0:
-            result += '№ '+element[1]+SEP
+            result += '№№ ' + element[1] + SEP
+        if element[0] == 'number' and int(element[1]) == 0:
+            result += '№ ' + element[1] + SEP
         if element[0] in types_mapping and types_mapping[element[0]]:
-            result += (types_mapping[element[0]]
-                + format_element(element[1]) + SEP + SEP)
+            result += (types_mapping[element[0]] +
+                       format_element(element[1]) + SEP + SEP)
         elif element[0] == 'Question':
             tmp = ''
             for label in QUESTION_LABELS:
                 if label in element[1] and label in types_mapping:
-                    tmp += (types_mapping[label]
-                        + format_element(element[1][label]) + SEP)
+                    tmp += (types_mapping[label] +
+                            format_element(element[1][label]) + SEP)
             tmp = re.sub(r'{}+'.format(SEP), SEP, tmp)
-            tmp = tmp.replace('\r\r','\r')
+            tmp = tmp.replace('\r\r', '\r')
             result += tmp + SEP
     return result
+
 
 def chgk_parse_wrapper(abspath, args):
     os.chdir(os.path.dirname(os.path.abspath(abspath)))
@@ -613,29 +638,29 @@ def chgk_parse_wrapper(abspath, args):
         defaultauthor = os.path.splitext(os.path.basename(abspath))[0]
     if os.path.splitext(abspath)[1] == '.txt':
         final_structure = chgk_parse_txt(abspath,
-            defaultauthor=defaultauthor,
-            encoding=args.encoding)
+                                         defaultauthor=defaultauthor,
+                                         encoding=args.encoding)
     elif os.path.splitext(abspath)[1] == '.docx':
         final_structure = chgk_parse_docx(abspath,
-            defaultauthor=defaultauthor)
+                                          defaultauthor=defaultauthor)
     else:
         sys.stderr.write('Error: unsupported file format.' + SEP)
         sys.exit()
     outfilename = make_filename(abspath)
     logger.info('Output: {}'.format(
-            os.path.abspath(outfilename)))
+        os.path.abspath(outfilename)))
     with codecs.open(
-        outfilename, 'w', 'utf8') as output_file:
+            outfilename, 'w', 'utf8') as output_file:
         output_file.write(
             compose_4s(final_structure))
     return outfilename
 
+
 def gui_parse(args):
 
     global console_mode
-    global __file__                         # to fix stupid
-    __file__ = os.path.abspath(__file__)    # __file__ handling
-    _file_ = os.path.basename(__file__)     # in python 2
+    global __file__                         # to fix stupid __file__
+    __file__ = os.path.abspath(__file__)    # handling in python 2
 
     global debug
     global logger
@@ -667,7 +692,7 @@ def gui_parse(args):
 
     ld = '.'
     if os.path.isfile('lastdir'):
-        with codecs.open('lastdir','r','utf8') as f:
+        with codecs.open('lastdir', 'r', 'utf8') as f:
             ld = f.read().rstrip()
         if not os.path.isdir(ld):
             ld = '.'
@@ -676,16 +701,18 @@ def gui_parse(args):
             args.filename = filedialog.askdirectory(initialdir=ld)
         if os.path.isdir(args.filename):
             ld = args.filename
-            with codecs.open('lastdir','w','utf8') as f:
+            with codecs.open('lastdir', 'w', 'utf8') as f:
                 f.write(ld)
             for filename in os.listdir(args.filename):
-                if (filename.endswith(('.docx', '.txt'))
-                    and not os.path.isfile(
+                if (filename.endswith(('.docx', '.txt')) and
+                    not os.path.isfile(
                         os.path.join(args.filename, make_filename(filename)))):
                     outfilename = chgk_parse_wrapper(
                         os.path.join(args.filename, filename), args)
-                    logger.info('{} -> {}'.format(filename,
-                        os.path.basename(outfilename)))
+                    logger.info('{} -> {}'.format(
+                        filename,
+                        os.path.basename(outfilename)
+                    ))
             input("Press Enter to continue...")
 
         else:
@@ -695,11 +722,11 @@ def gui_parse(args):
         if not args.filename:
             args.filename = filedialog.askopenfilename(
                 filetypes=[
-                ('chgksuite parsable files',('*.docx','*.txt'))
+                    ('chgksuite parsable files', ('*.docx', '*.txt'))
                 ], initialdir=ld)
         if args.filename:
             ld = os.path.dirname(os.path.abspath(args.filename))
-        with codecs.open('lastdir','w','utf8') as f:
+        with codecs.open('lastdir', 'w', 'utf8') as f:
             f.write(ld)
         if not args.filename:
             print('No file specified.')
@@ -710,10 +737,14 @@ def gui_parse(args):
             print('Please review the resulting file {}:'.format(
                 make_filename(args.filename)))
             subprocess.call(shlex.split('{} "{}"'
-                .format(
-                    TEXTEDITOR,
-                    outfilename).encode(ENC,errors='replace')))
+                                        .format(
+                                            TEXTEDITOR,
+                                            outfilename)
+                                        .encode(
+                                            ENC,
+                                            errors='replace')))
             input("Press Enter to continue...")
+
 
 def main():
     print('This program was not designed to run standalone.')
