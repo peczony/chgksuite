@@ -739,10 +739,7 @@ def gui_parse(args):
             subprocess.call(shlex.split('{} "{}"'
                                         .format(
                                             TEXTEDITOR,
-                                            outfilename)
-                                        .encode(
-                                            ENC,
-                                            errors='replace')))
+                                            outfilename)))
             input("Press Enter to continue...")
 
 
