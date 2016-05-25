@@ -12,6 +12,7 @@ except ImportError:
 
 from chgk_parser import gui_parse
 from chgk_composer import gui_compose, on_close
+# from chgk_trello import gui_trello
 
 debug = False
 
@@ -192,6 +193,30 @@ def main():
     cmdcompose_lj.add_argument('--community', '-c',
                                help='livejournal community to post to.')
 
+    cmdtrello = subparsers.add_parser('trello')
+    cmdtrello_subcommands = cmdtrello.add_subparsers(dest='trellosubcommand')
+    cmdtrello_download = cmdtrello_subcommands.add_parser('download')
+    cmdtrello_download.add_argument('trelloconfig',
+                                    help='a trello.json config file '
+                                    'containing board_id and token.')
+    cmdtrello_download.add_argument('--si', action='store_true',
+                                    help="This flag includes card captions "
+                                    "in .4s files. "
+                                    "Useful for editing SI "
+                                    "files (rather than CHGK)")
+    cmdtrello_download.add_argument('--labels', action='store_true',
+                                    help="Use this if you also want "
+                                    "to have lists based on labels.")
+
+    cmdtrello_upload = cmdtrello_subcommands.add_parser('upload')
+    cmdtrello_upload.add_argument('trelloconfig',
+                                  help='a trello.json config file '
+                                  'containing board_id and token.')
+    cmdtrello_upload.add_argument('filename', nargs='*',
+                                  help='file(s) to upload to trello.')
+    cmdtrello_upload.add_argument('--author', action='store_true',
+                                  help='Display authors in cards captions')
+
     if len(sys.argv) == 1:
         args = DefaultNamespace()
     else:
@@ -219,10 +244,8 @@ def main():
     if args.action == 'compose':
         gui_compose(args, sourcedir=os.path.dirname(
             os.path.abspath(__file__)))
-    if args.action == 'trellodown':
-        gui_trello_download(args)
-    if args.action == 'trelloup':
-        gui_trello_upload(args)
+    if args.action in {'trellodown', 'trelloup'}:
+        gui_trello(args)
 
 if __name__ == "__main__":
     main()
