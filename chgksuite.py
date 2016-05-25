@@ -43,6 +43,16 @@ def gui_choose_action(args):
         root.quit()
         root.destroy()
 
+    def trelloupreturn():
+        root.ret = 'trelloup', ch_defaultauthor.get(), ch_merge.get()
+        root.quit()
+        root.destroy()
+
+    def trellodownreturn():
+        root.ret = 'trellodown', ch_defaultauthor.get(), ch_merge.get()
+        root.quit()
+        root.destroy()
+
     def toggle_da():
         if ch_defaultauthor.get() == 0:
             ch_defaultauthor.set(1)
@@ -64,6 +74,8 @@ def gui_choose_action(args):
     root.attributes("-topmost", True)
     frame = Frame(root)
     frame.pack()
+    midframe = Frame(root)
+    midframe.pack(side='bottom')
     bottomframe = Frame(root)
     bottomframe.pack(side='bottom')
     Button(frame, command=parsereturn, text='Parse file(s)').pack(
@@ -75,6 +87,14 @@ def gui_choose_action(args):
         padx=20, pady=20,
         ipadx=20, ipady=20,)
     Button(frame, command=composereturn, text='Compose').pack(
+        side='left',
+        padx=20, pady=20,
+        ipadx=20, ipady=20,)
+    Button(midframe, command=trellodownreturn, text='Download from Trello').pack(
+        side='left',
+        padx=20, pady=20,
+        ipadx=20, ipady=20,)
+    Button(midframe, command=trelloupreturn, text='Upload to Trello').pack(
         side='left',
         padx=20, pady=20,
         ipadx=20, ipady=20,)
@@ -199,6 +219,10 @@ def main():
     if args.action == 'compose':
         gui_compose(args, sourcedir=os.path.dirname(
             os.path.abspath(__file__)))
+    if args.action == 'trellodown':
+        gui_trello_download(args)
+    if args.action == 'trelloup':
+        gui_trello_upload(args)
 
 if __name__ == "__main__":
     main()
