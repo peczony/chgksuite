@@ -537,6 +537,7 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
            .replace('&lt;', '<')
            .replace('&gt;', '>')
            )
+    txt = re.sub(r'_ *_', '', txt) # fix bad italic from Word
 
     if debug:
         with codecs.open('debug.debug', 'w', 'utf8') as dbg:
