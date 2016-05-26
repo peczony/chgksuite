@@ -12,7 +12,7 @@ except ImportError:
 
 from chgk_parser import gui_parse
 from chgk_composer import gui_compose, on_close
-# from chgk_trello import gui_trello
+from chgk_trello import gui_trello
 
 debug = False
 
@@ -54,6 +54,11 @@ def gui_choose_action(args):
         root.quit()
         root.destroy()
 
+    def trellotokreturn():
+        root.ret = 'trellotoken', ch_defaultauthor.get(), ch_merge.get()
+        root.quit()
+        root.destroy()
+
     def toggle_da():
         if ch_defaultauthor.get() == 0:
             ch_defaultauthor.set(1)
@@ -75,10 +80,10 @@ def gui_choose_action(args):
     root.attributes("-topmost", True)
     frame = Frame(root)
     frame.pack()
-    midframe = Frame(root)
-    midframe.pack(side='bottom')
     bottomframe = Frame(root)
     bottomframe.pack(side='bottom')
+    midframe = Frame(root)
+    midframe.pack(side='bottom')
     Button(frame, command=parsereturn, text='Parse file(s)').pack(
         side='left',
         padx=20, pady=20,
@@ -91,17 +96,22 @@ def gui_choose_action(args):
         side='left',
         padx=20, pady=20,
         ipadx=20, ipady=20,)
-    Button(midframe, command=trellodownreturn, text='Download from Trello').pack(
+    Button(bottomframe, command=trellodownreturn,
+           text='Download from Trello').pack(
         side='left',
         padx=20, pady=20,
         ipadx=20, ipady=20,)
-    Button(midframe, command=trelloupreturn, text='Upload to Trello').pack(
+    Button(bottomframe, command=trelloupreturn, text='Upload to Trello').pack(
         side='left',
         padx=20, pady=20,
         ipadx=20, ipady=20,)
-    da = Checkbutton(bottomframe, text='Default author while parsing',
+    Button(bottomframe, command=trellotokreturn, text='Obtain a token').pack(
+        side='left',
+        padx=20, pady=20,
+        ipadx=20, ipady=20,)
+    da = Checkbutton(midframe, text='Default author while parsing',
                      variable=ch_defaultauthor, command=toggle_da)
-    mrg = Checkbutton(bottomframe, text='Merge several source files',
+    mrg = Checkbutton(midframe, text='Merge several source files',
                       variable=ch_merge, command=toggle_mrg)
     if ch_defaultauthor.get() == 1:
         da.select()
@@ -215,7 +225,9 @@ def main():
     cmdtrello_upload.add_argument('filename', nargs='*',
                                   help='file(s) to upload to trello.')
     cmdtrello_upload.add_argument('--author', action='store_true',
-                                  help='Display authors in cards captions')
+                                  help='Display authors in cards\' captions')
+
+    cmdtrello_subcommands.add_parser('token')
 
     if len(sys.argv) == 1:
         args = DefaultNamespace()
@@ -226,7 +238,10 @@ def main():
     root.withdraw()
 
     if not args.action:
-        action, defaultauthor, merge = gui_choose_action(args)
+        try:
+            action, defaultauthor, merge = gui_choose_action(args)
+        except ValueError:
+            sys.exit(1)
         if not args.regexes:
             args.regexes = 'regexes.json'
         if action == 'parse':
@@ -239,12 +254,21 @@ def main():
         if action == 'compose':
             args.action = 'compose'
             args.merge = merge
+        if action == 'trellodown':
+            args.action = 'trello'
+            args.trellosubcommand = 'download'
+        if action == 'trelloup':
+            args.action = 'trello'
+            args.trellosubcommand = 'upload'
+        if action == 'trellotoken':
+            args.action = 'trello'
+            args.trellosubcommand = 'token'
     if args.action == 'parse':
         gui_parse(args)
     if args.action == 'compose':
         gui_compose(args, sourcedir=os.path.dirname(
             os.path.abspath(__file__)))
-    if args.action in {'trellodown', 'trelloup'}:
+    if args.action == 'trello':
         gui_trello(args)
 
 if __name__ == "__main__":
