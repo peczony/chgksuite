@@ -72,8 +72,7 @@ def gui_choose_action(args):
             ch_merge.set(0)
     root = Tk()
     root.title('chgksuite')
-    root.eval('tk::PlaceWindow {} center'.format(
-        root.winfo_pathname(root.winfo_id())))
+    root.eval('tk::PlaceWindow . center')
     root.ret = 'None', '0'
     root.grexit = lambda: on_close(root)
     root.protocol("WM_DELETE_WINDOW", root.grexit)

@@ -452,8 +452,7 @@ def gui_get_filetype():
     else:
         ch_rawtex.set(0)
     root = Tk()
-    root.eval('tk::PlaceWindow {} center'.format(
-        root.winfo_pathname(root.winfo_id())))
+    root.eval('tk::PlaceWindow . center')
     root.grexit = lambda: on_close(root)
     root.ret = None
     root.protocol("WM_DELETE_WINDOW", root.grexit)
@@ -925,8 +924,7 @@ def lj_post_getdata():
     root.password = None
     root.community = None
     root.grexit = lambda: on_close(root)
-    root.eval('tk::PlaceWindow {} center'.format(
-        root.winfo_pathname(root.winfo_id())))
+    root.eval('tk::PlaceWindow . center')
     root.protocol("WM_DELETE_WINDOW", root.grexit)
     loginbox = Entry(root)
     pwdbox = Entry(root, show='*')

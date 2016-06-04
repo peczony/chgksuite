@@ -58,8 +58,7 @@ def gui_file_or_directory(args):
 
     root = Tk()
     root.title('upload file(s) or directory')
-    root.eval('tk::PlaceWindow {} center'.format(
-        root.winfo_pathname(root.winfo_id())))
+    root.eval('tk::PlaceWindow . center')
     root.ret = {'action': '', 'author': False}
     root.grexit = lambda: on_close(root)
     root.protocol("WM_DELETE_WINDOW", root.grexit)
