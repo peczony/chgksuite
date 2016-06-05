@@ -13,20 +13,19 @@ Pillow==3.0.0
 ply==3.8
 ```
 
-Одной командой: `pip install -r requirements`.
+Одной командой: `pip install -r requirements`. Если у вас Windows и не настроена как надо сборка c-extensions, лучше пользуйтесь [Anaconda](https://www.continuum.io/downloads) и перед тем, как ставить остальные требуемые модули, `conda install lxml`.
 
 (Работа с более ранними или поздними версиями пакетов возможна, но не гарантируется. Точно будут проблемы со старыми версиями PyDocX.)
 
 Если вы хотите собирать бинарные версии и тестировать, вам также потребуются
 
 ```
-PyInstaller==3.0
+PyInstaller==3.2
 pytest==2.8.4
 ```
 
 Одной командой: `pip install -r requirements_dev`.
 
-В PyInstaller 3.0 на Windows есть [баг](https://github.com/pyinstaller/pyinstaller/issues/1584), мешающий сборке. Его можно полечить, установив dev-версию (в которой, разумеется, могут быть другие, неизвестные баги) или закомментировав строчки, начинающиеся с `excludedimports` в `\PyInstaller\hooks\hook-PIL.py` и `\PyInstaller\hooks\hook-PIL.SpiderImagePlugin.py`.
-
 Чтобы собрать: `pyinstaller --onefile chgksuite.py`
-Чтобы запустить тесты: `py.test`
+
+Чтобы запустить тесты: `py.test`. К сожалению, из-за бага то ли в Bitbucket, то ли в Mercurial я не могу удалить из репозитория файлы `tests/ОВСЧ Бороненко Яковлева Этап 3.docx` и `tests/ОВСЧ Бороненко Яковлева Этап 3.docx.canon` (названия могут отличаться в зависимости от операционной системы — например, в OS X содержат [percent encoding](https://en.wikipedia.org/wiki/Percent-encoding)). Тесты на них падают. Для корректной работы тестов удалите эти файлы.
