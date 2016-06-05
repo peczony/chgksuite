@@ -12,7 +12,6 @@ import logging
 import datetime
 import hashlib
 import os
-import pprint
 import random
 import re
 import shlex
@@ -45,7 +44,7 @@ import pyimgur
 
 from chgk_parser import QUESTION_LABELS, check_question
 import typotools
-from typotools import remove_excessive_whitespace as rew
+from typotools import remove_excessive_whitespace as rew, log_wrap
 
 args = None
 im = None
@@ -193,7 +192,7 @@ def parse_4s_elem(s):
             s = s.replace(gr, urllib.unquote(gr.encode('utf8')).decode('utf8'))
         except:
             logger.debug('error decoding on line {}: {}\n'
-                         .format(gr, traceback.format_exc()))
+                         .format(log_wrap(gr), traceback.format_exc()))
 
     s = list(s)
     i = 0
@@ -251,7 +250,7 @@ def parse_4s_elem(s):
                     part[1][4:-1])
                 part[0] = 'img'
                 logger.debug('found img at {}'
-                             .format(pprint.pformat(part[1])))
+                             .format(part[1]))
             if len(part[1]) > 3 and part[1][:4] == '(sc':
                 if part[1][-1] != ')':
                     part[1] = part[1] + ')'
@@ -259,14 +258,11 @@ def parse_4s_elem(s):
                     part[1][3:-1])
                 part[0] = 'sc'
                 logger.debug('found img at {}'
-                             .format(pprint.pformat(part[1])))
+                             .format(log_wrap(part[1])))
             part[1] = part[1].replace('\\_', '_')
         except:
             sys.stderr.write('Error on part {}: {}'
-                             .format(pprint.pformat(part)
-                                     .encode('utf8', errors='replace')
-                                     .decode('unicode_escape'),
-                                     traceback.format_exc()))
+                             .format(log_wrap(part), traceback.format_exc()))
 
     return parts
 
@@ -297,9 +293,7 @@ def parse_4s(s, randomize=False):
         s = s[1:]
 
     with codecs.open('raw.debug', 'w', 'utf8') as debugf:
-        debugf.write(pprint.pformat(s.split('\n'))
-                     .encode('utf8', errors='replace')
-                     .decode('unicode_escape'))
+        debugf.write(log_wrap(s.split('\n')))
 
     for line in s.split('\n'):
         if rew(line) == '':
@@ -319,9 +313,7 @@ def parse_4s(s, randomize=False):
 
     if debug:
         with codecs.open('debug1st.debug', 'w', 'utf8') as debugf:
-            debugf.write(pprint.pformat(structure)
-                         .encode('utf8', errors='replace')
-                         .decode('unicode_escape'))
+            debugf.write(log_wrap(structure))
 
     for element in structure:
 
@@ -387,7 +379,7 @@ def parse_4s(s, randomize=False):
                     logger.error('Question {} misses '
                                  'some of the required fields '
                                  'and will therefore '
-                                 'be omitted.'.format(current_question))
+                                 'be omitted.'.format(log_wrap(current_question)))
                     continue
                 if 'setcounter' in current_question:
                     counter = int(current_question['setcounter'])
@@ -414,7 +406,7 @@ def parse_4s(s, randomize=False):
         except AssertionError:
             logger.error('Question {} misses '
                          'some of the required fields and will therefore '
-                         'be omitted.'.format(current_question))
+                         'be omitted.'.format(log_wrap(current_question)))
 
     if randomize:
         random.shuffle(final_structure, lambda: 0.3)
@@ -426,7 +418,7 @@ def parse_4s(s, randomize=False):
 
     if debug:
         with codecs.open('debug.debug', 'w', 'utf8') as debugf:
-            debugf.write(pprint.pformat(final_structure))
+            debugf.write(log_wrap(final_structure))
 
     for element in final_structure:
         if element[0] == 'Question':
@@ -535,10 +527,7 @@ def docx_format(el, para, whiten):
                 docx_format(li, p, whiten)
 
     if isinstance(el, basestring):
-        logger.debug('parsing element {}:'
-                     .format(pprint.pformat(el)
-                             .encode('utf8', errors='replace')
-                             .decode('unicode_escape')))
+        logger.debug('parsing element {}:'.format(log_wrap(el)))
 
         while '`' in el:
             if el.index('`') + 1 >= len(el):
@@ -843,9 +832,7 @@ def lj_process(structure):
         final_structure[0]['content'] = 'Вопросы в комментариях.'
     if debug:
         with codecs.open('lj.debug', 'w', 'utf8') as f:
-            f.write(pprint.pformat(final_structure)
-                    .encode('utf8', errors='replace')
-                    .decode('unicode_escape'))
+            f.write(log_wrap(final_structure))
     lj_post(final_structure)
 
 
@@ -888,7 +875,7 @@ def lj_post(stru):
         post = lj.postevent(params)
         ditemid = post['ditemid']
         logger.info('Created a post')
-        logger.debug(str(post))
+        logger.debug(log_wrap(post))
 
         for _, x in enumerate(stru[1:], start=1):
             chal, response = get_chal(lj, args.password)
@@ -905,7 +892,7 @@ def lj_post(stru):
             }
             comment = lj.addcomment(params)
             logger.info('Added a comment')
-            logger.debug(str(comment))
+            logger.debug(log_wrap(comment))
             time.sleep(random.randint(5, 15))
     except:
         sys.stderr.write('Error issued by LJ API: {}'.format(
@@ -1195,7 +1182,7 @@ def gui_compose(largs, sourcedir=None):
         debug = True
 
     argsdict = vars(args)
-    logger.debug(pprint.pformat(argsdict))
+    logger.debug(log_wrap(argsdict))
 
     if (args.filename and args.filetype):
         if args.filetype == 'lj':
@@ -1285,9 +1272,7 @@ def process_file(filename, srcdir):
         with codecs.open(
                 make_filename(filename, 'dbg'), 'w', 'utf8') as output_file:
             output_file.write(
-                pprint.pformat(structure)
-                .encode('utf8', errors='replace')
-                .decode('unicode_escape'))
+                structure)
 
     if args.filetype is None:
         print('Choose type of export:')
@@ -1314,9 +1299,7 @@ def process_file(filename, srcdir):
         logger.debug(os.path.join(SOURCEDIR, 'template.docx'))
         gui_compose.doc = Document(os.path.join(SOURCEDIR, 'template.docx'))
         qcount = 0
-        logger.debug(pprint.pformat(structure)
-                     .encode('utf8', errors='replace')
-                     .decode('unicode_escape'))
+        logger.debug(log_wrap(structure))
 
         for element in structure:
             if element[0] == 'meta':

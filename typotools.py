@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import re
+import sys
 try:
     import urllib
     unquote = urllib.unquote
@@ -40,6 +41,11 @@ def remove_excessive_whitespace(s):
     s = re_bad_wsp_end.sub('', s)
     s = re.sub(r'\s+\n\s+', '\n', s)
     return s
+
+
+def log_wrap(s):
+    return format(s).encode(sys.stdout.encoding,
+        errors='replace').decode(sys.stdout.encoding)
 
 
 def get_quotes_right(s_in):
