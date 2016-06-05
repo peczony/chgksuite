@@ -1,2 +1,2 @@
-PyInstaller==3.0
+PyInstaller==3.2
 pytest==2.8.4
