@@ -33,7 +33,7 @@ from parse import parse
 import html2text
 
 import typotools
-from typotools import remove_excessive_whitespace as rew
+from typotools import remove_excessive_whitespace as rew, log_wrap
 from chgk_parser_db import chgk_parse_db
 
 debug = False
@@ -94,7 +94,7 @@ def check_question(question, logger=None):
             warnings.append(el)
     if len(warnings) > 0:
         logger.warning('WARNING: question {} lacks the following fields: {}{}'
-                       .format(question, ', '.join(warnings), SEP))
+                       .format(log_wrap(question), ', '.join(warnings), SEP))
 
 
 def chgk_parse(text, defaultauthor=None, regexes=None):
@@ -151,7 +151,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     def find_next_fieldname(index):
         target = index + 1
         if target < len(chgk_parse.structure):
-            logger.debug(pprint.pformat(
+            logger.debug(log_wrap(
                 chgk_parse.structure[target]))
             while (target < len(chgk_parse.structure) - 1 and
                    chgk_parse.structure[target][0] == ''):
@@ -189,7 +189,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     if defaultauthor:
         logger.info('The default author is {}. '
                     'Missing authors will be substituted with them'
-                    .format(defaultauthor))
+                    .format(log_wrap(defaultauthor)))
 
     # 1.
 
@@ -412,7 +412,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                     current_question[element[0]] += SEP + element[1]
                 except:
                     logger.info(  # TODO: fix this weird spot
-                        '{}'.format(current_question).encode(
+                        '{}'.format(log_wrap(current_question)).encode(
                             'utf8', errors='replace').decode('unicode_escape'))
             else:
                 current_question[element[0]] = element[1]
