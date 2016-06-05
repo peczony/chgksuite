@@ -44,7 +44,10 @@ def remove_excessive_whitespace(s):
 
 
 def log_wrap(s):
-    return format(s).encode(sys.stdout.encoding,
+    s = format(s)
+    if sys.version_info.major == 2:
+        s = s.decode('unicode_escape')
+    return s.encode(sys.stdout.encoding,
         errors='replace').decode(sys.stdout.encoding)
 
 
