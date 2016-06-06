@@ -33,16 +33,16 @@ from parse import parse
 import html2text
 
 import typotools
-from typotools import remove_excessive_whitespace as rew, log_wrap
+from typotools import remove_excessive_whitespace as rew
 from chgk_parser_db import chgk_parse_db
+from chgk_common import (get_lastdir, set_lastdir, DummyLogger,
+                         log_wrap, DefaultNamespace, check_question,
+                         QUESTION_LABELS)
+from chgk_composer import gui_compose
 
 debug = False
 console_mode = False
 
-QUESTION_LABELS = ['handout', 'question', 'answer',
-                   'zachet', 'nezachet', 'comment',
-                   'source', 'author', 'number',
-                   'setcounter']
 ENC = ('utf8' if sys.platform != 'win32' else 'cp1251')
 CONSOLE_ENC = (ENC if sys.platform != 'win32' else 'cp866')
 SEP = os.linesep
@@ -58,19 +58,6 @@ TARGETDIR = os.getcwd()
 regexes = {}
 
 
-class DummyLogger(object):
-
-    def info(self, s):
-        pass
-
-    def debug(self, s):
-        pass
-
-    def error(self, s):
-        pass
-
-    def warning(self, s):
-        pass
 logger = DummyLogger()
 
 
@@ -85,16 +72,6 @@ def debug_print(s):
 
 def partition(alist, indices):
     return [alist[i:j] for i, j in zip([0] + indices, indices + [None])]
-
-
-def check_question(question, logger=None):
-    warnings = []
-    for el in {'question', 'answer', 'source', 'author'}:
-        if el not in question:
-            warnings.append(el)
-    if len(warnings) > 0:
-        logger.warning('WARNING: question {} lacks the following fields: {}{}'
-                       .format(log_wrap(question), ', '.join(warnings), SEP))
 
 
 def chgk_parse(text, defaultauthor=None, regexes=None):
@@ -537,7 +514,7 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
            .replace('&lt;', '<')
            .replace('&gt;', '>')
            )
-    txt = re.sub(r'_ *_', '', txt) # fix bad italic from Word
+    txt = re.sub(r'_ *_', '', txt)  # fix bad italic from Word
 
     if debug:
         with codecs.open('debug.debug', 'w', 'utf8') as dbg:
@@ -674,19 +651,13 @@ def gui_parse(args):
     if args.filename:
         console_mode = True
 
-    ld = '.'
-    if os.path.isfile('lastdir'):
-        with codecs.open('lastdir', 'r', 'utf8') as f:
-            ld = f.read().rstrip()
-        if not os.path.isdir(ld):
-            ld = '.'
+    ld = get_lastdir()
     if args.parsedir:
         if not args.filename:
             args.filename = filedialog.askdirectory(initialdir=ld)
         if os.path.isdir(args.filename):
             ld = args.filename
-            with codecs.open('lastdir', 'w', 'utf8') as f:
-                f.write(ld)
+            set_lastdir(ld)
             for filename in os.listdir(args.filename):
                 if (filename.endswith(('.docx', '.txt')) and
                     not os.path.isfile(
@@ -711,8 +682,7 @@ def gui_parse(args):
                 ], initialdir=ld)
         if args.filename:
             ld = os.path.dirname(os.path.abspath(args.filename))
-        with codecs.open('lastdir', 'w', 'utf8') as f:
-            f.write(ld)
+            set_lastdir(ld)
         if not args.filename:
             print('No file specified.')
             sys.exit(0)
@@ -726,6 +696,11 @@ def gui_parse(args):
                                             TEXTEDITOR,
                                             outfilename)))
             input("Press Enter to continue...")
+        if args.passthrough:
+            cargs = DefaultNamespace()
+            cargs.action = 'compose'
+            cargs.filename = outfilename
+            gui_compose(cargs)
 
 
 def main():

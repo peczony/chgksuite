@@ -42,9 +42,10 @@ from docx.shared import Inches
 from PIL import Image
 import pyimgur
 
-from chgk_parser import QUESTION_LABELS, check_question
+from chgk_common import (get_lastdir, set_lastdir, on_close, DummyLogger,
+                         log_wrap, QUESTION_LABELS, check_question)
 import typotools
-from typotools import remove_excessive_whitespace as rew, log_wrap
+from typotools import remove_excessive_whitespace as rew
 
 args = None
 im = None
@@ -84,19 +85,6 @@ WHITEN = {
 }
 
 
-class DummyLogger(object):
-
-    def info(self, s):
-        pass
-
-    def debug(self, s):
-        pass
-
-    def error(self, s):
-        pass
-
-    def warning(self, s):
-        pass
 logger = DummyLogger()
 
 
@@ -900,11 +888,6 @@ def lj_post(stru):
         sys.exit(1)
 
 
-def on_close(root):
-    root.quit()
-    root.destroy()
-
-
 def lj_post_getdata():
     root = Tk()
     root.login = None
@@ -1191,12 +1174,7 @@ def gui_compose(largs, sourcedir=None):
         else:
             console_mode = True
 
-    ld = '.'
-    if os.path.isfile('lastdir'):
-        with codecs.open('lastdir', 'r', 'utf8') as f:
-            ld = f.read().rstrip()
-        if not os.path.isdir(ld):
-            ld = '.'
+    ld = get_lastdir()
     if not args.filename:
         print('Choose .4s file to load:')
         args.filename = filedialog.askopenfilenames(
@@ -1209,8 +1187,7 @@ def gui_compose(largs, sourcedir=None):
             ld = os.path.dirname(os.path.abspath(args.filename[0]))
         else:
             ld = os.path.dirname(os.path.abspath(args.filename))
-    with codecs.open('lastdir', 'w', 'utf8') as f:
-        f.write(ld)
+    set_lastdir(ld)
     if not args.filename:
         print('No file specified.')
         sys.exit(1)

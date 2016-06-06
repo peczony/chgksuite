@@ -11,7 +11,7 @@ import requests
 import pdb
 import webbrowser
 from collections import defaultdict
-from chgk_composer import on_close
+from chgk_common import get_lastdir, set_lastdir, on_close, log_wrap
 try:
     from Tkinter import Tk, Frame, IntVar, Button, Checkbutton
     import tkFileDialog as filedialog
@@ -29,6 +29,7 @@ except NameError:
 
 
 API = 'https://trello.com/1'
+re_bi = re.compile(r'trello\.com/b/(.+?)(/|$)')
 
 
 def gui_file_or_directory(args):
@@ -118,7 +119,7 @@ def upload_file(filepath, trello):
                 'name': caption
             })
         if req.status_code == 200:
-            print('Successfully sent {}'.format(caption))
+            print('Successfully sent {}'.format(log_wrap(caption)))
         else:
             print('Error {}: {}'.format(req.status_code, req.content))
 
@@ -131,16 +132,11 @@ def gui_trello_upload(args):
         if not os.path.isdir(ld):
             ld = '.'
 
-    if not args.trelloconfig:
-        args.trelloconfig = filedialog.askopenfilename(
-            filetypes=[('JSON files', '*.json')],
-            initialdir=ld
-        )
+    if not args.board_id:
+        board_id = get_board_id()
 
-    trelloconfig = json.load(open(args.trelloconfig))
-    ld = os.path.dirname(args.trelloconfig)
-    with codecs.open('lastdir', 'w', 'utf8') as f:
-        f.write(ld)
+    trelloconfig = args.trelloconfig
+    trelloconfig['board_id'] = board_id
 
     if not args.filename:
         file_or_directory = gui_file_or_directory(args)
@@ -163,17 +159,21 @@ def gui_trello_upload(args):
                 if filename.endswith('.4s'):
                     filepath = os.path.join(args.filename[0], filename)
                     upload_file(filepath, trelloconfig)
+            set_lastdir(args.filename[0])
         else:
             for filename in args.filename:
                 upload_file(filename, trelloconfig)
+                set_lastdir(filename)
     elif isinstance(args.filename, basestring):
         if os.path.isdir(args.filename):
             for filename in os.listdir(args.filename):
                 if filename.endswith('.4s'):
                     filepath = os.path.join(args.filename, filename)
                     upload_file(filepath, trelloconfig)
+                    set_lastdir(filepath)
         elif os.path.isfile(args.filename):
             upload_file(args.filename, trelloconfig)
+            set_lastdir(args.filename)
 
 
 def process_desc(s):
@@ -186,30 +186,25 @@ def getlabels(s):
 
 def gui_trello_download(args):
 
-    ld = '.'
-    if os.path.isfile('lastdir'):
-        with codecs.open('lastdir', 'r', 'utf8') as f:
-            ld = f.read().rstrip()
-        if not os.path.isdir(ld):
-            ld = '.'
+    ld = get_lastdir()
 
-    if not args.trelloconfig:
-        args.trelloconfig = filedialog.askopenfilename(
-            filetypes=[('JSON files', '*.json')],
-            initialdir=ld
-        )
+    if not args.folder:
+        args.folder = filedialog.askdirectory(initialdir=ld)
 
-    trelloconfig = json.load(open(args.trelloconfig))
-    ld = os.path.dirname(args.trelloconfig)
-    with codecs.open('lastdir', 'w', 'utf8') as f:
-        f.write(ld)
-    os.chdir(os.path.dirname(args.trelloconfig))
+    board_id_path = os.path.join(args.folder, '.board_id')
+    if os.path.isfile(board_id_path):
+        with codecs.open(board_id_path, 'r', 'utf8') as f:
+            board_id = f.read().rstrip()
+    else:
+        board_id = get_board_id(path=args.folder)
+
+    params = args.trelloconfig['params']
+    ld = args.folder
+    set_lastdir(ld)
+    os.chdir(args.folder)
 
     if args.si:
         from docx import Document
-
-    board_id = trelloconfig['board_id']
-    params = trelloconfig['params']
 
     req = requests.get("{}/boards/{}".format(API, board_id),
                        data=params)
@@ -230,6 +225,8 @@ def gui_trello_download(args):
     if args.si:
         _docs = defaultdict(lambda: Document('template.docx'))
     for card in json_['cards']:
+        if card.get('closed'):
+            continue
         if args.si:
             p = _docs[_names[card['idList']]].add_paragraph()
             p.add_run(
@@ -264,15 +261,50 @@ def gui_trello_download(args):
                 f.write('\n' + item + '\n')
 
 
+def get_board_id(path=None):
+    print('To communicate with your trello board we need its board_id.')
+    print('Your board link looks like this:')
+    print()
+    print('https://trello.com/b/Bi0z2H49/title-of-your-board')
+    print('                     board_id')
+    print()
+    board_id = input('Please paste your board_id '
+                     '(or the board link, '
+                     'we\'ll parse it): ').rstrip()
+    if 'trello.com' in board_id:
+        board_id = re_bi.search(board_id).group(1)
+    if path:
+        with codecs.open(os.path.join(path, '.board_id'), 'w', 'utf8') as f:
+            f.write(board_id)
+    return board_id
+
+
 def gui_trello(args):
+    TOKENPATH = os.path.join(os.path.dirname(os.path.abspath('__file__')),
+                             '.trello_token')
+    if not os.path.isfile(TOKENPATH):
+        webbrowser.open('https://trello.com/1/connect'
+                        '?key=1d4fe71dd193855686196e7768aa4b05'
+                        '&name=Chgk&scope=read,write&response_type=token')
+        token = input('Please paste the obtained token: ').rstrip()
+        with codecs.open(TOKENPATH, 'w', 'utf8') as f:
+            f.write(token)
+    else:
+        with codecs.open(TOKENPATH, 'r', 'utf8') as f:
+            token = f.read().rstrip()
+
+    args.trelloconfig = json.load(
+        open(os.path.join(os.path.dirname(os.path.abspath('__file__')),
+                          'trello.json'))
+    )
+    args.trelloconfig['params']['token'] = token
+
     if args.trellosubcommand == 'download':
         gui_trello_download(args)
     elif args.trellosubcommand == 'upload':
         gui_trello_upload(args)
     elif args.trellosubcommand == 'token':
-        webbrowser.open('https://trello.com/1/connect'
-                        '?key=1d4fe71dd193855686196e7768aa4b05'
-                        '&name=Chgk&scope=read,write&response_type=token')
+        pass  # already handled this earlier
 
 
 def main():

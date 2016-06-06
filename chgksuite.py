@@ -11,8 +11,12 @@ except ImportError:
     from tkinter import Tk, Frame, IntVar, Button, Checkbutton
 
 from chgk_parser import gui_parse
-from chgk_composer import gui_compose, on_close
+from chgk_composer import gui_compose
 from chgk_trello import gui_trello
+from chgk_common import (on_close, button_factory,
+                         toggle_factory, DefaultNamespace)
+
+from collections import defaultdict
 
 debug = False
 
@@ -28,52 +32,13 @@ def gui_choose_action(args):
         ch_merge.set(int(args.merge))
     except TypeError:
         ch_merge.set(0)
+    ch_passthrough = IntVar()
+    ch_passthrough.set(0)
 
-    def parsereturn():
-        root.ret = 'parse', ch_defaultauthor.get(), ch_merge.get()
-        root.quit()
-        root.destroy()
-
-    def parsedirreturn():
-        root.ret = 'parsedir', ch_defaultauthor.get(), ch_merge.get()
-        root.quit()
-        root.destroy()
-
-    def composereturn():
-        root.ret = 'compose', ch_defaultauthor.get(), ch_merge.get()
-        root.quit()
-        root.destroy()
-
-    def trelloupreturn():
-        root.ret = 'trelloup', ch_defaultauthor.get(), ch_merge.get()
-        root.quit()
-        root.destroy()
-
-    def trellodownreturn():
-        root.ret = 'trellodown', ch_defaultauthor.get(), ch_merge.get()
-        root.quit()
-        root.destroy()
-
-    def trellotokreturn():
-        root.ret = 'trellotoken', ch_defaultauthor.get(), ch_merge.get()
-        root.quit()
-        root.destroy()
-
-    def toggle_da():
-        if ch_defaultauthor.get() == 0:
-            ch_defaultauthor.set(1)
-        else:
-            ch_defaultauthor.set(0)
-
-    def toggle_mrg():
-        if ch_merge.get() == 0:
-            ch_merge.set(1)
-        else:
-            ch_merge.set(0)
     root = Tk()
     root.title('chgksuite')
     root.eval('tk::PlaceWindow . center')
-    root.ret = 'None', '0'
+    root.ret = defaultdict(lambda: None)
     root.grexit = lambda: on_close(root)
     root.protocol("WM_DELETE_WINDOW", root.grexit)
     root.attributes("-topmost", True)
@@ -83,60 +48,66 @@ def gui_choose_action(args):
     bottomframe.pack(side='bottom')
     midframe = Frame(root)
     midframe.pack(side='bottom')
-    Button(frame, command=parsereturn, text='Parse file(s)').pack(
+    Button(frame,
+           command=button_factory('action', 'parse', root),
+           text='Parse file(s)').pack(
         side='left',
         padx=20, pady=20,
-        ipadx=20, ipady=20,)
-    Button(frame, command=parsedirreturn, text='Parse directory').pack(
+        ipadx=20, ipady=20,
+    )
+    Button(frame, command=button_factory('action', 'parsedir', root),
+           text='Parse directory').pack(
         side='left',
         padx=20, pady=20,
-        ipadx=20, ipady=20,)
-    Button(frame, command=composereturn, text='Compose').pack(
+        ipadx=20, ipady=20,
+    )
+    Button(frame, command=button_factory('action', 'compose', root),
+           text='Compose').pack(
         side='left',
         padx=20, pady=20,
-        ipadx=20, ipady=20,)
-    Button(bottomframe, command=trellodownreturn,
+        ipadx=20, ipady=20,
+    )
+    Button(bottomframe, command=button_factory('action', 'trellodown', root),
            text='Download from Trello').pack(
         side='left',
         padx=20, pady=20,
-        ipadx=20, ipady=20,)
-    Button(bottomframe, command=trelloupreturn, text='Upload to Trello').pack(
+        ipadx=20, ipady=20,
+    )
+    Button(bottomframe, command=button_factory('action', 'trelloup', root),
+           text='Upload to Trello').pack(
         side='left',
         padx=20, pady=20,
-        ipadx=20, ipady=20,)
-    Button(bottomframe, command=trellotokreturn, text='Obtain a token').pack(
+        ipadx=20, ipady=20,
+    )
+    Button(bottomframe, command=button_factory('action', 'trellotoken', root),
+           text='Obtain a token').pack(
         side='left',
         padx=20, pady=20,
-        ipadx=20, ipady=20,)
+        ipadx=20, ipady=20,
+    )
     da = Checkbutton(midframe, text='Default author while parsing',
-                     variable=ch_defaultauthor, command=toggle_da)
+                     variable=ch_defaultauthor,
+                     command=toggle_factory(ch_defaultauthor,
+                                            'defaultauthor', root))
     mrg = Checkbutton(midframe, text='Merge several source files',
-                      variable=ch_merge, command=toggle_mrg)
+                      variable=ch_merge,
+                      command=toggle_factory(ch_merge,
+                                             'merge', root))
+    pt = Checkbutton(midframe, text='Pass through to compose',
+                     variable=ch_passthrough,
+                     command=toggle_factory(ch_passthrough,
+                                            'passthrough', root))
     if ch_defaultauthor.get() == 1:
         da.select()
+    root.ret['defaultauthor'] = bool(ch_defaultauthor.get())
     if ch_merge.get() == 1:
         mrg.select()
+    root.ret['merge'] = bool(ch_merge.get())
     mrg.pack(side='bottom')
     da.pack(side='bottom')
+    pt.pack(side='bottom')
     root.mainloop()
     return root.ret
-
-
-class DefaultNamespace(argparse.Namespace):
-    def __init__(self, *args, **kwargs):
-        for ns in args:
-            if isinstance(ns, argparse.Namespace):
-                for name in vars(ns):
-                    setattr(self, name, vars(ns)[name])
-        else:
-            for name in kwargs:
-                setattr(self, name, kwargs[name])
-
-    def __getattribute__(self, name):
-        try:
-            return argparse.Namespace.__getattribute__(self, name)
-        except AttributeError:
-            return
 
 
 def main():
@@ -205,9 +176,9 @@ def main():
     cmdtrello = subparsers.add_parser('trello')
     cmdtrello_subcommands = cmdtrello.add_subparsers(dest='trellosubcommand')
     cmdtrello_download = cmdtrello_subcommands.add_parser('download')
-    cmdtrello_download.add_argument('trelloconfig',
-                                    help='a trello.json config file '
-                                    'containing board_id and token.')
+    cmdtrello_download.add_argument('folder',
+                                    help='path to the folder'
+                                    'to synchronize with a trello board.')
     cmdtrello_download.add_argument('--si', action='store_true',
                                     help="This flag includes card captions "
                                     "in .4s files. "
@@ -218,9 +189,8 @@ def main():
                                     "to have lists based on labels.")
 
     cmdtrello_upload = cmdtrello_subcommands.add_parser('upload')
-    cmdtrello_upload.add_argument('trelloconfig',
-                                  help='a trello.json config file '
-                                  'containing board_id and token.')
+    cmdtrello_upload.add_argument('board_id',
+                                  help='trello board id.')
     cmdtrello_upload.add_argument('filename', nargs='*',
                                   help='file(s) to upload to trello.')
     cmdtrello_upload.add_argument('--author', action='store_true',
@@ -236,11 +206,18 @@ def main():
     root = Tk()
     root.withdraw()
 
+    args.passthrough = False
     if not args.action:
         try:
-            action, defaultauthor, merge = gui_choose_action(args)
+            ret = gui_choose_action(args)
+            action = ret['action']
+            defaultauthor = ret['defaultauthor']
+            merge = ret['merge']
+            passthrough = ret['passthrough']
         except ValueError:
             sys.exit(1)
+        if passthrough:
+            args.passthrough = True
         if not args.regexes:
             args.regexes = 'regexes.json'
         if action == 'parse':
