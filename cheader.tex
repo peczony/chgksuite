@@ -1,4 +1,4 @@
-\documentclass[14pt,a4paper]{scrartcl}
+\documentclass[14pt,a4paper]{article}
 \usepackage[a4paper,left=1in, right=2in, top=1in, bottom=1in]{geometry}
 \usepackage{polyglossia}
 \usepackage{fontspec}
@@ -6,7 +6,7 @@
 \usepackage[colorlinks=false,pagebackref=false]{hyperref}
 \hypersetup{unicode=true}
 \usepackage{url}
-\urlstyle{sf}
+\urlstyle{rm}
 \usepackage{amsmath}
 \usepackage{calc}
 \usepackage{parskip}
@@ -32,12 +32,12 @@
 \yyyymmdddate
 \usepackage{embrac}
 \usepackage{textcomp}
-\setmainfont[Renderer=Basic,Numbers={OldStyle}]{Brill}
-\newfontfamily{\ipaf}[Scale=1.27,FakeStretch=.97]{Junicode}
-\newfontfamily{\fontsc}{Playfair Display SC}
+\setmainfont[Renderer=Basic,Numbers={OldStyle}]{Cormorant}
+% \newfontfamily{\ipaf}[Scale=1.27,FakeStretch=.97]{Junicode}
+% \newfontfamily{\fontsc}{Playfair Display SC}
 \newcommand{\tsc}[1]{\textsc{\lspace{#1}}}
 \setsansfont[Numbers={OldStyle},Scale=0.75]{Fira Sans Light}
-\DeclareTextFontCommand{\tipaf}{\ipaf}
+% \DeclareTextFontCommand{\tipaf}{\ipaf}
 %\pagestyle{empty}
 \setlength{\tabcolsep}{0em}
 \newcommand{\Hair}{\ifmmode\mskip1mu\else\kern0.08em\fi}

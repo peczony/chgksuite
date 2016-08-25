@@ -5,6 +5,8 @@ import os
 import sys
 import codecs
 import argparse
+import time
+import traceback
 
 
 QUESTION_LABELS = ['handout', 'question', 'answer',
@@ -31,6 +33,24 @@ def get_lastdir():
             return f.read().rstrip()
     return '.'
 
+
+def retry_wrapper_factory(logger):
+    def retry_wrapper(func, args=None, kwargs=None, retries=3):
+        cntr = 0
+        ret = None
+        if not args:
+            args = []
+        if not kwargs:
+            kwargs = {}
+        while not ret and cntr < retries:
+            try:
+                ret = func(*args, **kwargs)
+            except:
+                logger.error(traceback.format_exc())
+                time.sleep(5)
+                cntr += 1
+        return ret
+    return retry_wrapper
 
 class DummyLogger(object):
 

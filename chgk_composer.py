@@ -43,7 +43,8 @@ from PIL import Image
 import pyimgur
 
 from chgk_common import (get_lastdir, set_lastdir, on_close, DummyLogger,
-                         log_wrap, QUESTION_LABELS, check_question)
+                         log_wrap, QUESTION_LABELS, check_question,
+                         retry_wrapper_factory)
 import typotools
 from typotools import remove_excessive_whitespace as rew
 
@@ -55,7 +56,7 @@ re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
                     """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s<>]+|(([^\s()<>]+|(([^\s<>]+)))*))+"""
                     """(?:(([^\s<>]+|(‌​([^\s<>]+)))*)|[^\s`!\[\]{};:'".,<>?«»“”‘’]))""", re.DOTALL)
 re_perc = re.compile(r'(%[0-9a-fA-F]{2})+')
-re_scaps = re.compile(r'(^|[\s])([«»А-Я `ЁA-Z]{2,})([\s,!\.;:-\?]|$)')
+re_scaps = re.compile(r'(^|[\s])([\[\]\(\)«»А-Я `ЁA-Z]{2,})([\s,!\.;:-\?]|$)')
 re_em = re.compile(r'_(.+?)_')
 re_lowercase = re.compile(r'[а-яё]')
 re_uppercase = re.compile(r'[А-ЯЁ]')
@@ -86,6 +87,7 @@ WHITEN = {
 
 
 logger = DummyLogger()
+retry_wrapper = None
 
 
 def make_filename(s, ext):
@@ -167,7 +169,7 @@ def parse_4s_elem(s):
 
     for gr in re_url.finditer(s):
         gr0 = gr.group(0)
-        s = s.replace(gr0, gr0.replace('_', '\\_'))
+        s = s.replace(gr0, gr0.replace('_', '\u6565_'))
 
     # for gr in re_scaps.finditer(s):
     #     gr0 = gr.group(0)
@@ -182,11 +184,10 @@ def parse_4s_elem(s):
             logger.debug('error decoding on line {}: {}\n'
                          .format(log_wrap(gr), traceback.format_exc()))
 
-    s = list(s)
     i = 0
     topart = []
     while i < len(s):
-        if s[i] == '_' and (i == 0 or s[i - 1] != '\\'):
+        if s[i] == '_' and (i == 0 or s[i - 1] not in {'\\', '\u6565'}):
             logger.debug('found _ at {} of line {}'
                          .format(i, s))
             topart.append(i)
@@ -215,7 +216,8 @@ def parse_4s_elem(s):
 
     topart = sorted(topart)
 
-    parts = [['', ''.join(x)] for x in partition(s, topart)]
+    parts = [['', ''.join(x.replace('\u6565', ''))]
+             for x in partition(s, topart)]
 
     for part in parts:
         if not part[1]:
@@ -703,7 +705,8 @@ def md5(s):
 
 
 def get_chal(lj, passwd):
-    chal = lj.getchallenge()['challenge']
+    chal = None
+    chal = retry_wrapper(lj.getchallenge)['challenge']
     response = md5(chal.encode('utf8') + md5(
         passwd.encode('utf8')
     ).encode('utf8'))
@@ -860,7 +863,7 @@ def lj_post(stru):
 
     try:
         time.sleep(5)
-        post = lj.postevent(params)
+        post = retry_wrapper(lj.postevent, [params])
         ditemid = post['ditemid']
         logger.info('Created a post')
         logger.debug(log_wrap(post))
@@ -878,7 +881,7 @@ def lj_post(stru):
                 'body': x['content'],
                 'subject': x['header']
             }
-            comment = lj.addcomment(params)
+            comment = retry_wrapper(lj.addcomment, [params])
             logger.info('Added a comment')
             logger.debug(log_wrap(comment))
             time.sleep(random.randint(5, 15))
@@ -972,8 +975,8 @@ def tex_format_question(q):
     yapper = texyapper
     if 'setcounter' in q:
         gui_compose.counter = int(q['setcounter'])
-    res = ('\n\n\\begin{{samepage}}\n'
-           '\\textbf{{Вопрос {}.}} {}'.format(
+    res = ('\n\n\\begin{{minipage}}{{\\textwidth}}\\raggedright\n'
+           '\\textbf{{Вопрос {}.}} {} \\newline'.format(
                gui_compose.counter
                if 'number' not in q
                else q['number'],
@@ -982,25 +985,25 @@ def tex_format_question(q):
            )
     if 'number' not in q:
         gui_compose.counter += 1
-    res += '\n\\textbf{{Ответ: }}{}'.format(yapper
-                                            (q['answer']))
+    res += '\n\\textbf{{Ответ: }}{} \\newline'.format(yapper
+                                                      (q['answer']))
     if 'zachet' in q:
-        res += '\n\\textbf{{Зачёт: }}{}'.format(yapper
-                                                (q['zachet']))
+        res += '\n\\textbf{{Зачёт: }}{} \\newline'.format(yapper
+                                                          (q['zachet']))
     if 'nezachet' in q:
-        res += '\n\\textbf{{Незачёт: }}{}'.format(yapper
-                                                  (q['nezachet']))
+        res += '\n\\textbf{{Незачёт: }}{} \\newline'.format(yapper
+                                                            (q['nezachet']))
     if 'comment' in q:
-        res += '\n\\textbf{{Комментарий: }}{}'.format(yapper
-                                                      (q['comment']))
+        res += '\n\\textbf{{Комментарий: }}{} \\newline'.format(yapper
+                                                                (q['comment']))
     if 'source' in q:
-        res += '\n\\textbf{{Источник{}: }}{}'.format(
+        res += '\n\\textbf{{Источник{}: }}{} \\newline'.format(
             'и' if isinstance(q['source'], list) else '',
             yapper(q['source']))
     if 'author' in q:
-        res += '\n\\textbf{{Автор: }}{}'.format(yapper
-                                                (q['author']))
-    res += '\n\\end{samepage}\\vspace{0.8em}\n'
+        res += '\n\\textbf{{Автор: }}{} \\newline'.format(yapper
+                                                          (q['author']))
+    res += '\n\\end{minipage}\n'
     return res
 
 
@@ -1014,7 +1017,7 @@ def texrepl(zz):
     zz = re.sub(r"\$", r"\$", zz)
     zz = re.sub(r"#", r"\#", zz)
     zz = re.sub(r"&", r"\&", zz)
-    zz = re.sub(r"\\", r"\\", zz)
+    zz = zz.replace('\\', '\\\\')
     zz = re.sub(r'((\"(?=[ \.\,;\:\?!\)\]]))|("(?=\Z)))', u'»', zz)
     zz = re.sub(r'(((?<=[ \.\,;\:\?!\(\[)])")|((?<=\A)"))', u'«', zz)
     zz = re.sub('"', "''", zz)
@@ -1029,7 +1032,7 @@ def texrepl(zz):
     #         '\\tsc{'+re_scaps.search(zz).group(2).lower()+'}')
 
     torepl = [x.group(0) for x in re.finditer(re_url, zz)]
-    for s in xrange(len(torepl)):
+    for s in range(len(torepl)):
         item = torepl[s]
         while item[-1] in typotools.PUNCTUATION:
             item = item[:-1]
@@ -1043,13 +1046,13 @@ def texrepl(zz):
     hashurls = {}
     for s in torepl:
         hashurls[s] = hashlib.md5(
-            s.encode('utf8')).hexdigest().decode('utf8')
+            s.encode('utf8')).hexdigest()
     for s in sorted(hashurls, key=len, reverse=True):
         zz = zz.replace(s, hashurls[s])
     hashurls = {v: k for k, v in hashurls.items()}
     for s in sorted(hashurls):
         zz = zz.replace(s, '\\url{{{}}}'.format(
-            hashurls[s]))
+            hashurls[s].replace('\\\\','\\')))
 
     # debug_print('URLS FOR REPLACING: ' +
     #             pprint.pformat(torepl).decode('unicode_escape'))
@@ -1060,7 +1063,7 @@ def texrepl(zz):
     #     debug_print('STRING AFTER REPLACEMENT: {}'.format(zz))
     #     torepl.pop(0)
 
-    zz = zz.replace(' — ', '{\\hair}—{\\hair}')
+    zz = zz.replace(' — ', '{\\Hair}—{\\hair}')
 
     while '`' in zz:
         if zz.index('`') + 1 >= len(zz):
@@ -1068,15 +1071,17 @@ def texrepl(zz):
         else:
             if (zz.index('`') + 2 < len(zz) and
                     re.search(r'\s', zz[zz.index('`') + 2])):
-                zz = zz[:zz.index('`') + 2] + '\\' + zz[zz.index('`') + 2:]
+                zz = zz[:zz.index('`') + 2] + '' + zz[zz.index('`') + 2:]
             if (zz.index('`') + 1 < len(zz) and
                     re_lowercase.search(zz[zz.index('`') + 1])):
-                zz = (zz[:zz.index('`') + 1] + '\\acc{' +
-                      zz[zz.index('`') + 1] + '}' + zz[zz.index('`') + 2:])
+                zz = (zz[:zz.index('`') + 1] + '' +
+                      zz[zz.index('`') + 1] +
+                      '\u0301' + zz[zz.index('`') + 2:])
             elif (zz.index('`') + 1 < len(zz) and
                   re_uppercase.search(zz[zz.index('`') + 1])):
-                zz = (zz[:zz.index('`') + 1] + '\\cacc{' +
-                      zz[zz.index('`') + 1] + '}' + zz[zz.index('`') + 2:])
+                zz = (zz[:zz.index('`') + 1] + '' +
+                      zz[zz.index('`') + 1] +
+                      '\u0301' + zz[zz.index('`') + 2:])
             zz = zz[:zz.index('`')] + zz[zz.index('`') + 1:]
 
     return zz
@@ -1117,9 +1122,9 @@ def tex_element_layout(e):
         return res
     if isinstance(e, list):
         res = """
-\\begin{{enumerate}}
+\\begin{{compactenum}}
 {}
-\\end{{enumerate}}
+\\end{{compactenum}}
 """.format('\n'.join(
             ['\\item {}'.format(tex_element_layout(x)) for x in e]))
     return res
@@ -1138,6 +1143,7 @@ def gui_compose(largs, sourcedir=None):
     global TARGETDIR
     global SOURCEDIR
     global logger
+    global retry_wrapper
 
     if sourcedir:
         SOURCEDIR = sourcedir
@@ -1157,6 +1163,8 @@ def gui_compose(largs, sourcedir=None):
     ch.setFormatter(formatter)
     logger.addHandler(fh)
     logger.addHandler(ch)
+
+    retry_wrapper = retry_wrapper_factory(logger)
 
     root = Tk()
     root.withdraw()
@@ -1360,8 +1368,6 @@ def process_file(filename, srcdir):
 \\author{{{author}}}
 \\begin{{document}}
 \\maketitle
-\\obeylines
-\\parskip=0pt
 """.format(date=date, author=author, title=title)
 
         for element in structure:
@@ -1377,7 +1383,7 @@ def process_file(filename, srcdir):
             outfile.write(gui_compose.tex)
         subprocess.call(shlex.split(
             'xelatex -synctex=1 -interaction=nonstopmode "{}"'
-            .format(outfilename).encode(ENC)))
+            .format(outfilename)))
         logger.info('Output: {}'.format(
             os.path.join(TARGETDIR,
                          os.path.basename(outfilename)) + '\n' +
