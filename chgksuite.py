@@ -207,7 +207,10 @@ def main():
     root.withdraw()
 
     if not args.regexes:
-        args.regexes = 'regexes.json'
+        args.regexes = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'regexes.json'
+        )
 
     args.passthrough = False
     if not args.action:
