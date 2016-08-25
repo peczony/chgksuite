@@ -206,6 +206,9 @@ def main():
     root = Tk()
     root.withdraw()
 
+    if not args.regexes:
+        args.regexes = 'regexes.json'
+
     args.passthrough = False
     if not args.action:
         try:
@@ -218,8 +221,6 @@ def main():
             sys.exit(1)
         if passthrough:
             args.passthrough = True
-        if not args.regexes:
-            args.regexes = 'regexes.json'
         if action == 'parse':
             args.action = 'parse'
             args.defaultauthor = defaultauthor
