@@ -1339,11 +1339,11 @@ def process_file(filename, srcdir):
                 gui_compose.doc.add_paragraph()
 
         gui_compose.doc.save(outfilename)
-        logger.info('Output: {}'.format(
-            os.path.join(TARGETDIR, outfilename)))
         if (os.path.abspath(SOURCEDIR.lower()) !=
                 os.path.abspath(TARGETDIR.lower())):
             shutil.copy(outfilename, TARGETDIR)
+        logger.info('Output: {}'.format(
+            os.path.join(TARGETDIR, os.path.basename(outfilename))))
 
     if args.filetype == 'tex':
 
