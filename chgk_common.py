@@ -6,6 +6,7 @@ import sys
 import codecs
 import argparse
 import time
+import json
 import traceback
 
 
@@ -14,6 +15,7 @@ QUESTION_LABELS = ['handout', 'question', 'answer',
                    'source', 'author', 'number',
                    'setcounter']
 SEP = os.linesep
+ENC = sys.stdout.encoding or 'utf8'
 
 lastdir = os.path.join(os.path.dirname(os.path.abspath('__file__')),
                        'lastdir')
@@ -90,12 +92,15 @@ def on_close(root):
     root.destroy()
 
 
-def log_wrap(s):
+def log_wrap(s, pretty_print=True):
+    try_to_unescape = True
+    if pretty_print and isinstance(s, (dict, list)):
+        s = json.dumps(s, indent=2, ensure_ascii=False, sort_keys=True)
+        try_to_unescape = False
     s = format(s)
-    if sys.version_info.major == 2:
+    if sys.version_info.major == 2 and try_to_unescape:
         s = s.decode('unicode_escape')
-    return s.encode(sys.stdout.encoding,
-                    errors='replace').decode(sys.stdout.encoding)
+    return s.encode(ENC, errors='replace').decode(ENC)
 
 
 def toggle_factory(intvar, strvar, root):
