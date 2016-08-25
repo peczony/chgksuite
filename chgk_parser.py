@@ -385,12 +385,33 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
             current_question = {}
         if element[0] in QUESTION_LABELS:
             if element[0] in current_question:
-                try:
+                logger.warning(
+                    'Warning: question {} has multiple {}s.'.format(
+                        log_wrap(current_question), element[0]
+                    )
+                )
+                if (
+                    isinstance(element[1], list) and
+                    isinstance(current_question[element[0]], basestring)
+                ):
+                    current_question[element[0]] = (
+                        [current_question[element[0]]] + element[1]
+                    )
+                elif (
+                    isinstance(element[1], basestring) and
+                    isinstance(current_question[element[0]], list)
+                ):
+                    current_question[element[0]].append(element[1])
+                elif (
+                    isinstance(element[1], list) and
+                    isinstance(current_question[element[0]], list)
+                ):
+                    current_question[element[0]].extend(element[1])
+                elif (
+                    isinstance(element[0], basestring) and
+                    isinstance(element[1], basestring)
+                ):
                     current_question[element[0]] += SEP + element[1]
-                except:
-                    logger.info(  # TODO: fix this weird spot
-                        '{}'.format(log_wrap(current_question)).encode(
-                            'utf8', errors='replace').decode('unicode_escape'))
             else:
                 current_question[element[0]] = element[1]
         else:
