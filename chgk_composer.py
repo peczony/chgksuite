@@ -133,10 +133,18 @@ def parseimg(s, dimensions='pixels'):
     imgfile = sp[-1]
     if not os.path.isabs(imgfile):
         if os.path.isfile(
-                os.path.join(TARGETDIR, imgfile)):
+            os.path.join(TARGETDIR, imgfile)
+        ):
             imgfile = os.path.join(TARGETDIR, imgfile)
-        else:
+        elif os.path.isfile(
+            os.path.join(SOURCEDIR, imgfile)
+        ):
             imgfile = os.path.join(SOURCEDIR, imgfile)
+        else:
+            raise Exception(
+                'Image file {} not found in {} and {}'
+                .format(imgfile, TARGETDIR, SOURCEDIR)
+            )
 
     if len(sp) == 1:
         width, height = imgsize(imgfile, dimensions=dimensions)
@@ -1052,7 +1060,7 @@ def texrepl(zz):
     hashurls = {v: k for k, v in hashurls.items()}
     for s in sorted(hashurls):
         zz = zz.replace(s, '\\url{{{}}}'.format(
-            hashurls[s].replace('\\\\','\\')))
+            hashurls[s].replace('\\\\', '\\')))
 
     # debug_print('URLS FOR REPLACING: ' +
     #             pprint.pformat(torepl).decode('unicode_escape'))
