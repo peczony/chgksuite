@@ -99,7 +99,10 @@ def log_wrap(s, pretty_print=True):
         try_to_unescape = False
     s = format(s)
     if sys.version_info.major == 2 and try_to_unescape:
-        s = s.decode('unicode_escape')
+        try:
+            s = s.decode('unicode_escape')
+        except UnicodeEncodeError:
+            pass
     return s.encode(ENC, errors='replace').decode(ENC)
 
 
