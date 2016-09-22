@@ -89,7 +89,7 @@ def gui_file_or_directory(args):
 
 def upload_file(filepath, trello):
     req = requests.get("{}/boards/{}/lists".format(API, trello['board_id']),
-                       data={'token': trello['params']['token'],
+                       params={'token': trello['params']['token'],
                              'key': trello['params']['key']})
     if req.status_code != 200:
         print('Error: {}'.format(req.text))
@@ -207,7 +207,7 @@ def gui_trello_download(args):
         from docx import Document
 
     req = requests.get("{}/boards/{}".format(API, board_id),
-                       data=params)
+                       params=params)
     if req.status_code != 200:
         print('Error: {}'.format(req.text))
         if args.debug:
