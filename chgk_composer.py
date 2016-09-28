@@ -206,7 +206,6 @@ def parse_4s_elem(s):
         if (s[i] == '(' and
                 i + len('(img') < len(s) and
                 ''.join(s[i:i + len('(img')]) == '(img'):
-            logger.debug('img candidate')
             topart.append(i)
             if typotools.find_matching_closing_bracket(s, i) is not None:
                 topart.append(
@@ -374,10 +373,12 @@ def parse_4s(s, randomize=False):
                     assert all((True if label in current_question else False)
                                for label in REQUIRED_LABELS)
                 except AssertionError:
-                    logger.error('Question {} misses '
-                                 'some of the required fields '
-                                 'and will therefore '
-                                 'be omitted.'.format(log_wrap(current_question)))
+                    logger.error(
+                        'Question {} misses '
+                        'some of the required fields '
+                        'and will therefore '
+                        'be omitted.'.format(log_wrap(current_question))
+                    )
                     continue
                 if 'setcounter' in current_question:
                     counter = int(current_question['setcounter'])
@@ -1270,7 +1271,6 @@ def process_file(filename, srcdir):
     if args.filetype is None:
         print('Choose type of export:')
         answer = gui_get_filetype()
-        print(format(answer))
         if not answer:
             print('No type of export specified.')
             sys.exit(1)
