@@ -516,7 +516,7 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
         tag.insert_before('(img {})'.format(imgpath))
         tag.extract()
     for tag in bsoup.find_all('a'):
-        if rew(tag.string) == '':
+        if not tag.string or rew(tag.string) == '':
             tag.extract()
         else:
             tag.string = tag['href']
