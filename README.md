@@ -33,6 +33,10 @@
 
 Если у вас нет _Python_ или просто лень возиться, качайте:
 
+### v0.3rc1
+
+- Windows: [v0.3rc1.zip](https://bitbucket.org/pecheny/chgksuite/downloads/v0.3rc1.zip)
+
 ### v0.2rc2
 
 - Windows: [v0.2rc2.zip](https://bitbucket.org/pecheny/chgksuite/downloads/v0.2rc2.zip)
