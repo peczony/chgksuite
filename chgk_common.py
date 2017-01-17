@@ -54,6 +54,7 @@ def retry_wrapper_factory(logger):
         return ret
     return retry_wrapper
 
+
 class DummyLogger(object):
 
     def info(self, s):
