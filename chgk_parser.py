@@ -74,6 +74,12 @@ def partition(alist, indices):
     return [alist[i:j] for i, j in zip([0] + indices, indices + [None])]
 
 
+def load_regexes(regexfile):
+    with codecs.open(regexfile, 'r', 'utf8') as f:
+        regexes = json.loads(f.read())
+    return {k: re.compile(v) for k, v in regexes.items()}
+
+
 def chgk_parse(text, defaultauthor=None, regexes=None):
     """
     Parsing rationale: every Question has two required fields: 'question' and
@@ -104,11 +110,13 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     chgk_parse.structure = []
 
     if not regexes:
-        with codecs.open('{}/regexes.json'
-                         .format(os.path.dirname(os.path.abspath(__file__))),
-                         'r', 'utf8') as f:
-            regexes = json.loads(f.read())
-        regexes = {k: re.compile(v) for k, v in regexes.items()}
+        regexes = load_regexes(
+            '{}/regexes.json'.format(
+                os.path.dirname(os.path.abspath(__file__))
+            )
+        )
+    elif isinstance(regexes, basestring):
+        regexes = load_regexes(regexes)
 
     def merge_to_previous(index):
         target = index - 1
@@ -662,9 +670,7 @@ def gui_parse(args):
     root = Tk()
     root.withdraw()
 
-    with codecs.open(args.regexes, 'r', 'utf8') as f:
-        regexes = json.loads(f.read())
-    regexes = {k: re.compile(v) for k, v in regexes.items()}
+    regexes = load_regexes(args.regexes)
 
     if args.debug:
         debug = True
