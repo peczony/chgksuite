@@ -203,7 +203,7 @@ def gui_trello_download(args):
     set_lastdir(ld)
     os.chdir(args.folder)
 
-    if args.si:
+    if args.si or args.qb:
         from docx import Document
 
     req = requests.get("{}/boards/{}".format(API, board_id),
@@ -224,6 +224,8 @@ def gui_trello_download(args):
         _names[name] = _names[name].replace('/', '_')
     if args.si:
         _docs = defaultdict(lambda: Document('template.docx'))
+    if args.qb:
+        qb_doc = Document('template.docx')
     for card in json_['cards']:
         if card.get('closed'):
             continue
@@ -252,6 +254,23 @@ def gui_trello_download(args):
     if args.si:
         for doc in _docs:
             _docs[doc].save('{}.docx'.format(doc))
+    if args.qb:
+        first, second = _lists[args.qb[0]], _lists[args.qb[1]]
+        for i, pair in enumerate(zip(first, second)):
+            p = qb_doc.add_paragraph()
+            p.add_run('Тоссап {}.'.format(i + 1)).bold = True
+            p = qb_doc.add_paragraph()
+            p = qb_doc.add_paragraph()
+            p.add_run(pair[0])
+            p = qb_doc.add_paragraph()
+            p = qb_doc.add_paragraph()
+            p.add_run('Бонус {}.'.format(i + 1)).bold = True
+            p = qb_doc.add_paragraph()
+            p = qb_doc.add_paragraph()
+            p.add_run(pair[1])
+            p = qb_doc.add_paragraph()
+            p = qb_doc.add_paragraph()
+        qb_doc.save('quizbowl.docx')
 
     for _list in _lists:
         filename = '{}.4s'.format(_list)

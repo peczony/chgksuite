@@ -184,6 +184,9 @@ def main():
                                     "in .4s files. "
                                     "Useful for editing SI "
                                     "files (rather than CHGK)")
+    cmdtrello_download.add_argument(
+        '--qb', nargs='+', help="Quizbowl format"
+    )
     cmdtrello_download.add_argument('--labels', action='store_true',
                                     help="Use this if you also want "
                                     "to have lists based on labels.")
