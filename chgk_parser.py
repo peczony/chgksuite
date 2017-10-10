@@ -507,10 +507,10 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
     for tag in bsoup.find_all('strong'):
         tag.unwrap()
     for tag in bsoup.find_all('i'):
-        tag.string = '_' + tag.string + '_'
+        tag.string = '_' + tag.get_text() + '_'
         tag.unwrap()
     for tag in bsoup.find_all('em'):
-        tag.string = '_' + tag.string + '_'
+        tag.string = '_' + tag.get_text() + '_'
         tag.unwrap()
     for tag in bsoup.find_all('li'):
         if tag.string:
