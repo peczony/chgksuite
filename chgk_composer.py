@@ -558,24 +558,24 @@ def docx_format(el, para, whiten):
                 r = para.add_run(run[1])
                 if whiten and not args.nospoilers:
                     r.style = 'Whitened'
-                if images_exist:
-                    para = gui_compose.doc.add_paragraph()
+                # if images_exist:
+                #     para = gui_compose.doc.add_paragraph()
 
             elif run[0] == 'em':
                 r = para.add_run(run[1])
                 r.italic = True
                 if whiten and not args.nospoilers:
                     r.style = 'Whitened'
-                if images_exist:
-                    para = gui_compose.doc.add_paragraph()
+                # if images_exist:
+                #     para = gui_compose.doc.add_paragraph()
 
             elif run[0] == 'sc':
                 r = para.add_run(run[1])
                 r.small_caps = True
                 if whiten and not args.nospoilers:
                     r.style = 'Whitened'
-                if images_exist:
-                    para = gui_compose.doc.add_paragraph()
+                # if images_exist:
+                #     para = gui_compose.doc.add_paragraph()
 
             elif run[0] == 'img':
                 imgfile, width, height = parseimg(run[1], dimensions='inches')
@@ -763,12 +763,12 @@ def split_into_tours(structure, general_impression=False):
                 current.append(element)
     result.append(current)
     globalheading = find_heading(result[0])[1][1]
-    result[0][find_heading(result[0])[0]][1] += ', {}'.format(
+    result[0][find_heading(result[0])[0]][1] += '. {}'.format(
         find_tour(result[0])[1][1])
     for tour in result[1:]:
         if not find_heading(tour):
             tour.insert(0,
-                        ['ljheading', '{}, {}'.format(
+                        ['ljheading', '{}. {}'.format(
                             globalheading,
                             find_tour(tour)[1][1]
                         )])
