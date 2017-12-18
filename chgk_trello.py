@@ -134,6 +134,8 @@ def gui_trello_upload(args):
 
     if not args.board_id:
         board_id = get_board_id()
+    else:
+        board_id = args.board_id
 
     trelloconfig = args.trelloconfig
     trelloconfig['board_id'] = board_id
@@ -176,8 +178,18 @@ def gui_trello_upload(args):
             set_lastdir(args.filename)
 
 
-def process_desc(s):
-    return s.replace(r'\`', '`')
+def onlyanswers_line_check(line):
+    line = (line or '')
+    return line.startswith(('Ответ', '1', '2', '3', '4', '5', '6', '8'))
+
+
+def process_desc(s, onlyanswers=False):
+    s = s.replace(r'\`', '`')
+    if onlyanswers:
+        lines = s.split('\n')
+        lines = [x for x in lines if onlyanswers_line_check(x)]
+        s = '\n'.join(lines)
+    return s
 
 
 def getlabels(s):
@@ -237,7 +249,7 @@ def gui_trello_download(args):
                 ) + card['name']).bold = True
             p = _docs[_names[card['idList']]].add_paragraph()
             p = _docs[_names[card['idList']]].add_paragraph()
-            p.add_run(process_desc(card['desc']))
+            p.add_run(process_desc(card['desc'], onlyanswers=args.onlyanswers))
             p = _docs[_names[card['idList']]].add_paragraph()
             p = _docs[_names[card['idList']]].add_paragraph()
         _lists[_names[card['idList']]].append(
