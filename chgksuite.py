@@ -185,6 +185,10 @@ def main():
                                     "Useful for editing SI "
                                     "files (rather than CHGK)")
     cmdtrello_download.add_argument(
+        '--onlyanswers', action='store_true',
+        help="This flag forces SI download to only include answers."
+    )
+    cmdtrello_download.add_argument(
         '--qb', nargs='+', help="Quizbowl format"
     )
     cmdtrello_download.add_argument('--labels', action='store_true',
