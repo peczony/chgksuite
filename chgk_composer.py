@@ -777,7 +777,7 @@ def split_into_tours(structure, general_impression=False):
             [
                 ['ljheading', '{}. Общие впечатления'.format(globalheading)],
                 ['meta', 'В комментариях к этому посту можно '
-                 'поделиться общими впечатлениями от вопросов'],
+                 'поделиться общими впечатлениями от вопросов.'],
             ])
     return result
 
@@ -1360,29 +1360,36 @@ def process_file(filename, srcdir):
 
         gui_compose.counter = 1
 
-        title = 'Title'
-        author = 'Author'
-        date = '1970-01-01'
+        title = ''
+        date = ''
+        gui_compose.tex = """\\input{cheader.tex}
+\\begin{document}
+"""
+        firsttour = True
         for element in structure:
             if element[0] == 'heading':
-                title = element[1]
-            if element[0] == 'editor':
-                author = element[1]
+                gui_compose.tex += (
+                    '\n{{\\huge {}}}\n'
+                    '\\vspace{{0.8em}}\n'.format(
+                        tex_element_layout(element[1])
+                    )
+                )
             if element[0] == 'date':
-                date = element[1]
-        gui_compose.tex = """\\input{{cheader.tex}}
-\\title{{{title}}}
-\\date{{{date}}}
-\\author{{{author}}}
-\\begin{{document}}
-\\maketitle
-""".format(date=date, author=author, title=title)
-
-        for element in structure:
-            if element[0] == 'meta':
+                gui_compose.tex += (
+                    '\n{{\\large {}}}\n'
+                    '\\vspace{{0.8em}}\n'.format(
+                        tex_element_layout(element[1])
+                    )
+                )
+            if element[0] in {'meta', 'editor'}:
                 gui_compose.tex += '\n{}\n\\vspace{{0.8em}}\n'.format(
                     tex_element_layout(element[1]))
-            if element[0] == 'Question':
+            elif element[0] == 'section':
+                gui_compose.tex += '\n{}\\tour\n\n'.format(
+                    '\\clearpage' if not firsttour else ''
+                )
+                firsttour = False
+            elif element[0] == 'Question':
                 gui_compose.tex += tex_format_question(element[1])
 
         gui_compose.tex += '\\end{document}'
