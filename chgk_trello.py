@@ -180,14 +180,34 @@ def gui_trello_upload(args):
 
 def onlyanswers_line_check(line):
     line = (line or '')
-    return line.startswith(('Ответ', '1', '2', '3', '4', '5', '6', '8'))
+    return line.startswith(
+        ('Ответ', 'Зачёт', 'Зачет', '1', '2', '3', '4', '5', '6', '8')
+    )
 
 
-def process_desc(s, onlyanswers=False):
+def noanswers_line_check(line):
+    line = (line or '')
+    return not line.startswith(
+        (
+            'Ответ', 'Коммента', 'Источник', 'Автор', 'Зачёт', 'Зачет',
+            'Незачёт', 'Незачет'
+        )
+    )
+
+
+def process_desc(s, onlyanswers=False, noanswers=False):
     s = s.replace(r'\`', '`')
     if onlyanswers:
         lines = s.split('\n')
-        lines = [x for x in lines if onlyanswers_line_check(x)]
+        lines = [
+            x for x in lines if onlyanswers_line_check(x)
+        ]
+        s = '\n'.join(lines)
+    elif noanswers:
+        lines = s.split('\n')
+        lines = [
+            x for x in lines if noanswers_line_check(x)
+        ]
         s = '\n'.join(lines)
     return s
 
@@ -241,20 +261,27 @@ def gui_trello_download(args):
     for card in json_['cards']:
         if card.get('closed'):
             continue
+        id_ = ('singlefile' if args.singlefile else _names[card['idList']])
         if args.si:
-            p = _docs[_names[card['idList']]].add_paragraph()
+            p = _docs[id_].add_paragraph()
             p.add_run(
                 'Тема {}. '.format(
                     len(_lists[_names[card['idList']]]) + 1
                 ) + card['name']).bold = True
-            p = _docs[_names[card['idList']]].add_paragraph()
-            p = _docs[_names[card['idList']]].add_paragraph()
-            p.add_run(process_desc(card['desc'], onlyanswers=args.onlyanswers))
-            p = _docs[_names[card['idList']]].add_paragraph()
-            p = _docs[_names[card['idList']]].add_paragraph()
-        _lists[_names[card['idList']]].append(
+            p = _docs[id_].add_paragraph()
+            p = _docs[id_].add_paragraph()
+            p.add_run(
+                process_desc(
+                    card['desc'],
+                    onlyanswers=args.onlyanswers,
+                    noanswers=args.noanswers,
+                )
+            )
+            p = _docs[id_].add_paragraph()
+            p = _docs[id_].add_paragraph()
+        _lists[id_].append(
             ('Тема {}. '.format(
-                len(_lists[_names[card['idList']]]) + 1
+                len(_lists[id_]) + 1
             ) + card['name'] + '\n\n' if args.si else '') +
             process_desc(card['desc'])
         )

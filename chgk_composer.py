@@ -893,7 +893,7 @@ def lj_post(stru):
             comment = retry_wrapper(lj.addcomment, [params])
             logger.info('Added a comment')
             logger.debug(log_wrap(comment))
-            time.sleep(random.randint(5, 15))
+            time.sleep(random.randint(5, 7))
     except:
         sys.stderr.write('Error issued by LJ API: {}'.format(
             traceback.format_exc()))

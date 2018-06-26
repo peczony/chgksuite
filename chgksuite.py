@@ -189,6 +189,14 @@ def main():
         help="This flag forces SI download to only include answers."
     )
     cmdtrello_download.add_argument(
+        '--noanswers', action='store_true',
+        help="This flag forces SI download to not include answers."
+    )
+    cmdtrello_download.add_argument(
+        '--singlefile', action='store_true',
+        help="This flag forces SI download all themes to single file."
+    )
+    cmdtrello_download.add_argument(
         '--qb', nargs='+', help="Quizbowl format"
     )
     cmdtrello_download.add_argument('--labels', action='store_true',
