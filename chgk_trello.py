@@ -197,6 +197,7 @@ def noanswers_line_check(line):
 
 def process_desc(s, onlyanswers=False, noanswers=False):
     s = s.replace(r'\`', '`')
+    s = s.replace(r'\*', '*')
     if onlyanswers:
         lines = s.split('\n')
         lines = [
