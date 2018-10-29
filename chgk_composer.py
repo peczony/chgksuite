@@ -978,7 +978,7 @@ def lj_post_getdata():
     gi.pack(side='top')
 
     Button(root, command=onokclick, text='OK').pack(side='top')
-
+    bring_to_front(root)
     root.mainloop()
     return root.login, root.password, root.community, root.sp, root.gi
 
