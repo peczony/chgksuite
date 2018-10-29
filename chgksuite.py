@@ -13,8 +13,10 @@ except ImportError:
 from chgk_parser import gui_parse
 from chgk_composer import gui_compose
 from chgk_trello import gui_trello
-from chgk_common import (on_close, button_factory,
-                         toggle_factory, DefaultNamespace)
+from chgk_common import (
+    on_close, button_factory,
+    toggle_factory, DefaultNamespace, bring_to_front
+)
 
 from collections import defaultdict
 
@@ -106,6 +108,7 @@ def gui_choose_action(args):
     mrg.pack(side='bottom')
     da.pack(side='bottom')
     pt.pack(side='bottom')
+    bring_to_front(root)
     root.mainloop()
     return root.ret
 

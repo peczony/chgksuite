@@ -11,7 +11,9 @@ import requests
 import pdb
 import webbrowser
 from collections import defaultdict
-from chgk_common import get_lastdir, set_lastdir, on_close, log_wrap
+from chgk_common import (
+    get_lastdir, set_lastdir, on_close, log_wrap, bring_to_front
+)
 try:
     from Tkinter import Tk, Frame, IntVar, Button, Checkbutton
     import tkFileDialog as filedialog
@@ -83,6 +85,7 @@ def gui_file_or_directory(args):
     if ch_author.get() == 1:
         au.select()
     root.ret['author'] = bool(ch_author.get())
+    bring_to_front(root)
     root.mainloop()
     return root.ret
 

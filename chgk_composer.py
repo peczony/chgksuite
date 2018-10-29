@@ -42,9 +42,11 @@ from docx.shared import Inches
 from PIL import Image
 import pyimgur
 
-from chgk_common import (get_lastdir, set_lastdir, on_close, DummyLogger,
-                         log_wrap, QUESTION_LABELS, check_question,
-                         retry_wrapper_factory)
+from chgk_common import (
+    get_lastdir, set_lastdir, on_close, DummyLogger,
+    log_wrap, QUESTION_LABELS, check_question,
+    retry_wrapper_factory, bring_to_front
+)
 import typotools
 from typotools import remove_excessive_whitespace as rew
 
@@ -500,6 +502,7 @@ def gui_get_filetype():
     rawtex.pack(side='bottom')
     ans.pack(side='bottom')
     ch.pack(side='bottom')
+    bring_to_front(root)
     root.mainloop()
     return root.ret
 

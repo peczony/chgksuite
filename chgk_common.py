@@ -29,6 +29,12 @@ def set_lastdir(path):
             f.write(path)
 
 
+def bring_to_front(root):
+    root.lift()
+    root.attributes('-topmost', True)
+    root.after_idle(root.attributes, '-topmost', False)
+
+
 def get_lastdir():
     if os.path.isfile(lastdir):
         with codecs.open(lastdir, 'r', 'utf8') as f:
