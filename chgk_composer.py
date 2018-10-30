@@ -866,12 +866,20 @@ def lj_post(stru):
         'min': minute,
     }
 
-    if args.community == '':
+    community = args.community
+    if community == '':
         params['security'] = 'private'
+    elif community.startswith('--group'):
+        params['security'] = 'usemask'
+        params['allowmask'] = community.split('--group')[1] or '2'
     else:
-        params['usejournal'] = args.community
+        params['usejournal'] = community
+    if community == '--group':
+        community = ""
 
-    journal = args.community if args.community else args.login
+    journal = (
+        community if community else args.login
+    )
 
     try:
         time.sleep(5)
@@ -897,6 +905,7 @@ def lj_post(stru):
             logger.info('Added a comment')
             logger.debug(log_wrap(comment))
             time.sleep(random.randint(5, 7))
+
     except:
         sys.stderr.write('Error issued by LJ API: {}'.format(
             traceback.format_exc()))
