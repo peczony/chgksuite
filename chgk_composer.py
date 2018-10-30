@@ -882,11 +882,11 @@ def lj_post(stru):
     )
 
     try:
-        time.sleep(5)
         post = retry_wrapper(lj.postevent, [params])
         ditemid = post['ditemid']
         logger.info('Created a post')
         logger.debug(log_wrap(post))
+        time.sleep(5)
 
         for _, x in enumerate(stru[1:], start=1):
             chal, response = get_chal(lj, args.password)
