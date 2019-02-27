@@ -33,6 +33,11 @@
 
 Если у вас нет _Python_ или просто лень возиться, качайте:
 
+### v0.4
+
+- Windows: [chgksuite_v0.4_win.zip](https://bitbucket.org/pecheny/chgksuite/downloads/chgksuite_v0.4_win.zip)
+- Mac: [chgksuite_v0.4_mac.zip](https://bitbucket.org/pecheny/chgksuite/downloads/chgksuite_v0.4_mac.zip)
+
 ### v0.3rc1
 
 - Windows: [v0.3rc1.zip](https://bitbucket.org/pecheny/chgksuite/downloads/v0.3rc1.zip)
