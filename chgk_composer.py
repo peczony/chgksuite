@@ -1238,9 +1238,12 @@ def gui_compose(largs, sourcedir=None):
 
 def process_file_wrapper(filename):
     with make_temp_directory(dir=SOURCEDIR) as tmp_dir:
-        for fn in ['template.docx', 'fix-unnumbered-sections.sty',
-                   'cheader.tex']:
-            shutil.copy(os.path.join(SOURCEDIR, fn), tmp_dir)
+        for fn in [
+            args.docx_template,
+            os.path.join(SOURCEDIR, 'fix-unnumbered-sections.sty'),
+            args.tex_header
+        ]:
+            shutil.copy(fn, tmp_dir)
         process_file(filename, tmp_dir)
         os.chdir(SOURCEDIR)
 
@@ -1303,8 +1306,8 @@ def process_file(filename, srcdir):
         outfilename = os.path.join(
             SOURCEDIR, make_filename(filename, 'docx', nots=args.nots)
         )
-        logger.debug(os.path.join(SOURCEDIR, 'template.docx'))
-        gui_compose.doc = Document(os.path.join(SOURCEDIR, 'template.docx'))
+        logger.debug(args.docx_template)
+        gui_compose.doc = Document(args.docx_template)
         qcount = 0
         logger.debug(log_wrap(structure))
 
@@ -1378,9 +1381,9 @@ def process_file(filename, srcdir):
 
         title = ''
         date = ''
-        gui_compose.tex = """\\input{cheader.tex}
+        gui_compose.tex = """\\input{@header}
 \\begin{document}
-"""
+""".replace("@header", os.path.basename(args.tex_header))
         firsttour = True
         for element in structure:
             if element[0] == 'heading':
@@ -1427,9 +1430,11 @@ def process_file(filename, srcdir):
         if args.rawtex and (os.path.normpath(SOURCEDIR.lower()) !=
                             os.path.normpath(TARGETDIR.lower())):
             shutil.copy(outfilename, TARGETDIR)
-            shutil.copy(os.path.join(SOURCEDIR, 'cheader.tex'), TARGETDIR)
-            shutil.copy(os.path.join(SOURCEDIR,
-                                     'fix-unnumbered-sections.sty'), TARGETDIR)
+            shutil.copy(args.tex_header, TARGETDIR)
+            shutil.copy(
+                os.path.join(SOURCEDIR, 'fix-unnumbered-sections.sty'),
+                TARGETDIR
+            )
 
     if args.filetype == 'lj':
 

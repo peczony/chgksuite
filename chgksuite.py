@@ -19,6 +19,11 @@ from chgk_common import (
 )
 
 from collections import defaultdict
+import json
+try:
+    basestring
+except NameError:
+    basestring = (str, bytes)
 
 debug = False
 
@@ -117,6 +122,10 @@ def main():
     parser = argparse.ArgumentParser(prog='chgksuite')
     parser.add_argument('--debug', '-d', action='store_true',
                         help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--config", "-c",
+        help="a config file to store default args values."
+    )
     subparsers = parser.add_subparsers(dest='action')
 
     cmdparse = subparsers.add_parser('parse')
@@ -143,6 +152,9 @@ def main():
     )
     cmdcompose_filetype = cmdcompose.add_subparsers(dest='filetype')
     cmdcompose_docx = cmdcompose_filetype.add_parser('docx')
+    cmdcompose_docx.add_argument(
+        "--docx_template", help="a DocX template file."
+    )
     cmdcompose_docx.add_argument('filename', nargs='*',
                                  help='file(s) to compose from.')
     cmdcompose_docx.add_argument('--nospoilers', '-n',
@@ -160,6 +172,9 @@ def main():
                                  help='randomize order of questions.')
 
     cmdcompose_tex = cmdcompose_filetype.add_parser('tex')
+    cmdcompose_tex.add_argument(
+        "--tex_header", help="a LaTeX header file."
+    )
     cmdcompose_tex.add_argument('filename', nargs='*',
                                 help='file(s) to compose from.')
     cmdcompose_tex.add_argument('--rawtex', action='store_true')
@@ -233,6 +248,33 @@ def main():
             os.path.dirname(os.path.abspath(__file__)),
             'regexes.json'
         )
+    if not args.docx_template:
+        args.docx_template = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'template.docx'
+        )
+    if not args.tex_header:
+        args.tex_header = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'cheader.tex'
+        )
+    if args.config:
+        with open(args.config, "r") as f:
+            config = json.load(f)
+        for key in config:
+            if not isinstance(config[key], basestring):
+                val = config[key]
+            elif os.path.isfile(config[key]):
+                val = os.path.abspath(config[key])
+            elif os.path.isfile(os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), config[key]
+            )):
+                val = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), config[key]
+                )
+            else:
+                val = config[key]
+            setattr(args, key, val)
 
     args.passthrough = False
     if not args.action:

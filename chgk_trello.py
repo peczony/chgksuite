@@ -227,9 +227,7 @@ def gui_trello_download(args):
     if not args.folder:
         args.folder = filedialog.askdirectory(initialdir=ld)
 
-    template_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "template.docx"
-    )
+    template_path = args.template
 
     board_id_path = os.path.join(args.folder, '.board_id')
     if os.path.isfile(board_id_path):
