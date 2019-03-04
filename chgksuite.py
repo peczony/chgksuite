@@ -137,6 +137,10 @@ def main():
     cmdcompose = subparsers.add_parser('compose')
     cmdcompose.add_argument('--merge', action='store_true',
                             help='merge several source files before output.')
+    cmdcompose.add_argument(
+        '--nots', action="store_true",
+        help="don't append timestamp to filenames"
+    )
     cmdcompose_filetype = cmdcompose.add_subparsers(dest='filetype')
     cmdcompose_docx = cmdcompose_filetype.add_parser('docx')
     cmdcompose_docx.add_argument('filename', nargs='*',

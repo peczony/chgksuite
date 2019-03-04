@@ -92,13 +92,13 @@ logger = DummyLogger()
 retry_wrapper = None
 
 
-def make_filename(s, ext):
-    now = datetime.datetime.now()
-    bn = os.path.basename(s)
-    return (os.path.splitext(bn)[0] + '-{}-{}.'
-            .format(now.strftime('%Y%m%d'),
-                    now.strftime('%H%M')) +
-            ext)
+def make_filename(s, ext, nots=False):
+    bn = os.path.splitext(os.path.basename(s))[0]
+    if nots:
+        return bn + '.' + ext
+    return "{}_{}.{}".format(
+         bn, datetime.datetime.now().strftime("%Y%m%dT%H%M"), ext
+    )
 
 
 @contextlib.contextmanager
@@ -1276,7 +1276,8 @@ def process_file(filename, srcdir):
 
     if args.debug:
         with codecs.open(
-                make_filename(filename, 'dbg'), 'w', 'utf8') as output_file:
+            make_filename(filename, 'dbg', nots=args.nots), 'w', 'utf8'
+        ) as output_file:
             output_file.write(
                 structure)
 
@@ -1299,8 +1300,9 @@ def process_file(filename, srcdir):
 
     if args.filetype == 'docx':
 
-        outfilename = os.path.join(SOURCEDIR,
-                                   make_filename(filename, 'docx'))
+        outfilename = os.path.join(
+            SOURCEDIR, make_filename(filename, 'docx', nots=args.nots)
+        )
         logger.debug(os.path.join(SOURCEDIR, 'template.docx'))
         gui_compose.doc = Document(os.path.join(SOURCEDIR, 'template.docx'))
         qcount = 0
@@ -1367,8 +1369,10 @@ def process_file(filename, srcdir):
 
     if args.filetype == 'tex':
 
-        outfilename = os.path.join(SOURCEDIR,
-                                   make_filename(filename, 'tex'))
+        outfilename = os.path.join(
+            SOURCEDIR,
+            make_filename(filename, 'tex', nots=args.nots)
+        )
 
         gui_compose.counter = 1
 
