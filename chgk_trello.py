@@ -227,6 +227,10 @@ def gui_trello_download(args):
     if not args.folder:
         args.folder = filedialog.askdirectory(initialdir=ld)
 
+    template_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "template.docx"
+    )
+
     board_id_path = os.path.join(args.folder, '.board_id')
     if os.path.isfile(board_id_path):
         with codecs.open(board_id_path, 'r', 'utf8') as f:
@@ -259,9 +263,9 @@ def gui_trello_download(args):
     for name in _names:
         _names[name] = _names[name].replace('/', '_')
     if args.si:
-        _docs = defaultdict(lambda: Document('template.docx'))
+        _docs = defaultdict(lambda: Document(template_path))
     if args.qb:
-        qb_doc = Document('template.docx')
+        qb_doc = Document(template_path)
     for card in json_['cards']:
         if card.get('closed'):
             continue
@@ -342,7 +346,7 @@ def get_board_id(path=None):
 
 
 def gui_trello(args):
-    TOKENPATH = os.path.join(os.path.dirname(os.path.abspath('__file__')),
+    TOKENPATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              '.trello_token')
     if not os.path.isfile(TOKENPATH):
         webbrowser.open('https://trello.com/1/connect'
@@ -356,7 +360,7 @@ def gui_trello(args):
             token = f.read().rstrip()
 
     args.trelloconfig = json.load(
-        open(os.path.join(os.path.dirname(os.path.abspath('__file__')),
+        open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                           'trello.json'))
     )
     args.trelloconfig['params']['token'] = token
