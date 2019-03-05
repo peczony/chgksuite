@@ -255,8 +255,9 @@ def gui_trello_download(args):
     _lists = defaultdict(lambda: [])
 
     json_ = json.loads(req.content.decode('utf8'))
-    _names = {}
-    for list_ in json_['lists']:
+    _names = defaultdict(lambda: None)
+    open_lists = list(filter(lambda l: not l['closed'], json_['lists']))
+    for list_ in open_lists:
         _names[list_['id']] = list_['name']
     for name in _names:
         _names[name] = _names[name].replace('/', '_')
@@ -265,14 +266,15 @@ def gui_trello_download(args):
     if args.qb:
         qb_doc = Document(template_path)
     for card in json_['cards']:
-        if card.get('closed'):
+        list_name = _names[card['idList']]
+        if card.get('closed') or list_name is None:
             continue
-        id_ = ('singlefile' if args.singlefile else _names[card['idList']])
+        id_ = ('singlefile' if args.singlefile else list_name)
         if args.si:
             p = _docs[id_].add_paragraph()
             p.add_run(
                 'Тема {}. '.format(
-                    len(_lists[_names[card['idList']]]) + 1
+                    len(_lists[list_name]) + 1
                 ) + card['name']).bold = True
             p = _docs[id_].add_paragraph()
             p = _docs[id_].add_paragraph()
