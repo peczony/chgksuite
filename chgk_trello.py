@@ -221,6 +221,21 @@ def getlabels(s):
     return {x['name'] for x in s['labels']}
 
 
+def delete_paragraph(paragraph):
+    p = paragraph._element
+    p.getparent().remove(p)
+    p._p = p._element = None
+
+
+def add_themes_list(group):
+    themes = group['themes']
+    p = group['paragraph']
+    if len(themes):
+        p.add_run('Темы: ' + ', '.join(themes) + '.').bold = True
+    else:
+        delete_paragraph(p)
+
+
 def gui_trello_download(args):
     ld = get_lastdir()
 
@@ -261,10 +276,13 @@ def gui_trello_download(args):
     for list_ in open_lists:
         _names[list_['id']] = list_['name'].replace('/', '_')
         _list_counters[list_['id']] = 0
+
     if args.si:
         _docs = defaultdict(lambda: Document(template_path))
+        _groups = defaultdict(lambda: None)
     if args.qb:
         qb_doc = Document(template_path)
+
     for card in json_['cards']:
         list_id = card['idList']
         list_name = _names[list_id]
@@ -282,18 +300,29 @@ def gui_trello_download(args):
             card_title = 'Тема {}. {}'.format(
                 _list_counters[list_id], card['name']
             )
+            clear_card_title = card['name']
 
         id_ = ('singlefile' if args.singlefile else list_name)
 
         if args.si:
             doc_ = _docs[id_]
-            if card_title:
+            group_ = _groups[id_]
+            if group_ is None:  # new doc
+                group_ = _groups[id_] = {
+                    'paragraph': doc_.add_paragraph(),
+                    'themes': []
+                }
+            if card_title:  # new title
                 if card_title.startswith('#'):
                     title_re = r'(#+)\s*(.*)'
                     m = re.search(title_re, card_title)
                     doc_.add_heading(m[2], level=len(m[1]))
+                    add_themes_list(group_)
+                    group_['paragraph'] = doc_.add_paragraph()
+                    group_['themes'] = []
                     doc_.add_paragraph()
                 else:
+                    group_['themes'].append(clear_card_title)
                     p = doc_.add_paragraph()
                     p.add_run(card_title).bold = True
                     doc_.add_paragraph()
@@ -313,8 +342,12 @@ def gui_trello_download(args):
                     (card['name'] if args.si else '') +
                     process_desc(card['desc']))
     if args.si:
-        for doc in _docs:
-            _docs[doc].save('{}.docx'.format(doc))
+        for list_name in _groups:
+            # add remaining themes when we know we're done with the doc
+            add_themes_list(_groups[list_name])
+        for list_name in _docs:
+            _docs[list_name].save('{}.docx'.format(list_name))
+
     if args.qb:
         first, second = _lists[args.qb[0]], _lists[args.qb[1]]
         for i, pair in enumerate(zip(first, second)):
