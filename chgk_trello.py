@@ -259,10 +259,8 @@ def gui_trello_download(args):
     _names = defaultdict(lambda: None)
     open_lists = list(filter(lambda l: not l['closed'], json_['lists']))
     for list_ in open_lists:
-        _names[list_['id']] = list_['name']
+        _names[list_['id']] = list_['name'].replace('/', '_')
         _list_counters[list_['id']] = 0
-    for name in _names:
-        _names[name] = _names[name].replace('/', '_')
     if args.si:
         _docs = defaultdict(lambda: Document(template_path))
     if args.qb:
@@ -276,28 +274,28 @@ def gui_trello_download(args):
         _list_counters[list_id] += 1
 
         if not args.si:
-            list_title = ''
+            card_title = ''
         elif card['name'].startswith('#'):
-            list_title = card['name']
+            card_title = card['name']
             _list_counters[list_id] = 0
         else:
-            list_title = 'Тема {}. {}'.format(
+            card_title = 'Тема {}. {}'.format(
                 _list_counters[list_id], card['name']
             )
 
         id_ = ('singlefile' if args.singlefile else list_name)
-        doc_ = _docs[id_]
 
         if args.si:
-            if list_title:
-                if list_title.startswith('#'):
+            doc_ = _docs[id_]
+            if card_title:
+                if card_title.startswith('#'):
                     title_re = r'(#+)\s*(.*)'
-                    m = re.search(title_re, list_title)
+                    m = re.search(title_re, card_title)
                     doc_.add_heading(m[2], level=len(m[1]))
                     doc_.add_paragraph()
                 else:
                     p = doc_.add_paragraph()
-                    p.add_run(list_title).bold = True
+                    p.add_run(card_title).bold = True
                     doc_.add_paragraph()
             if card['desc']:
                 doc_.add_paragraph(process_desc(
@@ -306,7 +304,7 @@ def gui_trello_download(args):
                     noanswers=args.noanswers,
                 ))
 
-        _lists[id_].append(list_title + ('' if list_title.startswith('#')
+        _lists[id_].append(card_title + ('' if card_title.startswith('#')
                                          else '\n\n') + process_desc(card['desc']))
 
         if args.labels:
