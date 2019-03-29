@@ -27,12 +27,12 @@
   \begin{figure}[#1]\begin{adjustwidth}{-2cm}{}}
   {\end{adjustwidth}\end{figure}}
 \usepackage{microtype}
-\newcommand{\lspace}[1]{{\addfontfeature{LetterSpace=6.0}#1}}
+\newcommand{\lspace}[1]{{\addfontfeature{LetterSpace=3.0}#1}}
 %\setdefaultlanguage{russian}
 \yyyymmdddate
 \usepackage{embrac}
 \usepackage{textcomp}
-\setmainfont[Renderer=Basic,Numbers={OldStyle}]{Vollkorn}
+\setmainfont[Renderer=Basic,Numbers={OldStyle},RawFeature={+ss11}]{Vollkorn}
 % \newfontfamily{\ipaf}[Scale=1.27,FakeStretch=.97]{Junicode}
 % \newfontfamily{\fontsc}{Playfair Display SC}
 \newcommand{\tsc}[1]{\textsc{\lspace{#1}}}
