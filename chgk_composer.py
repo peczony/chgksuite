@@ -23,6 +23,8 @@ import time
 import tempfile
 import traceback
 import urllib
+import dateparser
+import pyperclip
 
 try:
     from Tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
@@ -69,7 +71,9 @@ re_url = re.compile(
     re.DOTALL,
 )
 re_perc = re.compile(r"(%[0-9a-fA-F]{2})+")
-re_scaps = re.compile(r"(^|[\s])([\[\]\(\)«»А-Я \u0301`ЁA-Z]{2,})([\s,!\.;:-\?]|$)")
+re_scaps = re.compile(
+    r"(^|[\s])([\[\]\(\)«»А-Я \u0301`ЁA-Z]{2,})([\s,!\.;:-\?]|$)"
+)
 re_em = re.compile(r"_(.+?)_")
 re_lowercase = re.compile(r"[а-яё]")
 re_uppercase = re.compile(r"[А-ЯЁ]")
@@ -1060,6 +1064,122 @@ def lj_post_getdata():
     return root.login, root.password, root.community, root.sp, root.gi
 
 
+def baseyapper(e):
+    if isinstance(e, basestring):
+        return base_element_layout(e)
+    elif isinstance(e, list):
+        if not any(isinstance(x, list) for x in e):
+            return base_element_layout(e)
+        else:
+            return "\n".join([base_element_layout(x) for x in e])
+
+
+def baseformat(s):
+    res = ""
+    for run in parse_4s_elem(s):
+        if run[0] == "":
+            res += run[1]
+        if run[0] == "em":
+            res += run[1]
+        if run[0] == "img":
+            imgfile, w, h = parseimg(run[1], dimensions="ems")
+            if os.path.isfile(imgfile):
+                im = pyimgur.Imgur(IMGUR_CLIENT_ID)
+                uploaded_image = im.upload_image(imgfile, title=imgfile)
+                imgfile = uploaded_image.link
+            res += "(pic {})".format(imgfile)
+    while res.endswith("\n"):
+        res = res[:-1]
+    return res
+
+
+def base_element_layout(e):
+    res = ""
+    if isinstance(e, basestring):
+        res = baseformat(e)
+        return res
+    if isinstance(e, list):
+        res = "\n".join([
+            "{}. {}\n".format(i + 1, base_element_layout(x))
+            for i, x in enumerate(e)
+        ])
+    return res
+
+
+BASE_MAPPING = {
+    "section": "Тур",
+    "heading": "Чемпионат",
+    "editor": "Редактор",
+}
+re_date_sep = re.compile(" [—–-] ")
+
+
+def wrap_date(s):
+    s = s.strip()
+    parsed = dateparser.parse(s)
+    formatted = parsed.strftime("%d-%b-%Y")
+    return formatted
+
+
+def base_format_element(pair):
+    if pair[0] == "Question":
+        return base_format_question(pair[1])
+    if pair[0] in BASE_MAPPING:
+        return "{}:\n{}\n\n".format(
+            BASE_MAPPING[pair[0]], baseyapper(pair[1])
+        )
+    elif pair[0] == "date":
+        re_search = re_date_sep.search(pair[1])
+        if re_search:
+            gr0 = re_search.group(0)
+            dates = pair[1].split(gr0)
+            return "Дата:\n{} - {}\n\n".format(
+                wrap_date(dates[0]), wrap_date(dates[-1])
+            )
+        else:
+            return "Дата:\n{}\n\n".format(wrap_date(pair[1]))
+    elif pair[0] == "meta":
+        return baseyapper(pair[1]) + "\n\n"
+
+
+def output_base(structure, outfile, args):
+    result = []
+    for pair in structure:
+        res = base_format_element(pair)
+        if res:
+            result.append(res)
+    text = "".join(result)
+    with codecs.open(outfile, "w", "utf8") as f:
+        f.write(text)
+    logger.info("Output: {}".format(outfile))
+    if args.clipboard:
+        pyperclip.copy(text)
+
+
+def base_format_question(q):
+    if "setcounter" in q:
+        gui_compose.counter = int(q["setcounter"])
+    res = "Вопрос {}:\n{}\n\n".format(
+        gui_compose.counter if "number" not in q else q["number"],
+        baseyapper(q["question"])
+    )
+    if "number" not in q:
+        gui_compose.counter += 1
+    res += "Ответ:\n{}\n\n".format(baseyapper(q["answer"]))
+    if "zachet" in q:
+        res += "Зачет:\n{}\n\n".format(baseyapper(q["zachet"]))
+    if "nezachet" in q:
+        res += "Незачет:\n{}\n\n".format(baseyapper(q["zachet"]))
+    if "comment" in q:
+        res += "Комментарий:\n{}\n\n".format(baseyapper(q["comment"]))
+    if "source" in q:
+        res += "Источник:\n{}\n\n".format(baseyapper(q["source"]))
+    if "author" in q:
+        res += "Автор:\n{}\n\n".format(baseyapper(q["author"]))
+    return res
+
+
+
 def tex_format_question(q):
     yapper = texyapper
     if "setcounter" in q:
@@ -1509,7 +1629,7 @@ def process_file(filename, srcdir):
             elif element[0] == "section":
                 gui_compose.tex += "\n{}\\section*{{{}}}\n\n".format(
                     "\\clearpage" if not firsttour else "",
-                    tex_element_layout(element[1])
+                    tex_element_layout(element[1]),
                 )
                 firsttour = False
             elif element[0] == "Question":
@@ -1579,10 +1699,11 @@ def process_file(filename, srcdir):
             lj_process(structure)
 
     if args.filetype == "base":
+        gui_compose.counter = 1
         outfilename = os.path.join(
-            TARGETDIR, make_filename(filename, "tex", nots=args.nots)
+            TARGETDIR, make_filename(filename, "txt", nots=args.nots)
         )
-        output_base(structure, outfilename)
+        output_base(structure, outfilename, args)
 
     if not console_mode:
         input("Press Enter to continue...")

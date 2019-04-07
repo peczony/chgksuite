@@ -194,6 +194,10 @@ def main():
                                help='livejournal password')
     cmdcompose_lj.add_argument('--community', '-c',
                                help='livejournal community to post to.')
+    cmdcompose_base = cmdcompose_filetype.add_parser('base')
+    cmdcompose_base.add_argument('filename', nargs='*',
+                               help='file(s) to compose from.')
+    cmdcompose_base.add_argument('--clipboard', action="store_true")
 
     cmdtrello = subparsers.add_parser('trello')
     cmdtrello_subcommands = cmdtrello.add_subparsers(dest='trellosubcommand')
