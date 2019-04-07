@@ -1117,6 +1117,8 @@ re_date_sep = re.compile(" [—–-] ")
 def wrap_date(s):
     s = s.strip()
     parsed = dateparser.parse(s)
+    if parsed > datetime.date.today():
+        parsed = parsed.replace(year=parsed.year - 1)
     formatted = parsed.strftime("%d-%b-%Y")
     return formatted
 
