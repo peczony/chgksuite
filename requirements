@@ -8,3 +8,5 @@ python-docx==0.8.5
 requests==2.8.1
 Pillow==3.0.0
 ply==3.8
+dateparser==0.7.1
+pyperclip==1.7.0
