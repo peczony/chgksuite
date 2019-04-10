@@ -1181,6 +1181,89 @@ def base_format_question(q):
     return res
 
 
+def reddityapper(e):
+    if isinstance(e, basestring):
+        return reddit_element_layout(e)
+    elif isinstance(e, list):
+        if not any(isinstance(x, list) for x in e):
+            return reddit_element_layout(e)
+        else:
+            return "\n".join([base_element_layout(x) for x in e])
+
+
+def redditformat(s):
+    res = ""
+    for run in parse_4s_elem(s):
+        if run[0] == "":
+            res += run[1]
+        if run[0] == "em":
+            res += "_{}_".format(run[1])
+        if run[0] == "img":
+            imgfile, w, h = parseimg(run[1], dimensions="ems")
+            if os.path.isfile(imgfile):
+                im = pyimgur.Imgur(IMGUR_CLIENT_ID)
+                uploaded_image = im.upload_image(imgfile, title=imgfile)
+                imgfile = uploaded_image.link
+            res += "[картинка]({})".format(imgfile)
+    while res.endswith("\n"):
+        res = res[:-1]
+    res = res.replace("\n", "  \n")
+    return res
+
+
+def reddit_element_layout(e):
+    res = ""
+    if isinstance(e, basestring):
+        res = redditformat(e)
+        return res
+    if isinstance(e, list):
+        res = "\n".join([
+            "{}. {}\n".format(i + 1, reddit_element_layout(x))
+            for i, x in enumerate(e)
+        ])
+    return res
+
+
+def reddit_format_element(pair):
+    if pair[0] == "Question":
+        return reddit_format_question(pair[1])
+
+
+def reddit_format_question(q):
+    if "setcounter" in q:
+        gui_compose.counter = int(q["setcounter"])
+    res = "__Вопрос {}__: {}  \n".format(
+        gui_compose.counter if "number" not in q else q["number"],
+        reddityapper(q["question"])
+    )
+    if "number" not in q:
+        gui_compose.counter += 1
+    res += "__Ответ:__ >!{}!<  \n".format(reddityapper(q["answer"]))
+    if "zachet" in q:
+        res += "__Зачёт:__ >!{}!<  \n".format(reddityapper(q["zachet"]))
+    if "nezachet" in q:
+        res += "__Незачёт:__ >!{}!<  \n".format(reddityapper(q["zachet"]))
+    if "comment" in q:
+        res += "__Комментарий:__ >!{}!<  \n".format(reddityapper(q["comment"]))
+    if "source" in q:
+        res += "__Источник:__ >!{}!<  \n".format(reddityapper(q["source"]))
+    if "author" in q:
+        res += "__Автор:__ {}  \n".format(reddityapper(q["author"]))
+    return res
+
+
+def output_reddit(structure, outfile, args):
+    result = []
+    for pair in structure:
+        res = reddit_format_element(pair)
+        if res:
+            result.append(res)
+    text = "\n\n".join(result)
+    with codecs.open(outfile, "w", "utf8") as f:
+        f.write(text)
+    logger.info("Output: {}".format(outfile))
+
+
 
 def tex_format_question(q):
     yapper = texyapper
@@ -1706,6 +1789,13 @@ def process_file(filename, srcdir):
             TARGETDIR, make_filename(filename, "txt", nots=args.nots)
         )
         output_base(structure, outfilename, args)
+
+    if args.filetype == "redditmd":
+        gui_compose.counter = 1
+        outfilename = os.path.join(
+            TARGETDIR, make_filename(filename, "md", nots=args.nots)
+        )
+        output_reddit(structure, outfilename, args)
 
     if not console_mode:
         input("Press Enter to continue...")

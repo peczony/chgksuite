@@ -229,6 +229,10 @@ def main():
         "filename", nargs="*", help="file(s) to compose from."
     )
     cmdcompose_base.add_argument("--clipboard", action="store_true")
+    cmdcompose_redditmd = cmdcompose_filetype.add_parser("redditmd")
+    cmdcompose_redditmd.add_argument(
+        "filename", nargs="*", help="file(s) to compose from."
+    )
 
     cmdtrello = subparsers.add_parser("trello")
     cmdtrello_subcommands = cmdtrello.add_subparsers(dest="trellosubcommand")
