@@ -1100,7 +1100,7 @@ def base_element_layout(e):
         return res
     if isinstance(e, list):
         res = "\n".join([
-            "{}. {}\n".format(i + 1, base_element_layout(x))
+            "   {}. {}".format(i + 1, base_element_layout(x))
             for i, x in enumerate(e)
         ])
     return res
