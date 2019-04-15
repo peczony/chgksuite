@@ -1239,17 +1239,19 @@ def reddit_format_question(q):
     )
     if "number" not in q:
         gui_compose.counter += 1
-    res += "__Ответ:__ >!{}!<  \n".format(reddityapper(q["answer"]))
+    res += "__Ответ:__ >!{}  \n".format(reddityapper(q["answer"]))
     if "zachet" in q:
-        res += "__Зачёт:__ >!{}!<  \n".format(reddityapper(q["zachet"]))
+        res += "__Зачёт:__ {}  \n".format(reddityapper(q["zachet"]))
     if "nezachet" in q:
-        res += "__Незачёт:__ >!{}!<  \n".format(reddityapper(q["zachet"]))
+        res += "__Незачёт:__ {}  \n".format(reddityapper(q["zachet"]))
     if "comment" in q:
-        res += "__Комментарий:__ >!{}!<  \n".format(reddityapper(q["comment"]))
+        res += "__Комментарий:__ {}  \n".format(reddityapper(q["comment"]))
     if "source" in q:
-        res += "__Источник:__ >!{}!<  \n".format(reddityapper(q["source"]))
+        res += "__Источник:__ {}  \n".format(reddityapper(q["source"]))
     if "author" in q:
-        res += "__Автор:__ {}  \n".format(reddityapper(q["author"]))
+        res += "!<\n__Автор:__ {}  \n".format(reddityapper(q["author"]))
+    else:
+        res += "!<\n"
     return res
 
 
