@@ -1110,6 +1110,7 @@ BASE_MAPPING = {
     "section": "Тур",
     "heading": "Чемпионат",
     "editor": "Редактор",
+    "meta": "Инфо"
 }
 re_date_sep = re.compile(" [—–-] ")
 
@@ -1140,8 +1141,6 @@ def base_format_element(pair):
             )
         else:
             return "Дата:\n{}\n\n".format(wrap_date(pair[1]))
-    elif pair[0] == "meta":
-        return baseyapper(pair[1]) + "\n\n"
 
 
 def output_base(structure, outfile, args):
