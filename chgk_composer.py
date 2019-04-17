@@ -1243,7 +1243,7 @@ def reddit_format_question(q):
     if "zachet" in q:
         res += "__Зачёт:__ {}  \n".format(reddityapper(q["zachet"]))
     if "nezachet" in q:
-        res += "__Незачёт:__ {}  \n".format(reddityapper(q["zachet"]))
+        res += "__Незачёт:__ {}  \n".format(reddityapper(q["nezachet"]))
     if "comment" in q:
         res += "__Комментарий:__ {}  \n".format(reddityapper(q["comment"]))
     if "source" in q:
