@@ -1189,7 +1189,7 @@ def reddityapper(e):
         if not any(isinstance(x, list) for x in e):
             return reddit_element_layout(e)
         else:
-            return "\n".join([base_element_layout(x) for x in e])
+            return "  \n".join([reddit_element_layout(x) for x in e])
 
 
 def redditformat(s):
@@ -1218,8 +1218,8 @@ def reddit_element_layout(e):
         res = redditformat(e)
         return res
     if isinstance(e, list):
-        res = "\n".join([
-            "{}. {}".format(i + 1, reddit_element_layout(x))
+        res = "  \n".join([
+            "{}\\. {}".format(i + 1, reddit_element_layout(x))
             for i, x in enumerate(e)
         ])
     return res
