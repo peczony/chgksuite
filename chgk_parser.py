@@ -532,7 +532,7 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
 
     h = html2text.HTML2Text()
     h.body_width = 0
-    txt = (h.handle(bsoup.prettify())
+    txt = (h.handle(bsoup.prettify().replace("_", "%%%UNDERSCORE%%%"))
            .replace('\\-', '')
            .replace('\\.', '.')
            .replace('( ', '(')
@@ -542,6 +542,7 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
            .replace(' :', ':')
            .replace('&lt;', '<')
            .replace('&gt;', '>')
+           .replace("%%%UNDERSCORE%%%", "\\_")
            )
     txt = re.sub(r'_ *_', '', txt)  # fix bad italic from Word
 
