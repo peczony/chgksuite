@@ -490,7 +490,9 @@ def generate_imgname(ext):
 
 def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
     os.chdir(os.path.dirname(os.path.abspath(docxfile)))
-    input_docx = PyDocX.to_html(docxfile)
+    input_docx = PyDocX.to_html(docxfile).replace(
+        "</strong><strong>", ""
+    ).replace("</em><em>", "")
     bsoup = BeautifulSoup(input_docx, 'html.parser')
 
     if debug:
