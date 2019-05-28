@@ -1078,7 +1078,7 @@ def baseformat(s):
     res = ""
     for run in parse_4s_elem(s):
         if run[0] == "":
-            res += run[1]
+            res += run[1].replace("\n", "\n   ")
         if run[0] == "em":
             res += run[1]
         if run[0] == "img":
