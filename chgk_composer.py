@@ -189,9 +189,10 @@ def parse_4s_elem(s):
             j += 1
         return -1
 
+    s = s.replace("\\_", "%%%%UNDERSCORE%%%%")
     for gr in re_url.finditer(s):
         gr0 = gr.group(0)
-        s = s.replace(gr0, gr0.replace("_", "\u6565_"))
+        s = s.replace(gr0, gr0.replace("_", "%%%%UNDERSCORE%%%%"))
 
     # for gr in re_scaps.finditer(s):
     #     gr0 = gr.group(0)
@@ -276,6 +277,8 @@ def parse_4s_elem(s):
                 part[0] = "sc"
                 logger.debug("found img at {}".format(log_wrap(part[1])))
             part[1] = part[1].replace("\\_", "_")
+            part[1] = part[1].replace("\\.", ".")
+            part[1] = part[1].replace("%%%%UNDERSCORE%%%%", "_")
         except:
             sys.stderr.write(
                 "Error on part {}: {}".format(
