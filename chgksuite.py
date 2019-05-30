@@ -194,6 +194,11 @@ def main():
         action="store_true",
         help="randomize order of questions.",
     )
+    cmdcompose_docx.add_argument(
+        "--add_line_break",
+        action="store_true",
+        help="add line break between question and answer.",
+    )
 
     cmdcompose_tex = cmdcompose_filetype.add_parser("tex")
     cmdcompose_tex.add_argument("--tex_header", help="a LaTeX header file.")

@@ -1649,6 +1649,8 @@ def process_file(filename, srcdir):
                 p = gui_compose.doc.add_paragraph()
 
                 if not args.noanswers:
+                    if args.add_line_break:
+                        p = gui_compose.doc.add_paragraph()
                     p.add_run("Ответ: ").bold = True
                     docx_format(q["answer"], p, True)
 
