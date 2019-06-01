@@ -492,7 +492,7 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
     os.chdir(os.path.dirname(os.path.abspath(docxfile)))
     input_docx = PyDocX.to_html(docxfile).replace(
         "</strong><strong>", ""
-    ).replace("</em><em>", "")
+    ).replace("</em><em>", "").replace("_", "%%%UNDERSCORE%%%")
     bsoup = BeautifulSoup(input_docx, 'html.parser')
 
     if debug:
@@ -534,8 +534,8 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
 
     h = html2text.HTML2Text()
     h.body_width = 0
-    txt = (h.handle(bsoup.prettify().replace("_", "%%%UNDERSCORE%%%"))
-           .replace('\\-', '')
+    txt = (h.handle(bsoup.prettify()))
+    txt = (txt.replace('\\-', '')
            .replace('\\.', '.')
            .replace('( ', '(')
            .replace('[ ', '[')

@@ -100,8 +100,8 @@ def detect_accent(s):
                 while i < len(word_new):
                     if (word_new[i] in POTENTIAL_ACCENTS and
                             word_new[:i] not in BAD_BEGINNINGS):
-                        word_new = word_new[:i] + '`' + \
-                            word_new[i].lower() + word_new[i + 1:]
+                        word_new = word_new[:i] + \
+                            word_new[i].lower() + '\u0301' + word_new[i + 1:]
                     i += 1
                 if word != word_new:
                     s = (s[:s.index(word)] + word_new +
