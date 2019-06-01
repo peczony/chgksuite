@@ -90,7 +90,22 @@ def get_dashes_right(s):
     return s
 
 
+def search_accent(s):
+    return re.search("([а-яё])([АОУЫЭЯЕЮИ])([^А-ЯЁ])", s) or re.search(
+        "[^А-ЯЁ]([А-ЯЁ])([АОУЫЭЯЕЮИ])([^А-ЯЁ])", s
+    )
+
+
 def detect_accent(s):
+    # srch = search_accent(s)
+    # while srch:
+    #     to_replace = srch.group(1) + srch.group(2) + srch.group(3)
+    #     replacement = "{}{}\u0301{}".format(
+    #         srch.group(1), srch.group(2).lower(), srch.group(3)
+    #     )
+    #     s = s.replace(to_replace, replacement)
+    #     srch = search_accent(s)
+    # return s
     for word in re.split(r'[^{}{}]+'.format(
             ''.join(LOWERCASE_RUSSIAN), ''.join(UPPERCASE_RUSSIAN)), s):
         if word.upper() != word and len(word) > 1:
