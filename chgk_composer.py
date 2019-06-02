@@ -504,6 +504,11 @@ def gui_get_filetype():
         root.quit()
         root.destroy()
 
+    def basereturn():
+        root.ret = "base", ch_spoilers.get(), ch_answers.get(), ch_rawtex.get()
+        root.quit()
+        root.destroy()
+
     def chtoggle():
         if ch_spoilers.get() == 0:
             ch_spoilers.set(1)
@@ -525,6 +530,7 @@ def gui_get_filetype():
     Button(frame, command=docxreturn, text="docx").pack(side="left")
     Button(frame, command=texreturn, text="tex").pack(side="left")
     Button(frame, command=ljreturn, text="LJ").pack(side="left")
+    Button(frame, command=basereturn, text="db.chgk.info").pack(side="left")
     ch = Checkbutton(
         bottomframe,
         text="Spoilers (docx/lj only)",
