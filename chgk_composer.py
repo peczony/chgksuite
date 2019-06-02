@@ -1129,6 +1129,11 @@ def wrap_date(s):
     parsed = dateparser.parse(s)
     if isinstance(parsed, datetime.datetime):
         parsed = parsed.date()
+    if not parsed:
+        print(
+            "unable to parse date {}, setting to default 2010-01-01".format(s)
+        )
+        return datetime.date(2010, 1, 1).strftime("%d-%b-%Y")
     if parsed > datetime.date.today():
         parsed = parsed.replace(year=parsed.year - 1)
     formatted = parsed.strftime("%d-%b-%Y")
