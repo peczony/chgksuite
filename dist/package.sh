@@ -1,0 +1,2 @@
+zip chgksuite_v${VERSION}_mac.zip chgksuite ../fix-unnumbered-sections.sty ../regexes.json ../template.docx ../trello.json ../cheader.tex;
+zip chgksuite_v${VERSION}_win.zip chgksuite.exe ../fix-unnumbered-sections.sty ../regexes.json ../template.docx ../trello.json ../cheader.tex
