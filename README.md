@@ -31,7 +31,7 @@
 
 [В разделе «Загрузки»](https://bitbucket.org/pecheny/chgksuite/downloads/) можно найти и более старые версии, если они вам нужны.
 
-Если вы разработчик: склонируйте [или скачайте](https://bitbucket.org/pecheny/chgksuite/get/tip.zip) репозиторий. Установите зависимости из requirements и requirements_dev.
+Если вы разработчик: склонируйте [или скачайте](https://bitbucket.org/pecheny/chgksuite/get/tip.zip) репозиторий. Установите зависимости из requirements и requirements_dev. Дополнительные детали можно найти в [инструкции для разработчиков](https://bitbucket.org/pecheny/chgksuite/src/default/dev_readme.md).
 
 ## Как пользоваться
 
