@@ -514,6 +514,9 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
     for tag in bsoup.find_all('em'):
         tag.string = '_' + tag.get_text() + '_'
         tag.unwrap()
+    for h in ["h1", "h2", "h3", "h4"]:
+        for tag in bsoup.find_all(h):
+            tag.unwrap()
     for tag in bsoup.find_all('li'):
         if tag.string:
             tag.string = '- ' + tag.string
