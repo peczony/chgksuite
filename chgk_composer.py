@@ -1096,7 +1096,7 @@ def baseformat(s):
                 im = pyimgur.Imgur(IMGUR_CLIENT_ID)
                 uploaded_image = im.upload_image(imgfile, title=imgfile)
                 imgfile = uploaded_image.link
-            res += "(pic {})".format(imgfile)
+            res += "(pic: {})".format(imgfile)
     while res.endswith("\n"):
         res = res[:-1]
     return res
