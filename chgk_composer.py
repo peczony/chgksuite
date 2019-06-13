@@ -15,6 +15,7 @@ import hashlib
 import os
 import random
 import re
+import json
 import shlex
 import shutil
 import subprocess
@@ -289,6 +290,29 @@ def parse_4s_elem(s):
     return parts
 
 
+def process_list(element):
+    if "-" not in element[1]:
+        return
+    sp = element[1].split("\n")
+    sp = [rew(x) for x in sp]
+    list_markers = [i for i in range(len(sp)) if sp[i].startswith("-")]
+    if not list_markers:
+        return
+    preamble = "\n".join(sp[:list_markers[0]])
+    inner_list = []
+    for num, index in enumerate(list_markers):
+        if (num + 1) == len(list_markers):
+            inner_list.append(rew("\n".join(sp[index:])[1:]))
+        else:
+            inner_list.append(
+                rew("\n".join(sp[index:list_markers[num + 1]])[1:])
+            )
+    if preamble:
+        element[1] = [preamble, inner_list]
+    else:
+        element[1] = inner_list
+
+
 def parse_4s(s, randomize=False):
     mapping = {
         "#": "meta",
@@ -344,26 +368,7 @@ def parse_4s(s, randomize=False):
 
         # find list in element
 
-        sp = element[1].split("\n")
-        if len(sp) > 1:
-            list_candidate = []
-
-            for line in sp:
-                if len(rew(line).split()) > 1 and rew(line).split()[0] == "-":
-                    list_candidate.append(rew(rew(line)[1:]))
-
-            sp = [
-                spsp for spsp in sp if rew(rew(spsp)[1:]) not in list_candidate
-            ]
-
-            if len(sp) == 0 or len(sp) == 1 and sp[0] == "":
-                element[1] = list_candidate
-            else:
-                element[1] = (
-                    ["\n".join(sp), list_candidate]
-                    if len(list_candidate) > 1
-                    else "\n".join(element[1].split("\n"))
-                )
+        process_list(element)
 
         if element[0] in QUESTION_LABELS:
             if element[0] in current_question:
@@ -424,6 +429,7 @@ def parse_4s(s, randomize=False):
 
         else:
             final_structure.append([element[0], element[1]])
+
 
     if current_question != {}:
         try:
@@ -1162,6 +1168,18 @@ def base_format_element(pair):
 def output_base(structure, outfile, args):
     result = []
     for pair in structure:
+        if pair[0] == "Question" and "nezachet" in pair[1]:
+            nezachet = pair[1].pop("nezachet")
+            if "zachet" in pair[1]:
+                pair[1]["zachet"] += "{} Незачёт: {}".format(
+                    "." if not pair[1]["zachet"].endswith(".") else "",
+                    nezachet
+                )
+            else:
+                pair[1]["answer"] += "{} Незачёт: {}".format(
+                    "." if not pair[1]["answer"].endswith(".") else "",
+                    nezachet
+                )
         res = base_format_element(pair)
         if res:
             result.append(res)
@@ -1592,7 +1610,9 @@ def process_file(filename, srcdir):
         with codecs.open(
             make_filename(filename, "dbg", nots=args.nots), "w", "utf8"
         ) as output_file:
-            output_file.write(structure)
+            output_file.write(
+                json.dumps(structure, indent=2, ensure_ascii=False)
+            )
 
     if args.filetype is None:
         print("Choose type of export:")
