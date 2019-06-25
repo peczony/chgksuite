@@ -284,6 +284,7 @@ def gui_trello_download(args):
         qb_doc = Document(template_path)
 
     for card in json_['cards']:
+        card["desc"] = card["desc"].replace("\n\n", "\n")
         list_id = card['idList']
         list_name = _names[list_id]
         if card.get('closed') or list_name is None:
