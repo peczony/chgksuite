@@ -27,7 +27,7 @@
 
 Для обычных людей:
 
-Последняя версия **v0.5.1** — [для Windows](https://bitbucket.org/pecheny/chgksuite/downloads/chgksuite_v0.5.1_win.zip), [для Mac](https://bitbucket.org/pecheny/chgksuite/downloads/chgksuite_v0.5.1_mac.zip).
+Последняя версия **v0.5.2** — [для Windows](https://bitbucket.org/pecheny/chgksuite/downloads/chgksuite_v0.5.2_win.zip), [для Mac](https://bitbucket.org/pecheny/chgksuite/downloads/chgksuite_v0.5.2_mac.zip).
 
 [В разделе «Загрузки»](https://bitbucket.org/pecheny/chgksuite/downloads/) можно найти и более старые версии, если они вам нужны.
 
