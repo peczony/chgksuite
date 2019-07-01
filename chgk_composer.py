@@ -78,6 +78,9 @@ re_scaps = re.compile(
 re_em = re.compile(r"_(.+?)_")
 re_lowercase = re.compile(r"[а-яё]")
 re_uppercase = re.compile(r"[А-ЯЁ]")
+re_editors = re.compile(
+    r"^[рР]едакторы? *(пакета|тура)? *[—\-–−:] ?"
+)
 
 REQUIRED_LABELS = set(["question", "answer"])
 SOURCEDIR = os.path.dirname(os.path.abspath(__file__))
@@ -1180,6 +1183,9 @@ def output_base(structure, outfile, args):
                     "." if not pair[1]["answer"].endswith(".") else "",
                     nezachet
                 )
+        if pair[0] == "editor":
+            pair[1] = re.sub(re_editors, "", pair[1])
+            logger.info("Поле \"Редактор\" было автоматически изменено.")
         res = base_format_element(pair)
         if res:
             result.append(res)
