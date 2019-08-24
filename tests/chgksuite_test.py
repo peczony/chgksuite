@@ -19,6 +19,9 @@ sys.path.insert(0,parentdir)
 from chgk_parser import chgk_parse, chgk_parse_txt, chgk_parse_docx, compose_4s
 from chgk_composer import parse_4s
 
+class DefaultArgs:
+    links = "unwrap"
+
 ljlogin, ljpassword = open(
     os.path.join(currentdir, 'ljcredentials')).read().split('\t')
 
@@ -26,7 +29,7 @@ def workaround_chgk_parse(filename):
     if filename.endswith('.txt'):
         return chgk_parse_txt(filename)
     elif filename.endswith('.docx'):
-        return chgk_parse_docx(filename)
+        return chgk_parse_docx(filename, args=DefaultArgs())
     return
 
 # def test_parse_empty():
