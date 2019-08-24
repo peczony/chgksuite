@@ -84,6 +84,7 @@ re_editors = re.compile(
 
 REQUIRED_LABELS = set(["question", "answer"])
 TARGETDIR = os.getcwd()
+SOURCEDIR = None
 IMGUR_CLIENT_ID = "8da1bd97da30ac1"
 
 ENC = "utf8" if sys.platform != "win32" else "cp1251"
@@ -1499,6 +1500,7 @@ def gui_compose(largs, sourcedir=None):
     global debug
     global TARGETDIR
     global SOURCEDIR
+    SOURCEDIR = sourcedir
     global logger
     global retry_wrapper
 
