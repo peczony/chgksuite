@@ -526,6 +526,8 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None, args=None):
         imgpath = os.path.basename(imgname)
         tag.insert_before('(img {})'.format(imgpath))
         tag.extract()
+    for tag in bsoup.find_all("hr"):
+        tag.extract()
     if args.links == "unwrap":
         for tag in bsoup.find_all("a"):
             tag.unwrap()
