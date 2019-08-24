@@ -42,6 +42,7 @@ try:
 except NameError:
     pass
 
+import docx
 from docx import Document
 from docx.shared import Inches
 from PIL import Image
@@ -182,6 +183,53 @@ def partition(alist, indices):
     return [alist[i:j] for i, j in zip([0] + indices, indices + [None])]
 
 
+# add_hyperlink function by johanvandegriff is taken from https://github.com/python-openxml/python-docx/issues/74#issuecomment-261169410
+def docx_add_hyperlink(paragraph, url, text, color=None):
+    """
+    A function that places a hyperlink within a paragraph object.
+
+    :param paragraph: The paragraph we are adding the hyperlink to.
+    :param url: A string containing the required url
+    :param text: The text displayed for the url
+    :return: The hyperlink object
+    """
+
+    # This gets access to the document.xml.rels file and gets a new relation id value
+    part = paragraph.part
+    r_id = part.relate_to(url, docx.opc.constants.RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
+
+    # Create the w:hyperlink tag and add needed values
+    hyperlink = docx.oxml.shared.OxmlElement('w:hyperlink')
+    hyperlink.set(docx.oxml.shared.qn('r:id'), r_id, )
+    hyperlink.set(docx.oxml.shared.qn('w:history'), "1", )
+
+    # Create a w:r element
+    new_run = docx.oxml.shared.OxmlElement('w:r')
+
+    # Create a new w:rPr element
+    rPr = docx.oxml.shared.OxmlElement('w:rPr')
+
+    # add hyperlink style
+    st = docx.oxml.shared.OxmlElement('w:rStyle')
+    st.set(docx.oxml.shared.qn('w:val'), 'Hyperlink')
+    rPr.append(st)
+
+    # Add color if it is given
+    if color is not None:
+        c = docx.oxml.shared.OxmlElement('w:color')
+        c.set(docx.oxml.shared.qn('w:val'), color)
+        rPr.append(c)
+
+    # Join all the xml elements together add add the required text to the w:r element
+    new_run.append(rPr)
+    new_run.text = text
+    hyperlink.append(new_run)
+
+    paragraph._p.append(hyperlink)
+
+    return hyperlink
+
+
 def parse_4s_elem(s):
     def find_next_unescaped(ss, index):
         j = index + 1
@@ -193,10 +241,12 @@ def parse_4s_elem(s):
             j += 1
         return -1
 
-    s = s.replace("\\_", "%%%%UNDERSCORE%%%%")
+    s = s.replace("\\_", "ZZZZUNDERSCOREZZZZ")
+    url_candidates = {}
     for gr in re_url.finditer(s):
         gr0 = gr.group(0)
-        s = s.replace(gr0, gr0.replace("_", "%%%%UNDERSCORE%%%%"))
+        url_candidates[gr.start()] = gr.end()
+        s = s.replace(gr0, gr0.replace("_", "ZZZZUNDERSCOREZZZZ"))
 
     # for gr in re_scaps.finditer(s):
     #     gr0 = gr.group(0)
@@ -238,6 +288,11 @@ def parse_4s_elem(s):
                     typotools.find_matching_closing_bracket(s, i) + 1
                 )
                 i = typotools.find_matching_closing_bracket(s, i)
+        if i in url_candidates:
+            topart.append(i)
+            end = url_candidates[i] + 1
+            topart.append(end)
+            i = end
         # if (s[i] == '(' and i + len('(sc') < len(s) and ''.join(s[i:
         #                     i+len('(sc')])=='(sc'):
         #     debug_print('sc candidate')
@@ -280,9 +335,11 @@ def parse_4s_elem(s):
                 part[1] = typotools.remove_excessive_whitespace(part[1][3:-1])
                 part[0] = "sc"
                 logger.debug("found img at {}".format(log_wrap(part[1])))
+            if re_url.search(part[1]):
+                part[0] = "url"
             part[1] = part[1].replace("\\_", "_")
             part[1] = part[1].replace("\\.", ".")
-            part[1] = part[1].replace("%%%%UNDERSCORE%%%%", "_")
+            part[1] = part[1].replace("ZZZZUNDERSCOREZZZZ", "_")
         except:
             sys.stderr.write(
                 "Error on part {}: {}".format(
@@ -643,6 +700,9 @@ def docx_format(el, para, whiten):
                     r.style = "Whitened"
                 # if images_exist:
                 #     para = gui_compose.doc.add_paragraph()
+
+            elif run[0] == "url":
+                docx_add_hyperlink(para, run[1], run[1])
 
             elif run[0] == "sc":
                 r = para.add_run(run[1])
