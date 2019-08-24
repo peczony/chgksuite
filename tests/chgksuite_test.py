@@ -56,7 +56,7 @@ def test_canonical_equality():
             with codecs.open(os.path.join(currentdir, filename),
                 'r', 'utf8') as f:
                 canonical = f.read()
-            assert normalize(compose_4s(parsed)) == normalize(canonical)
+            assert normalize(canonical) == normalize(compose_4s(parsed))
 
 def test_composition():
     for filename in os.listdir(currentdir):
