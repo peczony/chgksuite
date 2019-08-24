@@ -20,18 +20,18 @@
 
 ## Я не программист. Что мне делать?
 
-[Новая инструкция для экспорта в формат Базы](https://bitbucket.org/pecheny/chgksuite/src/default/db_readme.md).  
-[Старая инструкция с картинками](https://bitbucket.org/pecheny/chgksuite/src/default/nontechies.md).
+[Новая инструкция для экспорта в формат Базы](https://gitlab.com/peczony/chgksuite/blob/master/db_readme.md).  
+[Старая инструкция с картинками](https://gitlab.com/peczony/chgksuite/blob/master/nontechies.md).
 
 ## Как установить
 
 Для обычных людей:
 
-Последняя версия **v0.5.2** — [для Windows](https://bitbucket.org/pecheny/chgksuite/downloads/chgksuite_v0.5.2_win.zip), [для Mac](https://bitbucket.org/pecheny/chgksuite/downloads/chgksuite_v0.5.2_mac.zip).
+Последняя версия **v0.5.3** — https://drive.google.com/open?id=1hD1uoWa0EU6et6J2Zu3hKpokQqytWWaC.
 
-[В разделе «Загрузки»](https://bitbucket.org/pecheny/chgksuite/downloads/) можно найти и более старые версии, если они вам нужны.
+Если вдруг вам нужны зачем-то более старые версии, напишите мне на peczony@gmail.com.
 
-Если вы разработчик: склонируйте [или скачайте](https://bitbucket.org/pecheny/chgksuite/get/tip.zip) репозиторий. Установите зависимости из requirements и requirements_dev. Дополнительные детали можно найти в [инструкции для разработчиков](https://bitbucket.org/pecheny/chgksuite/src/default/dev_readme.md).
+Если вы разработчик: склонируйте [или скачайте](https://gitlab.com/peczony/chgksuite/-/archive/master/chgksuite-master.zip) репозиторий. Установите зависимости из requirements и requirements_dev. Дополнительные детали можно найти в [инструкции для разработчиков](https://gitlab.com/peczony/chgksuite/blob/master/dev_readme.md).
 
 ## Как пользоваться
 
@@ -104,7 +104,7 @@ chgksuite compose lj [-h] [--nospoilers] [--splittours] [--genimp]
 
 Флаг `--splittours` включает разбиение пакета по турам: один тур — один пост. Этот флаг стоит применять, только когда пакет лежит в одном файле 4s. Если для каждого тура у вас свой файл, просто укажите их по порядку через пробел в строке запуска.
 
-Также для всех режимов работает опция `--debug` для вывода отладочной информации. Если у вас что-то не работает или работает не так, как нужно, запустите `chgksuite` с этим ключом, а затем [создайте тикет](https://bitbucket.org/pecheny/chgksuite/issues?status=new&status=open) и пришлите туда файлы `composer.log`, `parser.log` (лежат в папке с _chgksuite_) и `debug*.json` (лежат в папке с `docx` или `4s` файлами).
+Также для всех режимов работает опция `--debug` для вывода отладочной информации.
 
 Примеры:
 
