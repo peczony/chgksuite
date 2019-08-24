@@ -242,7 +242,7 @@ def gui_trello_download(args):
     if not args.folder:
         args.folder = filedialog.askdirectory(initialdir=ld)
 
-    template_path = args.template
+    template_path = args.docx_template
 
     board_id_path = os.path.join(args.folder, '.board_id')
     if os.path.isfile(board_id_path):
@@ -393,9 +393,8 @@ def get_board_id(path=None):
     return board_id
 
 
-def gui_trello(args):
-    TOKENPATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                             '.trello_token')
+def gui_trello(args, sourcedir=None):
+    TOKENPATH = os.path.join(sourcedir, '.trello_token')
     if not os.path.isfile(TOKENPATH):
         webbrowser.open('https://trello.com/1/connect'
                         '?key=1d4fe71dd193855686196e7768aa4b05'

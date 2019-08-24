@@ -535,6 +535,10 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
             tag.string = tag['href']
             tag.unwrap()
 
+    if debug:
+        with codecs.open('debug.html', 'w', 'utf8') as dbg:
+            dbg.write(bsoup.prettify())
+
     h = html2text.HTML2Text()
     h.body_width = 0
     txt = (h.handle(bsoup.prettify()))

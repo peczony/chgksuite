@@ -297,18 +297,14 @@ def main():
     root = Tk()
     root.withdraw()
 
+    sourcedir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
+
     if not args.regexes:
-        args.regexes = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "regexes.json"
-        )
+        args.regexes = os.path.join(sourcedir, "regexes.json")
     if not args.docx_template:
-        args.docx_template = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "template.docx"
-        )
+        args.docx_template = os.path.join(sourcedir, "template.docx")
     if not args.tex_header:
-        args.tex_header = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "cheader.tex"
-        )
+        args.tex_header = os.path.join(sourcedir, "cheader.tex")
     if args.config:
         with open(args.config, "r") as f:
             config = json.load(f)
@@ -363,9 +359,9 @@ def main():
     if args.action == "parse":
         gui_parse(args)
     if args.action == "compose":
-        gui_compose(args, sourcedir=os.path.dirname(os.path.abspath(__file__)))
+        gui_compose(args, sourcedir=sourcedir)
     if args.action == "trello":
-        gui_trello(args)
+        gui_trello(args, sourcedir=sourcedir)
 
 
 if __name__ == "__main__":
