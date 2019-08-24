@@ -83,7 +83,6 @@ re_editors = re.compile(
 )
 
 REQUIRED_LABELS = set(["question", "answer"])
-SOURCEDIR = os.path.dirname(os.path.abspath(__file__))
 TARGETDIR = os.getcwd()
 IMGUR_CLIENT_ID = "8da1bd97da30ac1"
 
@@ -1503,9 +1502,6 @@ def gui_compose(largs, sourcedir=None):
     global logger
     global retry_wrapper
 
-    if sourcedir:
-        SOURCEDIR = sourcedir
-
     logger = logging.getLogger("composer")
     logger.setLevel(logging.DEBUG)
     fh = logging.FileHandler("composer.log")
@@ -1539,7 +1535,7 @@ def gui_compose(largs, sourcedir=None):
         else:
             console_mode = True
 
-    ld = get_lastdir()
+    ld = get_lastdir(sourcedir)
     if not args.filename:
         print("Choose .4s file to load:")
         args.filename = filedialog.askopenfilenames(
@@ -1552,7 +1548,7 @@ def gui_compose(largs, sourcedir=None):
             ld = os.path.dirname(os.path.abspath(args.filename[0]))
         else:
             ld = os.path.dirname(os.path.abspath(args.filename))
-    set_lastdir(ld)
+    set_lastdir(ld, sourcedir)
     if not args.filename:
         print("No file specified.")
         sys.exit(1)

@@ -357,7 +357,7 @@ def main():
             args.action = "trello"
             args.trellosubcommand = "token"
     if args.action == "parse":
-        gui_parse(args)
+        gui_parse(args, sourcedir=sourcedir)
     if args.action == "compose":
         gui_compose(args, sourcedir=sourcedir)
     if args.action == "trello":

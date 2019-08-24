@@ -21,7 +21,8 @@ lastdir = os.path.join(os.path.dirname(os.path.abspath('__file__')),
                        'lastdir')
 
 
-def set_lastdir(path):
+def set_lastdir(path, sourcedir):
+    lastdir = os.path.join(sourcedir, "lastdir")
     if os.path.isfile(path):
         path = os.path.dirname(path)
     if os.path.isdir(path):
@@ -35,7 +36,8 @@ def bring_to_front(root):
     root.after_idle(root.attributes, '-topmost', False)
 
 
-def get_lastdir():
+def get_lastdir(sourcedir):
+    lastdir = os.path.join(sourcedir, "lastdir")
     if os.path.isfile(lastdir):
         with codecs.open(lastdir, 'r', 'utf8') as f:
             return f.read().rstrip()

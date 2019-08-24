@@ -53,8 +53,6 @@ EDITORS = {
     'darwin': 'open -t'
 }
 TEXTEDITOR = EDITORS[sys.platform]
-SOURCEDIR = os.path.dirname(os.path.abspath(__file__))
-TARGETDIR = os.getcwd()
 regexes = {}
 
 
@@ -651,7 +649,7 @@ def chgk_parse_wrapper(abspath, args, regexes=None):
     return outfilename
 
 
-def gui_parse(args):
+def gui_parse(args, sourcedir):
 
     global console_mode
     global __file__                         # to fix stupid __file__
@@ -688,13 +686,13 @@ def gui_parse(args):
     if args.filename:
         console_mode = True
 
-    ld = get_lastdir()
+    ld = get_lastdir(sourcedir)
     if args.parsedir:
         if not args.filename:
             args.filename = filedialog.askdirectory(initialdir=ld)
         if os.path.isdir(args.filename):
             ld = args.filename
-            set_lastdir(ld)
+            set_lastdir(ld, sourcedir)
             for filename in os.listdir(args.filename):
                 if (filename.endswith(('.docx', '.txt')) and
                     not os.path.isfile(
@@ -719,7 +717,7 @@ def gui_parse(args):
                 ], initialdir=ld)
         if args.filename:
             ld = os.path.dirname(os.path.abspath(args.filename))
-            set_lastdir(ld)
+            set_lastdir(ld, sourcedir)
         if not args.filename:
             print('No file specified.')
             sys.exit(0)
