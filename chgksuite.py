@@ -153,6 +153,15 @@ def main():
         action="store_true",
         help="parse directory instead of file.",
     )
+    cmdparse.add_argument(
+        "--links",
+        default="unwrap",
+        choices=["unwrap", "old"],
+        help="hyperlinks handling strategy. "
+        "Unwrap just leaves links as presented in the text, unchanged. "
+        "Old is behaviour from versions up to v0.6: "
+        "replace link with its href value."
+    )
 
     cmdcompose = subparsers.add_parser("compose")
     cmdcompose.add_argument(

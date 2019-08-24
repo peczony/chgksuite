@@ -486,7 +486,7 @@ def generate_imgname(ext):
     return '{:03}.{}'.format(imgcounter, ext)
 
 
-def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
+def chgk_parse_docx(docxfile, defaultauthor='', regexes=None, args=None):
     os.chdir(os.path.dirname(os.path.abspath(docxfile)))
     input_docx = PyDocX.to_html(docxfile).replace(
         "</strong><strong>", ""
@@ -526,12 +526,16 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None):
         imgpath = os.path.basename(imgname)
         tag.insert_before('(img {})'.format(imgpath))
         tag.extract()
-    for tag in bsoup.find_all('a'):
-        if not tag.string or rew(tag.string) == '':
-            tag.extract()
-        else:
-            tag.string = tag['href']
+    if args.links == "unwrap":
+        for tag in bsoup.find_all("a"):
             tag.unwrap()
+    elif args.links == "old":
+        for tag in bsoup.find_all('a'):
+            if not tag.string or rew(tag.string) == '':
+                tag.extract()
+            else:
+                tag.string = tag['href']
+                tag.unwrap()
 
     if debug:
         with codecs.open('debug.html', 'w', 'utf8') as dbg:
@@ -635,7 +639,7 @@ def chgk_parse_wrapper(abspath, args, regexes=None):
     elif os.path.splitext(abspath)[1] == '.docx':
         final_structure = chgk_parse_docx(abspath,
                                           defaultauthor=defaultauthor,
-                                          regexes=regexes)
+                                          regexes=regexes, args=args)
     else:
         sys.stderr.write('Error: unsupported file format.' + SEP)
         sys.exit()
