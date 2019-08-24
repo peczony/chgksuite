@@ -1168,8 +1168,37 @@ def base_format_element(pair):
             return "Дата:\n{}\n\n".format(wrap_date(pair[1]))
 
 
+def check_if_zero(Question):
+    number = Question.get("number")
+    if number is None:
+        return False
+    if isinstance(number, int) and number == 0:
+        return True
+    if isinstance(number, str) and number.startswith(("0", "Размин")):
+        return True
+    return False
+
+
 def output_base(structure, outfile, args):
     result = []
+    lasttour = 0
+    zeroq = 1
+    for i, pair in enumerate(structure):
+        if pair[0] == "section":
+            lasttour = i
+        while (
+            pair[0] == "meta"
+            and (i + 1) < len(structure)
+            and structure[i + 1][0] == "meta"
+        ):
+            pair[1] += "\n{}".format(structure[i + 1][1])
+            structure.pop(i + 1)
+        if pair[0] == "Question" and check_if_zero(pair[1]):
+            tourheader = "Нулевой вопрос {}".format(zeroq)
+            zeroq += 1
+            pair[1]["number"] = 1
+            structure.insert(lasttour, structure.pop(i))
+            structure.insert(lasttour, ["section", tourheader])
     for pair in structure:
         if pair[0] == "Question" and "nezachet" in pair[1]:
             nezachet = pair[1].pop("nezachet")
