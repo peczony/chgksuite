@@ -127,13 +127,8 @@ def upload_file(filepath, trello):
             print('Error {}: {}'.format(req.status_code, req.content))
 
 
-def gui_trello_upload(args):
-    ld = '.'
-    if os.path.isfile('lastdir'):
-        with codecs.open('lastdir', 'r', 'utf8') as f:
-            ld = f.read().rstrip()
-        if not os.path.isdir(ld):
-            ld = '.'
+def gui_trello_upload(args, sourcedir):
+    ld = get_lastdir(sourcedir)
 
     if not args.board_id:
         board_id = get_board_id()
@@ -164,11 +159,11 @@ def gui_trello_upload(args):
                 if filename.endswith('.4s'):
                     filepath = os.path.join(args.filename[0], filename)
                     upload_file(filepath, trelloconfig)
-            set_lastdir(args.filename[0])
+            set_lastdir(args.filename[0], sourcedir)
         else:
             for filename in args.filename:
                 upload_file(filename, trelloconfig)
-                set_lastdir(filename)
+                set_lastdir(filename, sourcedir)
     elif isinstance(args.filename, basestring):
         if os.path.isdir(args.filename):
             for filename in os.listdir(args.filename):
@@ -178,7 +173,7 @@ def gui_trello_upload(args):
                     set_lastdir(filepath)
         elif os.path.isfile(args.filename):
             upload_file(args.filename, trelloconfig)
-            set_lastdir(args.filename)
+            set_lastdir(args.filename, sourcedir)
 
 
 def onlyanswers_line_check(line):
@@ -236,8 +231,8 @@ def add_themes_list(group):
         delete_paragraph(p)
 
 
-def gui_trello_download(args):
-    ld = get_lastdir()
+def gui_trello_download(args, sourcedir):
+    ld = get_lastdir(sourcedir)
 
     if not args.folder:
         args.folder = filedialog.askdirectory(initialdir=ld)
@@ -253,7 +248,7 @@ def gui_trello_download(args):
 
     params = args.trelloconfig['params']
     ld = args.folder
-    set_lastdir(ld)
+    set_lastdir(ld, sourcedir)
     os.chdir(args.folder)
 
     if args.si or args.qb:
@@ -413,9 +408,9 @@ def gui_trello(args, sourcedir=None):
     args.trelloconfig['params']['token'] = token
 
     if args.trellosubcommand == 'download':
-        gui_trello_download(args)
+        gui_trello_download(args, sourcedir)
     elif args.trellosubcommand == 'upload':
-        gui_trello_upload(args)
+        gui_trello_upload(args, sourcedir)
     elif args.trellosubcommand == 'token':
         pass  # already handled this earlier
 
