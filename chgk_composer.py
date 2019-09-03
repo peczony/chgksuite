@@ -41,6 +41,11 @@ try:
     input = raw_input
 except NameError:
     pass
+try:
+    unquote = urllib.unquote
+except AttributeError:
+    def unquote(bytestring):
+        return urllib.parse.unquote(bytestring.decode("utf8")).encode("utf8")
 
 from docx import Document
 from docx.shared import Inches
@@ -193,10 +198,10 @@ def parse_4s_elem(s):
             j += 1
         return -1
 
-    s = s.replace("\\_", "%%%%UNDERSCORE%%%%")
+    s = s.replace("\\_", "$$$$UNDERSCORE$$$$")
     for gr in re_url.finditer(s):
         gr0 = gr.group(0)
-        s = s.replace(gr0, gr0.replace("_", "%%%%UNDERSCORE%%%%"))
+        s = s.replace(gr0, gr0.replace("_", "$$$$UNDERSCORE$$$$"))
 
     # for gr in re_scaps.finditer(s):
     #     gr0 = gr.group(0)
@@ -209,7 +214,7 @@ def parse_4s_elem(s):
     )
     for gr in grs:
         try:
-            s = s.replace(gr, urllib.unquote(gr.encode("utf8")).decode("utf8"))
+            s = s.replace(gr, unquote(gr.encode("utf8")).decode("utf8"))
         except:
             logger.debug(
                 "error decoding on line {}: {}\n".format(
@@ -282,7 +287,7 @@ def parse_4s_elem(s):
                 logger.debug("found img at {}".format(log_wrap(part[1])))
             part[1] = part[1].replace("\\_", "_")
             part[1] = part[1].replace("\\.", ".")
-            part[1] = part[1].replace("%%%%UNDERSCORE%%%%", "_")
+            part[1] = part[1].replace("$$$$UNDERSCORE$$$$", "_")
         except:
             sys.stderr.write(
                 "Error on part {}: {}".format(
