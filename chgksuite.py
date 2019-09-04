@@ -162,6 +162,12 @@ def main():
         "Old is behaviour from versions up to v0.6: "
         "replace link with its href value."
     )
+    cmdparse.add_argument(
+        "--fix_spans",
+        action="store_true",
+        help="sometimes it will fix weird Word formatting. "
+        "Other times it will do harm."
+    )
 
     cmdcompose = subparsers.add_parser("compose")
     cmdcompose.add_argument(

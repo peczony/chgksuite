@@ -19,8 +19,9 @@ sys.path.insert(0,parentdir)
 from chgk_parser import chgk_parse, chgk_parse_txt, chgk_parse_docx, compose_4s
 from chgk_composer import parse_4s
 
-class DefaultArgs:
+class DefaultArgs(object):
     links = "unwrap"
+    fix_spans = False
 
 ljlogin, ljpassword = open(
     os.path.join(currentdir, 'ljcredentials')).read().split('\t')

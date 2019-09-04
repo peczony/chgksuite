@@ -490,7 +490,7 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None, args=None):
     os.chdir(os.path.dirname(os.path.abspath(docxfile)))
     input_docx = PyDocX.to_html(docxfile).replace(
         "</strong><strong>", ""
-    ).replace("</em><em>", "").replace("_", "%%%UNDERSCORE%%%")
+    ).replace("</em><em>", "").replace("_", "$$$UNDERSCORE$$$")
     bsoup = BeautifulSoup(input_docx, 'html.parser')
 
     if debug:
@@ -512,6 +512,9 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None, args=None):
     for tag in bsoup.find_all('em'):
         tag.string = '_' + tag.get_text() + '_'
         tag.unwrap()
+    if args.fix_spans:
+        for tag in bsoup.find_all('span'):
+            tag.unwrap()
     for h in ["h1", "h2", "h3", "h4"]:
         for tag in bsoup.find_all(h):
             tag.unwrap()
@@ -540,12 +543,19 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None, args=None):
                 tag.unwrap()
 
     if debug:
+        with codecs.open('debug_raw.html', 'w', 'utf8') as dbg:
+            dbg.write(str(bsoup))
         with codecs.open('debug.html', 'w', 'utf8') as dbg:
             dbg.write(bsoup.prettify())
 
     h = html2text.HTML2Text()
     h.body_width = 0
-    txt = (h.handle(bsoup.prettify()))
+
+    if args.fix_spans:
+        html2text_input = str(bsoup)
+    else:
+        html2text_input = bsoup.prettify()
+    txt = (h.handle(html2text_input))
     txt = (txt.replace('\\-', '')
            .replace('\\.', '.')
            .replace('( ', '(')
@@ -555,7 +565,7 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None, args=None):
            .replace(' :', ':')
            .replace('&lt;', '<')
            .replace('&gt;', '>')
-           .replace("%%%UNDERSCORE%%%", "\\_")
+           .replace("$$$UNDERSCORE$$$", "\\_")
            )
     txt = re.sub(r'_ *_', '', txt)  # fix bad italic from Word
 
