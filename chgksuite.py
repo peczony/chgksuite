@@ -159,7 +159,7 @@ def main():
         choices=["unwrap", "old"],
         help="hyperlinks handling strategy. "
         "Unwrap just leaves links as presented in the text, unchanged. "
-        "Old is behaviour from versions up to v0.6: "
+        "Old is behaviour from versions up to v0.5.3: "
         "replace link with its href value."
     )
     cmdparse.add_argument(
