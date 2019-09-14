@@ -6,9 +6,9 @@ import os
 import sys
 
 try:
-    from Tkinter import Tk, Frame, IntVar, Button, Checkbutton
+    import Tkinter as tk
 except ImportError:
-    from tkinter import Tk, Frame, IntVar, Button, Checkbutton
+    import tkinter as tk
 
 from chgk_parser import gui_parse
 from chgk_composer import gui_compose
@@ -117,29 +117,93 @@ def gui_choose_action(args):
     return root.ret
 
 
+class VarWrapper(object):
+    def __init__(self, name, var):
+        self.name = name
+        self.var = var
+
+
+class OpenFileDialog(object):
+    def __init__(self, label, var):
+        self.label = label
+        self.var = var
+
+    def __call__(self):
+        filename = tk.filedialog.askopenfilename()
+        self.var.set(filename or "")
+        self.label.config(text=filename or "")
+
+
 class ParserWrapper(object):
     def __init__(self, parser, parent=None):
         self.parent = parent
         if self.parent:
             self.parent.children.append(self)
+            self.frame = tk.Frame(self.parent.frame)
         else:
             self.init_tk()
         self.parser = parser
         self.children = []
+        self.vars = []
 
     def init_tk(self):
-        self.tk = Tk()
+        self.tk = tk.Tk()
         self.tk.title("chgksuite")
-        self.mainframe = Frame(self.tk)
-        self.mainframe.pack()
+        self.frame = tk.Frame(self.tk)
+        self.frame.pack()
 
     def add_argument(self, *args, **kwargs):
+
+        if kwargs.get("action") == "store_true":
+            var = tk.StringVar()
+            var.set("false")
+            checkbutton = tk.Checkbutton(
+                self.frame,
+                text=args[0],
+                variable=var,
+                onvalue="true",
+                offvalue="false"
+            )
+            checkbutton.pack(side="top")
+            self.vars.append(VarWrapper(name=args[0], var=var))
+        elif args[0] == "filename":
+            var = tk.StringVar()
+            label = tk.Label(
+                self.frame,
+                text="",
+            )
+            label.pack(side="top")
+            button = tk.Button(
+                self.frame,
+                text="Open file",
+                command=OpenFileDialog(label, var)
+            )
+            button.pack(side="top")
+            self.vars.append(VarWrapper(name=args[0], var=var))
+        else:
+            var = tk.StringVar()
+            var.set(kwargs.get("default") or "")
+            tk.Label(
+                self.frame, text=args[0]
+            ).pack(side="top")
+            entry = tk.Entry(
+                self.frame,
+                textvariable=var
+            )
+            entry.pack(side="top")
+            self.vars.append(VarWrapper(name=args[0], var=var))
         self.parser.add_argument(*args, **kwargs)
 
     def add_subparsers(self, *args, **kwargs):
         subparsers = self.parser.add_subparsers(*args, **kwargs)
+        self.subparsers_var = tk.StringVar()
         self.subparsers = SubparsersWrapper(subparsers, parent=self)
         return self.subparsers
+
+    def show_frame(self):
+        for child in self.parent.children:
+            child.frame.pack_forget()
+        self.frame.pack(side="top")
 
     def parse_args(self, *args, **kwargs):
         argv = sys.argv[1:]
@@ -157,6 +221,14 @@ class SubparsersWrapper(object):
     def add_parser(self, *args, **kwargs):
         parser = self.subparsers.add_parser(*args, **kwargs)
         pw = ParserWrapper(parser=parser, parent=self.parent)
+        radio = tk.Radiobutton(
+            self.parent.frame,
+            text=args[0],
+            variable=self.parent.subparsers_var,
+            value=args[0],
+            command=pw.show_frame
+        )
+        radio.pack(side="top")
         return pw
 
 
