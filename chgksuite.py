@@ -60,9 +60,7 @@ def gui_choose_action(args):
     midframe = Frame(root)
     midframe.pack(side="bottom")
     Button(
-        frame,
-        command=button_factory("action", "parse", root),
-        text="Parse file(s)",
+        frame, command=button_factory("action", "parse", root), text="Parse file(s)"
     ).pack(side="left", padx=20, pady=20, ipadx=20, ipady=20)
     Button(
         frame,
@@ -70,9 +68,7 @@ def gui_choose_action(args):
         text="Parse directory",
     ).pack(side="left", padx=20, pady=20, ipadx=20, ipady=20)
     Button(
-        frame,
-        command=button_factory("action", "compose", root),
-        text="Compose",
+        frame, command=button_factory("action", "compose", root), text="Compose"
     ).pack(side="left", padx=20, pady=20, ipadx=20, ipady=20)
     Button(
         bottomframe,
@@ -121,11 +117,52 @@ def gui_choose_action(args):
     return root.ret
 
 
+class ParserWrapper(object):
+    def __init__(self, parser, parent=None):
+        self.parent = parent
+        if self.parent:
+            self.parent.children.append(self)
+        else:
+            self.init_tk()
+        self.parser = parser
+        self.children = []
+
+    def init_tk(self):
+        self.tk = Tk()
+        self.tk.title("chgksuite")
+        self.mainframe = Frame(self.tk)
+        self.mainframe.pack()
+
+    def add_argument(self, *args, **kwargs):
+        self.parser.add_argument(*args, **kwargs)
+
+    def add_subparsers(self, *args, **kwargs):
+        subparsers = self.parser.add_subparsers(*args, **kwargs)
+        self.subparsers = SubparsersWrapper(subparsers, parent=self)
+        return self.subparsers
+
+    def parse_args(self, *args, **kwargs):
+        argv = sys.argv[1:]
+        if not argv:
+            self.tk.mainloop()
+            sys.exit(0)
+        return DefaultNamespace(self.parser.parse_args(*args, **kwargs))
+
+
+class SubparsersWrapper(object):
+    def __init__(self, subparsers, parent):
+        self.subparsers = subparsers
+        self.parent = parent
+
+    def add_parser(self, *args, **kwargs):
+        parser = self.subparsers.add_parser(*args, **kwargs)
+        pw = ParserWrapper(parser=parser, parent=self.parent)
+        return pw
+
+
 def main():
-    parser = argparse.ArgumentParser(prog="chgksuite")
-    parser.add_argument(
-        "--debug", "-d", action="store_true", help=argparse.SUPPRESS
-    )
+    parser = ParserWrapper(argparse.ArgumentParser(prog="chgksuite"))
+    parser.add_argument("--debug", "-d", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--config", "-c", help="a config file to store default args values."
     )
@@ -149,9 +186,7 @@ def main():
         help="A file containing regexes " "(the default is regexes.json).",
     )
     cmdparse.add_argument(
-        "--parsedir",
-        action="store_true",
-        help="parse directory instead of file.",
+        "--parsedir", action="store_true", help="parse directory instead of file."
     )
     cmdparse.add_argument(
         "--links",
@@ -160,34 +195,26 @@ def main():
         help="hyperlinks handling strategy. "
         "Unwrap just leaves links as presented in the text, unchanged. "
         "Old is behaviour from versions up to v0.5.3: "
-        "replace link with its href value."
+        "replace link with its href value.",
     )
     cmdparse.add_argument(
         "--fix_spans",
         action="store_true",
         help="sometimes it will fix weird Word formatting. "
-        "Other times it will do harm."
+        "Other times it will do harm.",
     )
 
     cmdcompose = subparsers.add_parser("compose")
     cmdcompose.add_argument(
-        "--merge",
-        action="store_true",
-        help="merge several source files before output.",
+        "--merge", action="store_true", help="merge several source files before output."
     )
     cmdcompose.add_argument(
-        "--nots",
-        action="store_true",
-        help="don't append timestamp to filenames",
+        "--nots", action="store_true", help="don't append timestamp to filenames"
     )
     cmdcompose_filetype = cmdcompose.add_subparsers(dest="filetype")
     cmdcompose_docx = cmdcompose_filetype.add_parser("docx")
-    cmdcompose_docx.add_argument(
-        "--docx_template", help="a DocX template file."
-    )
-    cmdcompose_docx.add_argument(
-        "filename", nargs="*", help="file(s) to compose from."
-    )
+    cmdcompose_docx.add_argument("--docx_template", help="a DocX template file.")
+    cmdcompose_docx.add_argument("filename", nargs="*", help="file(s) to compose from.")
     cmdcompose_docx.add_argument(
         "--nospoilers",
         "-n",
@@ -205,9 +232,7 @@ def main():
         help="disable paragraph break " "after 'Question N.'",
     )
     cmdcompose_docx.add_argument(
-        "--randomize",
-        action="store_true",
-        help="randomize order of questions.",
+        "--randomize", action="store_true", help="randomize order of questions."
     )
     cmdcompose_docx.add_argument(
         "--add_line_break",
@@ -217,27 +242,19 @@ def main():
 
     cmdcompose_tex = cmdcompose_filetype.add_parser("tex")
     cmdcompose_tex.add_argument("--tex_header", help="a LaTeX header file.")
-    cmdcompose_tex.add_argument(
-        "filename", nargs="*", help="file(s) to compose from."
-    )
+    cmdcompose_tex.add_argument("filename", nargs="*", help="file(s) to compose from.")
     cmdcompose_tex.add_argument("--rawtex", action="store_true")
 
     cmdcompose_lj = cmdcompose_filetype.add_parser("lj")
-    cmdcompose_lj.add_argument(
-        "filename", nargs="*", help="file(s) to compose from."
-    )
+    cmdcompose_lj.add_argument("filename", nargs="*", help="file(s) to compose from.")
     cmdcompose_lj.add_argument(
         "--nospoilers", "-n", action="store_true", help="disable spoilers."
     )
     cmdcompose_lj.add_argument(
-        "--splittours",
-        action="store_true",
-        help="make a separate post for each tour.",
+        "--splittours", action="store_true", help="make a separate post for each tour."
     )
     cmdcompose_lj.add_argument(
-        "--genimp",
-        action="store_true",
-        help="make a 'general impressions' post.",
+        "--genimp", action="store_true", help="make a 'general impressions' post."
     )
     cmdcompose_lj.add_argument("--login", "-l", help="livejournal login")
     cmdcompose_lj.add_argument("--password", "-p", help="livejournal password")
@@ -245,9 +262,7 @@ def main():
         "--community", "-c", help="livejournal community to post to."
     )
     cmdcompose_base = cmdcompose_filetype.add_parser("base")
-    cmdcompose_base.add_argument(
-        "filename", nargs="*", help="file(s) to compose from."
-    )
+    cmdcompose_base.add_argument("filename", nargs="*", help="file(s) to compose from.")
     cmdcompose_base.add_argument("--clipboard", action="store_true")
     cmdcompose_redditmd = cmdcompose_filetype.add_parser("redditmd")
     cmdcompose_redditmd.add_argument(
@@ -258,8 +273,7 @@ def main():
     cmdtrello_subcommands = cmdtrello.add_subparsers(dest="trellosubcommand")
     cmdtrello_download = cmdtrello_subcommands.add_parser("download")
     cmdtrello_download.add_argument(
-        "folder",
-        help="path to the folder" "to synchronize with a trello board.",
+        "folder", help="path to the folder" "to synchronize with a trello board."
     )
     cmdtrello_download.add_argument(
         "--si",
@@ -297,17 +311,15 @@ def main():
         "filename", nargs="*", help="file(s) to upload to trello."
     )
     cmdtrello_upload.add_argument(
-        "--author",
-        action="store_true",
-        help="Display authors in cards' captions",
+        "--author", action="store_true", help="Display authors in cards' captions"
     )
 
     cmdtrello_subcommands.add_parser("token")
 
-    if len(sys.argv) == 1:
-        args = DefaultNamespace()
-    else:
-        args = DefaultNamespace(parser.parse_args())
+    args = parser.parse_args()
+    import pdb
+
+    pdb.set_trace()
 
     root = Tk()
     root.withdraw()
@@ -329,9 +341,7 @@ def main():
             elif os.path.isfile(config[key]):
                 val = os.path.abspath(config[key])
             elif os.path.isfile(
-                os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), config[key]
-                )
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), config[key])
             ):
                 val = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)), config[key]
