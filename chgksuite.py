@@ -321,6 +321,8 @@ class ParserWrapper(object):
                 return DefaultNamespace(
                     self.parser.parse_args(self.cmdline_call)
                 )
+            else:
+                sys.exit(0)
         return DefaultNamespace(self.parser.parse_args(*args, **kwargs))
 
 
