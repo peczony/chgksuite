@@ -443,9 +443,18 @@ def main():
     cmdparse.add_argument(
         "--fix_spans",
         action="store_true",
-        help="sometimes it will fix weird Word formatting. "
-        "Other times it will do harm.",
+        help="try to unwrap all <span> tags. "
+        "Can help fix weird Word formatting.",
         advanced=True,
+        caption="Fix <span> tags"
+    )
+    cmdparse.add_argument(
+        "--bs_prettify",
+        action="store_true",
+        help="old html processing behaviour (before v0.5.5). "
+        "Sometimes it will yield better results than the new default.",
+        advanced=True,
+        caption="BeautifulSoup prettify"
     )
 
     cmdcompose = subparsers.add_parser("compose")
@@ -664,8 +673,6 @@ def main():
     cmdtrello_subcommands.add_parser("token")
 
     args = parser.parse_args()
-
-    sourcedir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
 
     if not args.regexes:
         args.regexes = os.path.join(sourcedir, "regexes.json")

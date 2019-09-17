@@ -551,10 +551,10 @@ def chgk_parse_docx(docxfile, defaultauthor='', regexes=None, args=None):
     h = html2text.HTML2Text()
     h.body_width = 0
 
-    if args.fix_spans:
-        html2text_input = str(bsoup)
-    else:
+    if args.bs_prettify:
         html2text_input = bsoup.prettify()
+    else:
+        html2text_input = str(bsoup)
     txt = (h.handle(html2text_input))
     txt = (txt.replace('\\-', '')
            .replace('\\.', '.')
