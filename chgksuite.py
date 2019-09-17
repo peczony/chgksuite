@@ -21,6 +21,7 @@ from chgk_common import (
     toggle_factory,
     DefaultNamespace,
     bring_to_front,
+    get_lastdir,
 )
 
 from collections import defaultdict
@@ -130,10 +131,12 @@ class VarWrapper(object):
 
 
 class OpenFileDialog(object):
-    def __init__(self, label, var, folder=False):
+    def __init__(self, label, var, folder=False, lastdir=None, filetypes=None):
         self.label = label
         self.var = var
         self.folder = folder
+        self.lastdir = lastdir
+        self.filetypes = filetypes
 
     def __call__(self):
         function = (
@@ -141,14 +144,23 @@ class OpenFileDialog(object):
             if self.folder
             else tk.filedialog.askopenfilename
         )
-        output = function()
+        kwargs = {}
+        if self.lastdir:
+            kwargs["initialdir"] = self.lastdir
+        if self.filetypes:
+            kwargs["filetypes"] = self.filetypes
+        output = function(**kwargs)
         self.var.set(output or "")
-        self.label.config(text=output or "")
+        self.label.config(text=(output or "").split(os.sep)[-1])
 
 
 class ParserWrapper(object):
-    def __init__(self, parser, parent=None):
+    def __init__(self, parser, parent=None, lastdir=None):
         self.parent = parent
+        if self.parent and not lastdir:
+            self.lastdir = self.parent.lastdir
+        else:
+            self.lastdir = lastdir
         if self.parent:
             self.parent.children.append(self)
             self.frame = tk.Frame(self.parent.frame)
@@ -210,6 +222,7 @@ class ParserWrapper(object):
     def init_tk(self):
         self.tk = tk.Tk()
         self.tk.title("chgksuite")
+        self.tk.minsize(600, 300)
         self.tk.eval("tk::PlaceWindow . center")
         self.mainframe = tk.Frame(self.tk)
         self.mainframe.pack(side="top")
@@ -250,6 +263,7 @@ class ParserWrapper(object):
             return
         caption = kwargs.pop("caption", None) or args[0]
         argtype = kwargs.pop("argtype", None)
+        filetypes = kwargs.pop("filetypes", None)
         if not argtype:
             if kwargs.get("action") == "store_true":
                 argtype = "checkbutton"
@@ -260,14 +274,16 @@ class ParserWrapper(object):
         if argtype == "checkbutton":
             var = tk.StringVar()
             var.set("false")
+            innerframe = tk.Frame(frame)
+            innerframe.pack(side="top")
             checkbutton = tk.Checkbutton(
-                frame,
+                innerframe,
                 text=caption,
                 variable=var,
                 onvalue="true",
                 offvalue="false",
             )
-            checkbutton.pack(side="top")
+            checkbutton.pack(side="left")
             self.vars.append(VarWrapper(name=args[0], var=var))
         elif argtype in {"filename", "folder"}:
             text = "(имя файла)" if argtype == "filename" else "(имя папки)"
@@ -280,10 +296,13 @@ class ParserWrapper(object):
             label = tk.Label(innerframe, text=caption)
             label.pack(side="left")
             label = tk.Label(innerframe, text=text)
+            ofd_kwargs = dict(folder=argtype == "folder", lastdir=self.lastdir)
+            if filetypes:
+                ofd_kwargs["filetypes"] = filetypes
             button = tk.Button(
                 innerframe,
                 text=button_text,
-                command=OpenFileDialog(label, var, folder=argtype == "folder"),
+                command=OpenFileDialog(label, var, **ofd_kwargs),
             )
             button.pack(side="left")
             label.pack(side="left")
@@ -330,6 +349,8 @@ class SubparsersWrapper(object):
     def __init__(self, subparsers, parent):
         self.subparsers = subparsers
         self.parent = parent
+        self.frame = tk.Frame(self.parent.frame)
+        self.frame.pack(side="top")
         self.parsers = []
 
     def add_parser(self, *args, **kwargs):
@@ -338,18 +359,22 @@ class SubparsersWrapper(object):
         pw = ParserWrapper(parser=parser, parent=self.parent)
         self.parsers.append(pw)
         radio = tk.Radiobutton(
-            self.parent.frame,
+            self.frame,
             text=caption,
             variable=self.parent.subparsers_var,
             value=args[0],
             command=pw.show_frame,
         )
-        radio.pack(side="top")
+        radio.pack(side="left")
         return pw
 
 
 def main():
-    parser = ParserWrapper(argparse.ArgumentParser(prog="chgksuite"))
+    sourcedir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
+    ld = get_lastdir(sourcedir)
+    parser = ParserWrapper(
+        argparse.ArgumentParser(prog="chgksuite"), lastdir=ld
+    )
     parser.add_argument(
         "--debug",
         "-d",
@@ -370,7 +395,11 @@ def main():
 
     cmdparse = subparsers.add_parser("parse")
     cmdparse.add_argument(
-        "filename", help="file to parse.", nargs="?", caption="Имя файла"
+        "filename",
+        help="file to parse.",
+        nargs="?",
+        caption="Имя файла",
+        filetypes=[("chgksuite parsable files", ("*.docx", "*.txt"))],
     )
     cmdparse.add_argument(
         "--defaultauthor",
@@ -448,6 +477,7 @@ def main():
         nargs="*",
         help="file(s) to compose from.",
         caption="Имя 4s-файла",
+        filetypes=[("chgksuite markup files", "*.4s")],
     )
     cmdcompose_docx.add_argument(
         "--nospoilers",
@@ -496,6 +526,7 @@ def main():
         nargs="*",
         help="file(s) to compose from.",
         caption="Имя 4s-файла",
+        filetypes=[("chgksuite markup files", "*.4s")],
     )
     cmdcompose_tex.add_argument(
         "--rawtex",
@@ -510,6 +541,7 @@ def main():
         nargs="*",
         help="file(s) to compose from.",
         caption="Имя 4s-файла",
+        filetypes=[("chgksuite markup files", "*.4s")],
     )
     cmdcompose_lj.add_argument(
         "--nospoilers",
@@ -548,6 +580,7 @@ def main():
         nargs="*",
         help="file(s) to compose from.",
         caption="Имя 4s-файла",
+        filetypes=[("chgksuite markup files", "*.4s")],
     )
     cmdcompose_base.add_argument("--clipboard", action="store_true")
     cmdcompose_redditmd = cmdcompose_filetype.add_parser("redditmd")
@@ -556,6 +589,7 @@ def main():
         nargs="*",
         help="file(s) to compose from.",
         caption="Имя 4s-файла",
+        filetypes=[("chgksuite markup files", "*.4s")],
     )
 
     cmdtrello = subparsers.add_parser("trello")
