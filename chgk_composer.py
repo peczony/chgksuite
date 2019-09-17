@@ -28,12 +28,6 @@ import dateparser
 import pyperclip
 
 try:
-    from Tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
-    import tkFileDialog as filedialog
-except ImportError:
-    from tkinter import Tk, Frame, IntVar, Button, Checkbutton, Entry, Label
-    from tkinter import filedialog
-try:
     basestring
 except NameError:
     basestring = str
@@ -477,104 +471,6 @@ def parse_4s(s, randomize=False):
     return final_structure
 
 
-def gui_get_filetype():
-    ch_spoilers = IntVar()
-    ch_answers = IntVar()
-    ch_rawtex = IntVar()
-    if args.nospoilers:
-        ch_spoilers.set(0)
-    else:
-        ch_spoilers.set(1)
-    if args.noanswers:
-        ch_answers.set(1)
-    else:
-        ch_answers.set(0)
-    if args.rawtex:
-        ch_rawtex.set(1)
-    else:
-        ch_rawtex.set(0)
-    root = Tk()
-    root.eval("tk::PlaceWindow . center")
-    root.grexit = lambda: on_close(root)
-    root.ret = None
-    root.protocol("WM_DELETE_WINDOW", root.grexit)
-    frame = Frame(root)
-    frame.pack()
-    bottomframe = Frame(root)
-    bottomframe.pack(side="bottom")
-
-    def docxreturn():
-        root.ret = "docx", ch_spoilers.get(), ch_answers.get(), ch_rawtex.get()
-        root.quit()
-        root.destroy()
-
-    def texreturn():
-        root.ret = "tex", ch_spoilers.get(), ch_answers.get(), ch_rawtex.get()
-        root.quit()
-        root.destroy()
-
-    def ljreturn():
-        root.ret = "lj", ch_spoilers.get(), ch_answers.get(), ch_rawtex.get()
-        root.quit()
-        root.destroy()
-
-    def basereturn():
-        root.ret = "base", ch_spoilers.get(), ch_answers.get(), ch_rawtex.get()
-        root.quit()
-        root.destroy()
-
-    def chtoggle():
-        if ch_spoilers.get() == 0:
-            ch_spoilers.set(1)
-        else:
-            ch_spoilers.set(0)
-
-    def antoggle():
-        if ch_answers.get() == 0:
-            ch_answers.set(1)
-        else:
-            ch_answers.set(0)
-
-    def rttoggle():
-        if ch_rawtex.get() == 0:
-            ch_rawtex.set(1)
-        else:
-            ch_rawtex.set(0)
-
-    Button(frame, command=docxreturn, text="docx").pack(side="left")
-    Button(frame, command=texreturn, text="tex").pack(side="left")
-    Button(frame, command=ljreturn, text="LJ").pack(side="left")
-    Button(frame, command=basereturn, text="db.chgk.info").pack(side="left")
-    ch = Checkbutton(
-        bottomframe,
-        text="Spoilers (docx/lj only)",
-        variable=ch_spoilers,
-        command=chtoggle,
-    )
-    ans = Checkbutton(
-        bottomframe,
-        text="No answers (docx only)",
-        variable=ch_answers,
-        command=antoggle,
-    )
-    rawtex = Checkbutton(
-        bottomframe,
-        text="I want to edit tex",
-        variable=ch_rawtex,
-        command=rttoggle,
-    )
-    if ch_spoilers.get() == 1:
-        ch.select()
-    if ch_answers.get() == 1:
-        ans.select()
-    rawtex.pack(side="bottom")
-    ans.pack(side="bottom")
-    ch.pack(side="bottom")
-    bring_to_front(root)
-    root.mainloop()
-    return root.ret
-
-
 def docx_format(el, para, whiten):
     if isinstance(el, list):
 
@@ -1000,91 +896,6 @@ def lj_post(stru):
             "Error issued by LJ API: {}".format(traceback.format_exc())
         )
         sys.exit(1)
-
-
-def lj_post_getdata():
-    root = Tk()
-    root.login = None
-    root.password = None
-    root.community = None
-    root.grexit = lambda: on_close(root)
-    root.eval("tk::PlaceWindow . center")
-    root.protocol("WM_DELETE_WINDOW", root.grexit)
-    loginbox = Entry(root)
-    pwdbox = Entry(root, show="*")
-    communitybox = Entry(root)
-    ch_split = IntVar()
-    ch_genimp = IntVar()
-    if args.splittours:
-        ch_split.set(1)
-    else:
-        ch_split.set(0)
-    if args.genimp:
-        ch_genimp.set(1)
-    else:
-        ch_genimp.set(0)
-
-    def sptoggle():
-        if ch_split.get() == 0:
-            ch_split.set(1)
-        else:
-            ch_split.set(0)
-
-    def gitoggle():
-        if ch_genimp.get() == 0:
-            ch_genimp.set(1)
-        else:
-            ch_genimp.set(0)
-
-    def onpwdentry(evt):
-        root.login = loginbox.get()
-        root.password = pwdbox.get()
-        root.community = communitybox.get()
-        root.sp = ch_split.get()
-        root.gi = ch_genimp.get()
-        root.quit()
-        root.destroy()
-
-    def onokclick():
-        root.login = loginbox.get()
-        root.password = pwdbox.get()
-        root.community = communitybox.get()
-        root.sp = ch_split.get()
-        root.gi = ch_genimp.get()
-        root.quit()
-        root.destroy()
-
-    Label(root, text="Login").pack(side="top")
-    loginbox.pack(side="top")
-    Label(root, text="Password").pack(side="top")
-    pwdbox.pack(side="top")
-    Label(root, text="Community (may be blank)").pack(side="top")
-    communitybox.pack(side="top")
-
-    pwdbox.bind("<Return>", onpwdentry)
-    loginbox.bind("<Return>", onpwdentry)
-    communitybox.bind("<Return>", onpwdentry)
-
-    sp = Checkbutton(
-        root, text="Split into tours", variable=ch_split, command=sptoggle
-    )
-    gi = Checkbutton(
-        root,
-        text="General impression post",
-        variable=ch_genimp,
-        command=gitoggle,
-    )
-    if ch_split.get() == 1:
-        sp.select()
-    if ch_genimp.get() == 1:
-        gi.select()
-    sp.pack(side="top")
-    gi.pack(side="top")
-
-    Button(root, command=onokclick, text="OK").pack(side="top")
-    bring_to_front(root)
-    root.mainloop()
-    return root.login, root.password, root.community, root.sp, root.gi
 
 
 def baseyapper(e):
@@ -1572,13 +1383,6 @@ def gui_compose(largs, sourcedir=None):
             console_mode = True
 
     ld = get_lastdir(sourcedir)
-    if not args.filename:
-        print("Choose .4s file to load:")
-        args.filename = filedialog.askopenfilenames(
-            filetypes=[("chgksuite markup files", "*.4s")], initialdir=ld
-        )
-        if isinstance(args.filename, tuple):
-            args.filename = list(args.filename)
     if args.filename:
         if isinstance(args.filename, list):
             ld = os.path.dirname(os.path.abspath(args.filename[0]))
@@ -1652,25 +1456,14 @@ def process_file(filename, srcdir):
                 json.dumps(structure, indent=2, ensure_ascii=False)
             )
 
-    if args.filetype is None:
-        print("Choose type of export:")
-        answer = gui_get_filetype()
-        if not answer:
-            print("No type of export specified.")
-            sys.exit(1)
-        args.filetype, spoil, args.noanswers, args.rawtex = answer
-        if not args.filetype:
-            print("Filetype not specified.")
-            sys.exit(1)
-        if spoil:
-            args.nospoilers = False
-        else:
-            args.nospoilers = True
-        logger.info(
-            "Exporting to {}, spoilers are {}...\n".format(
-                args.filetype, "off" if args.nospoilers else "on"
-            )
+    if not args.filetype:
+        print("Filetype not specified.")
+        sys.exit(1)
+    logger.info(
+        "Exporting to {}, spoilers are {}...\n".format(
+            args.filetype, "off" if args.nospoilers else "on"
         )
+    )
 
     if args.filetype == "docx":
 
@@ -1839,12 +1632,8 @@ def process_file(filename, srcdir):
         if not args.community:
             args.community = ""
         if not args.login:
-            args.login, args.password, args.community, args.splittours, args.genimp = (
-                lj_post_getdata()
-            )
-            if not args.login:
-                print("Login not specified.")
-                sys.exit(1)
+            print("Login not specified.")
+            sys.exit(1)
         elif not args.password:
             import getpass
 

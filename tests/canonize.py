@@ -17,8 +17,7 @@ from chgk_parser import chgk_parse, chgk_parse_txt, chgk_parse_docx, compose_4s
 from chgk_composer import parse_4s
 
 
-class DefaultArgs:
-    links = "unwrap"
+from chgksuite_test import DefaultArgs
 
 
 def workaround_chgk_parse(filename):
