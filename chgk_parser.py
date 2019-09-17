@@ -13,11 +13,6 @@ import shlex
 import logging
 import base64
 try:
-    from Tkinter import Tk
-    import tkFileDialog as filedialog
-except ImportError:
-    from tkinter import Tk, filedialog
-try:
     basestring
 except NameError:
     basestring = str
@@ -704,8 +699,6 @@ def gui_parse(args, sourcedir):
 
     ld = get_lastdir(sourcedir)
     if args.parsedir:
-        if not args.filename:
-            args.filename = filedialog.askdirectory(initialdir=ld)
         if os.path.isdir(args.filename):
             ld = args.filename
             set_lastdir(ld, sourcedir)
@@ -726,11 +719,6 @@ def gui_parse(args, sourcedir):
             print('No directory specified.')
             sys.exit(0)
     else:
-        if not args.filename:
-            args.filename = filedialog.askopenfilename(
-                filetypes=[
-                    ('chgksuite parsable files', ('*.docx', '*.txt'))
-                ], initialdir=ld)
         if args.filename:
             ld = os.path.dirname(os.path.abspath(args.filename))
             set_lastdir(ld, sourcedir)
