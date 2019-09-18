@@ -63,6 +63,12 @@ def retry_wrapper_factory(logger):
     return retry_wrapper
 
 
+def ensure_utf8(s):
+    if isinstance(s, bytes):
+        return s.decode("utf8", errors="replace")
+    return s
+
+
 class DummyLogger(object):
 
     def info(self, s):

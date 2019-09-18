@@ -15,12 +15,6 @@ from chgk_common import (
     get_lastdir, set_lastdir, on_close, log_wrap, bring_to_front
 )
 try:
-    from Tkinter import Tk, Frame, IntVar, Button, Checkbutton
-    import tkFileDialog as filedialog
-except ImportError:
-    from tkinter import Tk, Frame, IntVar, Button, Checkbutton
-    from tkinter import filedialog
-try:
     basestring
 except NameError:
     basestring = str
@@ -33,61 +27,6 @@ except NameError:
 API = 'https://trello.com/1'
 re_bi = re.compile(r'trello\.com/b/(.+?)(/|$)')
 
-
-def gui_file_or_directory(args):
-
-    ch_author = IntVar()
-    try:
-        ch_author.set(int(args.author))
-    except TypeError:
-        ch_author.set(0)
-
-    def filereturn():
-        root.ret['action'] = 'files'
-        root.quit()
-        root.destroy()
-
-    def directoryreturn():
-        root.ret['action'] = 'directory'
-        root.quit()
-        root.destroy()
-
-    def toggle_au():
-        if ch_author.get() == 0:
-            ch_author.set(1)
-        else:
-            ch_author.set(0)
-        root.ret['author'] = bool(ch_author.get())
-
-    root = Tk()
-    root.title('upload file(s) or directory')
-    root.eval('tk::PlaceWindow . center')
-    root.ret = {'action': '', 'author': False}
-    root.grexit = lambda: on_close(root)
-    root.protocol("WM_DELETE_WINDOW", root.grexit)
-    root.attributes("-topmost", True)
-    frame = Frame(root)
-    frame.pack()
-    bottomframe = Frame(root)
-    bottomframe.pack(side='bottom')
-
-    Button(frame, command=filereturn, text='Upload file(s)').pack(
-        side='left',
-        padx=20, pady=20,
-        ipadx=20, ipady=20,)
-    Button(frame, command=directoryreturn, text='Upload directory').pack(
-        side='left',
-        padx=20, pady=20,
-        ipadx=20, ipady=20,)
-    au = Checkbutton(bottomframe, text='Display authors in cards’ captions',
-                     variable=ch_author, command=toggle_au)
-
-    if ch_author.get() == 1:
-        au.select()
-    root.ret['author'] = bool(ch_author.get())
-    bring_to_front(root)
-    root.mainloop()
-    return root.ret
 
 
 def upload_file(filepath, trello):
@@ -137,19 +76,6 @@ def gui_trello_upload(args, sourcedir):
 
     trelloconfig = args.trelloconfig
     trelloconfig['board_id'] = board_id
-
-    if not args.filename:
-        file_or_directory = gui_file_or_directory(args)
-        args.author = file_or_directory['author']
-        if file_or_directory['action'] == 'files':
-            args.filename = filedialog.askopenfilenames(
-                filetypes=[('chgksuite markup files', '*.4s')],
-                initialdir=ld
-            )
-        elif file_or_directory['action'] == 'directory':
-            args.filename = filedialog.askdirectory(
-                initialdir=ld
-            )
 
     trelloconfig['author'] = args.author
 

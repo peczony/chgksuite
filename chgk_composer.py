@@ -919,9 +919,11 @@ def baseformat(s):
             imgfile, w, h = parseimg(run[1], dimensions="ems")
             if os.path.isfile(imgfile):
                 im = pyimgur.Imgur(IMGUR_CLIENT_ID)
+                print("uploading {}...".format(imgfile))
                 uploaded_image = im.upload_image(imgfile, title=imgfile)
-                imgfile = uploaded_image.link
-            res += "(pic: {})".format(imgfile)
+                imglink = uploaded_image.link
+                print("the link for {} is {}...".format(imgfile, imglink))
+            res += "(pic: {})".format(imglink)
     while res.endswith("\n"):
         res = res[:-1]
     return res
@@ -1366,9 +1368,6 @@ def gui_compose(largs, sourcedir=None):
 
     retry_wrapper = retry_wrapper_factory(logger)
 
-    root = Tk()
-    root.withdraw()
-
     if args.debug:
         debug = True
 
@@ -1511,7 +1510,7 @@ def process_file(filename, srcdir):
                 p = gui_compose.doc.add_paragraph()
 
                 if not args.noanswers:
-                    if args.add_line_break:
+                    if not args.no_line_break:
                         p = gui_compose.doc.add_paragraph()
                     p.add_run("Ответ: ").bold = True
                     docx_format(q["answer"], p, True)

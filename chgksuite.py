@@ -22,6 +22,7 @@ from chgk_common import (
     DefaultNamespace,
     bring_to_front,
     get_lastdir,
+    ensure_utf8
 )
 
 from collections import defaultdict
@@ -33,95 +34,6 @@ except NameError:
     basestring = (str, bytes)
 
 debug = False
-
-
-def gui_choose_action(args):
-    ch_defaultauthor = IntVar()
-    try:
-        ch_defaultauthor.set(int(args.defaultauthor))
-    except TypeError:
-        ch_defaultauthor.set(0)
-    ch_merge = IntVar()
-    try:
-        ch_merge.set(int(args.merge))
-    except TypeError:
-        ch_merge.set(0)
-    ch_passthrough = IntVar()
-    ch_passthrough.set(0)
-
-    root = Tk()
-    root.title("chgksuite")
-    root.eval("tk::PlaceWindow . center")
-    root.ret = defaultdict(lambda: None)
-    root.grexit = lambda: on_close(root)
-    root.protocol("WM_DELETE_WINDOW", root.grexit)
-    root.attributes("-topmost", True)
-    frame = Frame(root)
-    frame.pack()
-    bottomframe = Frame(root)
-    bottomframe.pack(side="bottom")
-    midframe = Frame(root)
-    midframe.pack(side="bottom")
-    Button(
-        frame,
-        command=button_factory("action", "parse", root),
-        text="Parse file(s)",
-    ).pack(side="left", padx=20, pady=20, ipadx=20, ipady=20)
-    Button(
-        frame,
-        command=button_factory("action", "parsedir", root),
-        text="Parse directory",
-    ).pack(side="left", padx=20, pady=20, ipadx=20, ipady=20)
-    Button(
-        frame,
-        command=button_factory("action", "compose", root),
-        text="Compose",
-    ).pack(side="left", padx=20, pady=20, ipadx=20, ipady=20)
-    Button(
-        bottomframe,
-        command=button_factory("action", "trellodown", root),
-        text="Download from Trello",
-    ).pack(side="left", padx=20, pady=20, ipadx=20, ipady=20)
-    Button(
-        bottomframe,
-        command=button_factory("action", "trelloup", root),
-        text="Upload to Trello",
-    ).pack(side="left", padx=20, pady=20, ipadx=20, ipady=20)
-    Button(
-        bottomframe,
-        command=button_factory("action", "trellotoken", root),
-        text="Obtain a token",
-    ).pack(side="left", padx=20, pady=20, ipadx=20, ipady=20)
-    da = Checkbutton(
-        midframe,
-        text="Default author while parsing",
-        variable=ch_defaultauthor,
-        command=toggle_factory(ch_defaultauthor, "defaultauthor", root),
-    )
-    mrg = Checkbutton(
-        midframe,
-        text="Merge several source files",
-        variable=ch_merge,
-        command=toggle_factory(ch_merge, "merge", root),
-    )
-    pt = Checkbutton(
-        midframe,
-        text="Pass through to compose",
-        variable=ch_passthrough,
-        command=toggle_factory(ch_passthrough, "passthrough", root),
-    )
-    if ch_defaultauthor.get() == 1:
-        da.select()
-    root.ret["defaultauthor"] = bool(ch_defaultauthor.get())
-    if ch_merge.get() == 1:
-        mrg.select()
-    root.ret["merge"] = bool(ch_merge.get())
-    mrg.pack(side="bottom")
-    da.pack(side="bottom")
-    pt.pack(side="bottom")
-    bring_to_front(root)
-    root.mainloop()
-    return root.ret
 
 
 class VarWrapper(object):
@@ -150,8 +62,10 @@ class OpenFileDialog(object):
         if self.filetypes:
             kwargs["filetypes"] = self.filetypes
         output = function(**kwargs)
+        if isinstance(output, bytes):
+            output = output.decode("utf8")
         self.var.set(output or "")
-        self.label.config(text=(output or "").split(os.sep)[-1])
+        self.label.config(text=(output or "").split(ensure_utf8(os.sep))[-1])
 
 
 class ParserWrapper(object):
@@ -371,6 +285,8 @@ class SubparsersWrapper(object):
 
 def main():
     sourcedir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
+    if isinstance(sourcedir, bytes):
+        sourcedir = sourcedir.decode("utf8")
     ld = get_lastdir(sourcedir)
     parser = ParserWrapper(
         argparse.ArgumentParser(prog="chgksuite"), lastdir=ld
@@ -516,10 +432,10 @@ def main():
         caption="Перемешать вопросы",
     )
     cmdcompose_docx.add_argument(
-        "--add_line_break",
+        "--no_line_break",
         action="store_true",
-        help="add line break between question and answer.",
-        caption="Два переноса строки перед ответом",
+        help="no line break between question and answer.",
+        caption="Один перенос строки перед ответом вместо двух",
     )
 
     cmdcompose_tex = cmdcompose_filetype.add_parser("tex")

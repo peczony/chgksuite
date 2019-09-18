@@ -686,9 +686,6 @@ def gui_parse(args, sourcedir):
     logger.addHandler(fh)
     logger.addHandler(ch)
 
-    root = Tk()
-    root.withdraw()
-
     regexes = load_regexes(args.regexes)
 
     if args.debug:
