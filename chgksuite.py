@@ -7,9 +7,11 @@ import sys
 
 try:
     import Tkinter as tk
+    import Tkinter.filedialog as filedialog
     import Tkinter.ttk as ttk
 except ImportError:
     import tkinter as tk
+    import tkinter.filedialog as filedialog
     import tkinter.ttk as ttk
 
 from chgk_parser import gui_parse
@@ -52,9 +54,9 @@ class OpenFileDialog(object):
 
     def __call__(self):
         function = (
-            tk.filedialog.askdirectory
+            filedialog.askdirectory
             if self.folder
-            else tk.filedialog.askopenfilename
+            else filedialog.askopenfilename
         )
         kwargs = {}
         if self.lastdir:
