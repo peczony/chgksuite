@@ -110,17 +110,29 @@ class ParserWrapper(object):
 
     def build_command_line_call(self):
         result = []
+        result_to_print = []
         for tup in self._list_vars():
+            to_append = None
             if tup[0].startswith("--"):
                 if tup[1] == "true":
-                    result.append(tup[0])
+                    to_append = tup[0]
                 elif not tup[1] or tup[1] == "false":
                     continue
                 else:
-                    result.append(tup[0])
-                    result.append(tup[1])
+                    to_append = [tup[0], tup[1]]
             else:
-                result.append(tup[1])
+                to_append = tup[1]
+            if isinstance(to_append, list):
+                result.extend(to_append)
+                if "password" in tup[0]:
+                    result_to_print.append(tup[0])
+                    result_to_print.append("********")
+                else:
+                    result_to_print.extend(to_append)
+            else:
+                result.append(to_append)
+                result_to_print.append(to_append)
+        print("Command line call: {}".format(" ".join(result_to_print)))
         return result
 
     def ok_button_press(self):
