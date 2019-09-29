@@ -27,7 +27,7 @@
 
 Для обычных людей:
 
-Последняя версия **v0.5.3** — https://drive.google.com/open?id=1hD1uoWa0EU6et6J2Zu3hKpokQqytWWaC.
+Последняя версия **v0.5.5** — https://drive.google.com/drive/folders/1HrXLhoUbWCCvpx7ABgI3X3l1efrCKA3S.
 
 Если вдруг вам нужны зачем-то более старые версии, напишите мне на peczony@gmail.com.
 
