@@ -38,8 +38,10 @@ except NameError:
 try:
     unquote = urllib.unquote
 except AttributeError:
+
     def unquote(bytestring):
         return urllib.parse.unquote(bytestring.decode("utf8")).encode("utf8")
+
 
 from docx import Document
 from docx.shared import Inches
@@ -77,9 +79,7 @@ re_scaps = re.compile(
 re_em = re.compile(r"_(.+?)_")
 re_lowercase = re.compile(r"[а-яё]")
 re_uppercase = re.compile(r"[А-ЯЁ]")
-re_editors = re.compile(
-    r"^[рР]едакторы? *(пакета|тура)? *[—\-–−:] ?"
-)
+re_editors = re.compile(r"^[рР]едакторы? *(пакета|тура)? *[—\-–−:] ?")
 
 REQUIRED_LABELS = set(["question", "answer"])
 TARGETDIR = os.getcwd()
@@ -300,14 +300,14 @@ def process_list(element):
     list_markers = [i for i in range(len(sp)) if sp[i].startswith("-")]
     if not list_markers:
         return
-    preamble = "\n".join(sp[:list_markers[0]])
+    preamble = "\n".join(sp[: list_markers[0]])
     inner_list = []
     for num, index in enumerate(list_markers):
         if (num + 1) == len(list_markers):
             inner_list.append(rew("\n".join(sp[index:])[1:]))
         else:
             inner_list.append(
-                rew("\n".join(sp[index:list_markers[num + 1]])[1:])
+                rew("\n".join(sp[index : list_markers[num + 1]])[1:])
             )
     if preamble:
         element[1] = [preamble, inner_list]
@@ -431,7 +431,6 @@ def parse_4s(s, randomize=False):
 
         else:
             final_structure.append([element[0], element[1]])
-
 
     if current_question != {}:
         try:
@@ -741,8 +740,11 @@ def split_into_tours(structure, general_impression=False):
                 current.append(element)
     result.append(current)
     globalheading = find_heading(result[0])[1][1]
-    result[0][find_heading(result[0])[0]][1] += ". {}".format(
-        find_tour(result[0])[1][1]
+    globalsep = "." if not globalheading.endswith(".") else ""
+    currentheading = result[0][find_heading(result[0])[0]][1]
+    result[0][find_heading(result[0])[0]][1] += "{} {}".format(
+        "." if not currentheading.endswith(".") else "",
+        find_tour(result[0])[1][1],
     )
     for tour in result[1:]:
         if not find_heading(tour):
@@ -750,13 +752,18 @@ def split_into_tours(structure, general_impression=False):
                 0,
                 [
                     "ljheading",
-                    "{}. {}".format(globalheading, find_tour(tour)[1][1]),
+                    "{}{} {}".format(
+                        globalheading, globalsep, find_tour(tour)[1][1]
+                    ),
                 ],
             )
     if general_impression:
         result.append(
             [
-                ["ljheading", "{}. Общие впечатления".format(globalheading)],
+                [
+                    "ljheading",
+                    "{}{} Общие впечатления".format(globalheading, globalsep),
+                ],
                 [
                     "meta",
                     "В комментариях к этому посту можно "
@@ -935,10 +942,12 @@ def base_element_layout(e):
         res = baseformat(e)
         return res
     if isinstance(e, list):
-        res = "\n".join([
-            "   {}. {}".format(i + 1, base_element_layout(x))
-            for i, x in enumerate(e)
-        ])
+        res = "\n".join(
+            [
+                "   {}. {}".format(i + 1, base_element_layout(x))
+                for i, x in enumerate(e)
+            ]
+        )
     return res
 
 
@@ -946,7 +955,7 @@ BASE_MAPPING = {
     "section": "Тур",
     "heading": "Чемпионат",
     "editor": "Редактор",
-    "meta": "Инфо"
+    "meta": "Инфо",
 }
 re_date_sep = re.compile(" [—–-] ")
 
@@ -971,9 +980,7 @@ def base_format_element(pair):
     if pair[0] == "Question":
         return base_format_question(pair[1])
     if pair[0] in BASE_MAPPING:
-        return "{}:\n{}\n\n".format(
-            BASE_MAPPING[pair[0]], baseyapper(pair[1])
-        )
+        return "{}:\n{}\n\n".format(BASE_MAPPING[pair[0]], baseyapper(pair[1]))
     elif pair[0] == "date":
         re_search = re_date_sep.search(pair[1])
         if re_search:
@@ -1023,16 +1030,16 @@ def output_base(structure, outfile, args):
             if "zachet" in pair[1]:
                 pair[1]["zachet"] += "{} Незачёт: {}".format(
                     "." if not pair[1]["zachet"].endswith(".") else "",
-                    nezachet
+                    nezachet,
                 )
             else:
                 pair[1]["answer"] += "{} Незачёт: {}".format(
                     "." if not pair[1]["answer"].endswith(".") else "",
-                    nezachet
+                    nezachet,
                 )
         if pair[0] == "editor":
             pair[1] = re.sub(re_editors, "", pair[1])
-            logger.info("Поле \"Редактор\" было автоматически изменено.")
+            logger.info('Поле "Редактор" было автоматически изменено.')
         res = base_format_element(pair)
         if res:
             result.append(res)
@@ -1049,7 +1056,7 @@ def base_format_question(q):
         gui_compose.counter = int(q["setcounter"])
     res = "Вопрос {}:\n{}\n\n".format(
         gui_compose.counter if "number" not in q else q["number"],
-        baseyapper(q["question"])
+        baseyapper(q["question"]),
     )
     if "number" not in q:
         gui_compose.counter += 1
@@ -1103,10 +1110,12 @@ def reddit_element_layout(e):
         res = redditformat(e)
         return res
     if isinstance(e, list):
-        res = "  \n".join([
-            "{}\\. {}".format(i + 1, reddit_element_layout(x))
-            for i, x in enumerate(e)
-        ])
+        res = "  \n".join(
+            [
+                "{}\\. {}".format(i + 1, reddit_element_layout(x))
+                for i, x in enumerate(e)
+            ]
+        )
     return res
 
 
@@ -1120,7 +1129,7 @@ def reddit_format_question(q):
         gui_compose.counter = int(q["setcounter"])
     res = "__Вопрос {}__: {}  \n".format(
         gui_compose.counter if "number" not in q else q["number"],
-        reddityapper(q["question"])
+        reddityapper(q["question"]),
     )
     if "number" not in q:
         gui_compose.counter += 1
@@ -1150,7 +1159,6 @@ def output_reddit(structure, outfile, args):
     with codecs.open(outfile, "w", "utf8") as f:
         f.write(text)
     logger.info("Output: {}".format(outfile))
-
 
 
 def tex_format_question(q):
