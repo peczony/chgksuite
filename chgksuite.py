@@ -298,7 +298,10 @@ class SubparsersWrapper(object):
 
 
 def main():
-    sourcedir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
+    if getattr(sys, "frozen", False):
+        sourcedir = os.path.dirname(sys.executable)
+    else:
+        sourcedir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
     if isinstance(sourcedir, bytes):
         sourcedir = sourcedir.decode("utf8")
     ld = get_lastdir(sourcedir)
