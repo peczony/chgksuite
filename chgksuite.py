@@ -24,7 +24,7 @@ from chgk_common import (
     DefaultNamespace,
     bring_to_front,
     get_lastdir,
-    ensure_utf8
+    ensure_utf8,
 )
 
 from collections import defaultdict
@@ -301,7 +301,10 @@ def main():
     if getattr(sys, "frozen", False):
         sourcedir = os.path.dirname(sys.executable)
     else:
-        sourcedir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
+        sourcedir = os.path.dirname(
+            os.path.abspath(os.path.realpath(__file__))
+        )
+
     if isinstance(sourcedir, bytes):
         sourcedir = sourcedir.decode("utf8")
     ld = get_lastdir(sourcedir)
@@ -379,7 +382,7 @@ def main():
         help="try to unwrap all <span> tags. "
         "Can help fix weird Word formatting.",
         advanced=True,
-        caption="Fix <span> tags"
+        caption="Fix <span> tags",
     )
     cmdparse.add_argument(
         "--bs_prettify",
@@ -387,7 +390,7 @@ def main():
         help="old html processing behaviour (before v0.5.5). "
         "Sometimes it will yield better results than the new default.",
         advanced=True,
-        caption="BeautifulSoup prettify"
+        caption="BeautifulSoup prettify",
     )
 
     cmdcompose = subparsers.add_parser("compose")
