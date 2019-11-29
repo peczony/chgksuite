@@ -327,10 +327,8 @@ def gui_trello(args, sourcedir=None):
         with codecs.open(TOKENPATH, 'r', 'utf8') as f:
             token = f.read().rstrip()
 
-    args.trelloconfig = json.load(
-        open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          'trello.json'))
-    )
+    with open(os.path.join(sourcedir, 'trello.json')) as f:
+        args.trelloconfig = json.load(f)
     args.trelloconfig['params']['token'] = token
 
     if args.trellosubcommand == 'download':
