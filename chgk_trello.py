@@ -314,17 +314,21 @@ def get_board_id(path=None):
     return board_id
 
 
+def get_token(tokenpath):
+    webbrowser.open('https://trello.com/1/connect'
+                    '?key=1d4fe71dd193855686196e7768aa4b05'
+                    '&name=Chgk&scope=read,write&response_type=token')
+    token = input('Please paste the obtained token: ').rstrip()
+    with codecs.open(tokenpath, 'w', 'utf8') as f:
+        f.write(token)
+
+
 def gui_trello(args, sourcedir=None):
-    TOKENPATH = os.path.join(sourcedir, '.trello_token')
-    if not os.path.isfile(TOKENPATH):
-        webbrowser.open('https://trello.com/1/connect'
-                        '?key=1d4fe71dd193855686196e7768aa4b05'
-                        '&name=Chgk&scope=read,write&response_type=token')
-        token = input('Please paste the obtained token: ').rstrip()
-        with codecs.open(TOKENPATH, 'w', 'utf8') as f:
-            f.write(token)
+    tokenpath = os.path.join(sourcedir, '.trello_token')
+    if not os.path.isfile(tokenpath):
+        get_token(tokenpath)
     else:
-        with codecs.open(TOKENPATH, 'r', 'utf8') as f:
+        with codecs.open(tokenpath, 'r', 'utf8') as f:
             token = f.read().rstrip()
 
     with open(os.path.join(sourcedir, 'trello.json')) as f:
@@ -336,7 +340,7 @@ def gui_trello(args, sourcedir=None):
     elif args.trellosubcommand == 'upload':
         gui_trello_upload(args, sourcedir)
     elif args.trellosubcommand == 'token':
-        pass  # already handled this earlier
+        get_token(tokenpath)
 
 
 def main():
