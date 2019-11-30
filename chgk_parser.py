@@ -504,7 +504,7 @@ def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", regexes=None):
             )
     text = raw.decode(encoding)
     if text[0:10] == "Чемпионат:":
-        return chgk_parse_db(text, debug=debug)
+        return chgk_parse_db(text.replace("\r", ""), debug=debug)
     return chgk_parse(text, defaultauthor=defaultauthor, regexes=regexes)
 
 
