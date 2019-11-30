@@ -415,7 +415,8 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
 
     for element in structure:
         if (
-            element[0] in set(["number", "tour", "question", "meta"])
+            element[0]
+            in set(["number", "tour", "tourrev", "question", "meta"])
             and "question" in current_question
         ):
             if defaultauthor and "author" not in current_question:
