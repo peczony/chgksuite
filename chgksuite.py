@@ -457,6 +457,12 @@ def main():
         help="no line break between question and answer.",
         caption="Один перенос строки перед ответом вместо двух",
     )
+    cmdcompose_docx.add_argument(
+        "--one_line_break",
+        action="store_true",
+        help="one line break after question instead of two.",
+        caption="Один перенос строки после вопроса вместо двух",
+    )
 
     cmdcompose_tex = cmdcompose_filetype.add_parser("tex")
     cmdcompose_tex.add_argument(

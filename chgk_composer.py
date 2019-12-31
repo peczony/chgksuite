@@ -1541,6 +1541,8 @@ def process_file(filename, srcdir):
                             docx_format(q[field], p, WHITEN[field])
 
                 gui_compose.doc.add_paragraph()
+                if not args.one_line_break:
+                    gui_compose.doc.add_paragraph()
 
         gui_compose.doc.save(outfilename)
         if os.path.abspath(SOURCEDIR.lower()) != os.path.abspath(
