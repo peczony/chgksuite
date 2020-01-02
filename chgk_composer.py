@@ -923,13 +923,28 @@ def baseformat(s):
         if run[0] == "em":
             res += run[1]
         if run[0] == "img":
-            imgfile, w, h = parseimg(run[1], dimensions="ems")
+            imgfile, w, h = parseimg(run[1], dimensions="pixels")
             if os.path.isfile(imgfile):
+                pil_image = Image.open(imgfile)
+                w_orig, h_orig = pil_image.size
+                if w_orig != w or h_orig != h:
+                    print("resizing image {}".format(imgfile))
+                    pil_image = pil_image.resize(
+                        (w, h), resample=Image.LANCZOS
+                    )
+                    bn, ext = os.path.splitext(imgfile)
+                    resized_fn = "{}_resized.png".format(bn)
+                    pil_image.save(resized_fn, "PNG")
+                    to_upload = resized_fn
+                else:
+                    to_upload = imgfile
                 im = pyimgur.Imgur(IMGUR_CLIENT_ID)
-                print("uploading {}...".format(imgfile))
-                uploaded_image = im.upload_image(imgfile, title=imgfile)
+                print("uploading {}...".format(to_upload))
+                uploaded_image = im.upload_image(to_upload, title=to_upload)
                 imglink = uploaded_image.link
-                print("the link for {} is {}...".format(imgfile, imglink))
+                print("the link for {} is {}...".format(to_upload, imglink))
+            else:
+                imglink = imgfile
             res += "(pic: {})".format(imglink)
     while res.endswith("\n"):
         res = res[:-1]
