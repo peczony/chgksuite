@@ -30,9 +30,9 @@ from parse import parse
 import html2text
 
 import chgksuite.typotools as typotools
-from .typotools import remove_excessive_whitespace as rew
-from .parser_db import chgk_parse_db
-from .common import (
+from chgksuite.typotools import remove_excessive_whitespace as rew
+from chgksuite.parser_db import chgk_parse_db
+from chgksuite.common import (
     get_lastdir,
     set_lastdir,
     DummyLogger,
@@ -41,7 +41,7 @@ from .common import (
     check_question,
     QUESTION_LABELS,
 )
-from .composer import gui_compose
+from chgksuite.composer import gui_compose
 
 debug = False
 console_mode = False

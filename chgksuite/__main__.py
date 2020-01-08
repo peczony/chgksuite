@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from .gui import app
+from chgksuite.gui import app
 
 
 def main():

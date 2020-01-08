@@ -48,7 +48,7 @@ from docx.shared import Inches
 from PIL import Image
 import pyimgur
 
-from .common import (
+from chgksuite.common import (
     get_lastdir,
     get_chgksuite_dir,
     set_lastdir,
@@ -61,7 +61,7 @@ from .common import (
     bring_to_front,
 )
 import chgksuite.typotools as typotools
-from .typotools import remove_excessive_whitespace as rew
+from chgksuite.typotools import remove_excessive_whitespace as rew
 
 args = None
 debug = False

@@ -14,10 +14,10 @@ except ImportError:
     import tkinter.filedialog as filedialog
     import tkinter.ttk as ttk
 
-from .parser import gui_parse
-from .composer import gui_compose
-from .trello import gui_trello
-from .common import (
+from chgksuite.parser import gui_parse
+from chgksuite.composer import gui_compose
+from chgksuite.trello import gui_trello
+from chgksuite.common import (
     on_close,
     button_factory,
     toggle_factory,
