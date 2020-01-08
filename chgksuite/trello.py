@@ -11,7 +11,7 @@ import requests
 import pdb
 import webbrowser
 from collections import defaultdict
-from chgk_common import (
+from .common import (
     get_lastdir, set_lastdir, on_close, log_wrap, bring_to_front
 )
 try:

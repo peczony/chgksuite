@@ -48,8 +48,9 @@ from docx.shared import Inches
 from PIL import Image
 import pyimgur
 
-from chgk_common import (
+from .common import (
     get_lastdir,
+    get_chgksuite_dir,
     set_lastdir,
     on_close,
     DummyLogger,
@@ -59,11 +60,10 @@ from chgk_common import (
     retry_wrapper_factory,
     bring_to_front,
 )
-import typotools
-from typotools import remove_excessive_whitespace as rew
+import chgksuite.typotools as typotools
+from .typotools import remove_excessive_whitespace as rew
 
 args = None
-im = None
 debug = False
 console_mode = False
 re_url = re.compile(
@@ -82,9 +82,8 @@ re_uppercase = re.compile(r"[А-ЯЁ]")
 re_editors = re.compile(r"^[рР]едакторы? *(пакета|тура)? *[—\-–−:] ?")
 
 REQUIRED_LABELS = set(["question", "answer"])
-TARGETDIR = os.getcwd()
-SOURCEDIR = None
 IMGUR_CLIENT_ID = "8da1bd97da30ac1"
+im = pyimgur.Imgur(IMGUR_CLIENT_ID)
 
 ENC = "utf8" if sys.platform != "win32" else "cp1251"
 CONSOLE_ENC = ENC if sys.platform != "win32" else "cp866"
@@ -147,22 +146,25 @@ def imgsize(imgfile, dimensions="pixels", emsize=25, dpi=120):
     return width, height
 
 
-def parseimg(s, dimensions="pixels"):
+def search_for_imgfile(imgfile, tmp_dir, targetdir):
+    if os.path.isfile(imgfile):
+        return imgfile
+    for dirname in [tmp_dir, targetdir]:
+        if not os.path.isdir(dirname):
+            continue
+        imgfile2 = os.path.join(dirname, os.path.basename(imgfile))
+        if os.path.isfile(imgfile2):
+            return imgfile2
+    raise Exception("Image file {} not found".format(imgfile))
+
+
+def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
     width = -1
     height = -1
     sp = s.split()
+    cwd = os.getcwd()
     imgfile = sp[-1]
-    if not os.path.isabs(imgfile):
-        if os.path.isfile(os.path.join(TARGETDIR, imgfile)):
-            imgfile = os.path.join(TARGETDIR, imgfile)
-        elif os.path.isfile(os.path.join(SOURCEDIR, imgfile)):
-            imgfile = os.path.join(SOURCEDIR, imgfile)
-        else:
-            raise Exception(
-                "Image file {} not found in {} and {}".format(
-                    imgfile, TARGETDIR, SOURCEDIR
-                )
-            )
+    imgfile = search_for_imgfile(imgfile, tmp_dir, targetdir)
 
     if len(sp) == 1:
         width, height = imgsize(imgfile, dimensions=dimensions)
@@ -470,7 +472,7 @@ def parse_4s(s, randomize=False):
     return final_structure
 
 
-def docx_format(el, para, whiten):
+def docx_format(el, para, whiten, **kwargs):
     if isinstance(el, list):
 
         if len(el) > 1 and isinstance(el[1], list):
@@ -553,7 +555,12 @@ def docx_format(el, para, whiten):
                 #     para = gui_compose.doc.add_paragraph()
 
             elif run[0] == "img":
-                imgfile, width, height = parseimg(run[1], dimensions="inches")
+                imgfile, width, height = parseimg(
+                    run[1],
+                    dimensions="inches",
+                    tmp_dir=kwargs.get("tmp_dir"),
+                    targetdir=kwargs.get("targetdir"),
+                )
                 gui_compose.doc.add_picture(
                     imgfile, width=Inches(width), height=Inches(height)
                 )
@@ -635,7 +642,7 @@ def htmlrepl(zz):
     return zz
 
 
-def htmlformat(s):
+def htmlformat(s, **kwargs):
     res = ""
     for run in parse_4s_elem(s):
         if run[0] == "":
@@ -661,25 +668,25 @@ def htmlformat(s):
     return res
 
 
-def htmlyapper(e):
+def htmlyapper(e, **kwargs):
     if isinstance(e, basestring):
-        return html_element_layout(e)
+        return html_element_layout(e, **kwargs)
     elif isinstance(e, list):
         if not any(isinstance(x, list) for x in e):
-            return html_element_layout(e)
+            return html_element_layout(e, **kwargs)
         else:
-            return "\n".join([html_element_layout(x) for x in e])
+            return "\n".join([html_element_layout(x, **kwargs) for x in e])
 
 
-def html_element_layout(e):
+def html_element_layout(e, **kwargs):
     res = ""
     if isinstance(e, basestring):
-        res = htmlformat(e)
+        res = htmlformat(e, **kwargs)
         return res
     if isinstance(e, list):
         res = "\n".join(
             [
-                "{}. {}".format(en + 1, html_element_layout(x))
+                "{}. {}".format(en + 1, html_element_layout(x, **kwargs))
                 for en, x in enumerate(e)
             ]
         )
@@ -905,17 +912,17 @@ def lj_post(stru):
         sys.exit(1)
 
 
-def baseyapper(e):
+def baseyapper(e, **kwargs):
     if isinstance(e, basestring):
-        return base_element_layout(e)
+        return base_element_layout(e, **kwargs)
     elif isinstance(e, list):
         if not any(isinstance(x, list) for x in e):
-            return base_element_layout(e)
+            return base_element_layout(e, **kwargs)
         else:
-            return "\n".join([base_element_layout(x) for x in e])
+            return "\n".join([base_element_layout(x, **kwargs) for x in e])
 
 
-def baseformat(s):
+def baseformat(s, **kwargs):
     res = ""
     for run in parse_4s_elem(s):
         if run[0] == "":
@@ -923,7 +930,12 @@ def baseformat(s):
         if run[0] == "em":
             res += run[1]
         if run[0] == "img":
-            imgfile, w, h = parseimg(run[1], dimensions="pixels")
+            imgfile, w, h = parseimg(
+                run[1],
+                dimensions="pixels",
+                targetdir=kwargs.get("targetdir"),
+                tmp_dir=kwargs.get("tmp_dir"),
+            )
             if os.path.isfile(imgfile):
                 pil_image = Image.open(imgfile)
                 w_orig, h_orig = pil_image.size
@@ -938,7 +950,6 @@ def baseformat(s):
                     to_upload = resized_fn
                 else:
                     to_upload = imgfile
-                im = pyimgur.Imgur(IMGUR_CLIENT_ID)
                 print("uploading {}...".format(to_upload))
                 uploaded_image = im.upload_image(to_upload, title=to_upload)
                 imglink = uploaded_image.link
@@ -951,15 +962,15 @@ def baseformat(s):
     return res
 
 
-def base_element_layout(e):
+def base_element_layout(e, **kwargs):
     res = ""
     if isinstance(e, basestring):
-        res = baseformat(e)
+        res = baseformat(e, **kwargs)
         return res
     if isinstance(e, list):
         res = "\n".join(
             [
-                "   {}. {}".format(i + 1, base_element_layout(x))
+                "   {}. {}".format(i + 1, base_element_layout(x, **kwargs))
                 for i, x in enumerate(e)
             ]
         )
@@ -1089,17 +1100,17 @@ def base_format_question(q):
     return res
 
 
-def reddityapper(e):
+def reddityapper(e, **kwargs):
     if isinstance(e, basestring):
-        return reddit_element_layout(e)
+        return reddit_element_layout(e, **kwargs)
     elif isinstance(e, list):
         if not any(isinstance(x, list) for x in e):
-            return reddit_element_layout(e)
+            return reddit_element_layout(e, **kwargs)
         else:
-            return "  \n".join([reddit_element_layout(x) for x in e])
+            return "  \n".join([reddit_element_layout(x, **kwargs) for x in e])
 
 
-def redditformat(s):
+def redditformat(s, **kwargs):
     res = ""
     for run in parse_4s_elem(s):
         if run[0] == "":
@@ -1107,11 +1118,17 @@ def redditformat(s):
         if run[0] == "em":
             res += "_{}_".format(run[1])
         if run[0] == "img":
-            imgfile, w, h = parseimg(run[1], dimensions="ems")
+            imgfile, w, h = parseimg(
+                run[1],
+                dimensions="ems",
+                targetdir=kwargs.get("targetdir"),
+                tmp_dir=kwargs.get("tmp_dir"),
+            )
             if os.path.isfile(imgfile):
-                im = pyimgur.Imgur(IMGUR_CLIENT_ID)
                 uploaded_image = im.upload_image(imgfile, title=imgfile)
                 imgfile = uploaded_image.link
+            else:
+                raise Exception("Image not found: {}".format(imgfile))
             res += "[картинка]({})".format(imgfile)
     while res.endswith("\n"):
         res = res[:-1]
@@ -1119,55 +1136,63 @@ def redditformat(s):
     return res
 
 
-def reddit_element_layout(e):
+def reddit_element_layout(e, **kwargs):
     res = ""
     if isinstance(e, basestring):
-        res = redditformat(e)
+        res = redditformat(e, **kwargs)
         return res
     if isinstance(e, list):
         res = "  \n".join(
             [
-                "{}\\. {}".format(i + 1, reddit_element_layout(x))
+                "{}\\. {}".format(i + 1, reddit_element_layout(x, **kwargs))
                 for i, x in enumerate(e)
             ]
         )
     return res
 
 
-def reddit_format_element(pair):
+def reddit_format_element(pair, **kwargs):
     if pair[0] == "Question":
-        return reddit_format_question(pair[1])
+        return reddit_format_question(pair[1], **kwargs)
 
 
-def reddit_format_question(q):
+def reddit_format_question(q, **kwargs):
     if "setcounter" in q:
         gui_compose.counter = int(q["setcounter"])
     res = "__Вопрос {}__: {}  \n".format(
         gui_compose.counter if "number" not in q else q["number"],
-        reddityapper(q["question"]),
+        reddityapper(q["question"], **kwargs),
     )
     if "number" not in q:
         gui_compose.counter += 1
-    res += "__Ответ:__ >!{}  \n".format(reddityapper(q["answer"]))
+    res += "__Ответ:__ >!{}  \n".format(reddityapper(q["answer"], **kwargs))
     if "zachet" in q:
-        res += "__Зачёт:__ {}  \n".format(reddityapper(q["zachet"]))
+        res += "__Зачёт:__ {}  \n".format(reddityapper(q["zachet"], **kwargs))
     if "nezachet" in q:
-        res += "__Незачёт:__ {}  \n".format(reddityapper(q["nezachet"]))
+        res += "__Незачёт:__ {}  \n".format(
+            reddityapper(q["nezachet"], **kwargs)
+        )
     if "comment" in q:
-        res += "__Комментарий:__ {}  \n".format(reddityapper(q["comment"]))
+        res += "__Комментарий:__ {}  \n".format(
+            reddityapper(q["comment"], **kwargs)
+        )
     if "source" in q:
-        res += "__Источник:__ {}  \n".format(reddityapper(q["source"]))
+        res += "__Источник:__ {}  \n".format(
+            reddityapper(q["source"], **kwargs)
+        )
     if "author" in q:
-        res += "!<\n__Автор:__ {}  \n".format(reddityapper(q["author"]))
+        res += "!<\n__Автор:__ {}  \n".format(
+            reddityapper(q["author"], **kwargs)
+        )
     else:
         res += "!<\n"
     return res
 
 
-def output_reddit(structure, outfile, args):
+def output_reddit(structure, outfile, args, **kwargs):
     result = []
     for pair in structure:
-        res = reddit_format_element(pair)
+        res = reddit_format_element(pair, **kwargs)
         if res:
             result.append(res)
     text = "\n\n".join(result)
@@ -1176,7 +1201,7 @@ def output_reddit(structure, outfile, args):
     logger.info("Output: {}".format(outfile))
 
 
-def tex_format_question(q):
+def tex_format_question(q, **kwargs):
     yapper = texyapper
     if "setcounter" in q:
         gui_compose.counter = int(q["setcounter"])
@@ -1184,28 +1209,35 @@ def tex_format_question(q):
         "\n\n\\begin{{minipage}}{{\\textwidth}}\\raggedright\n"
         "\\textbf{{Вопрос {}.}} {} \\newline".format(
             gui_compose.counter if "number" not in q else q["number"],
-            yapper(q["question"]),
+            yapper(q["question"], **kwargs),
         )
     )
     if "number" not in q:
         gui_compose.counter += 1
-    res += "\n\\textbf{{Ответ: }}{} \\newline".format(yapper(q["answer"]))
+    res += "\n\\textbf{{Ответ: }}{} \\newline".format(
+        yapper(q["answer"], **kwargs)
+    )
     if "zachet" in q:
-        res += "\n\\textbf{{Зачёт: }}{} \\newline".format(yapper(q["zachet"]))
+        res += "\n\\textbf{{Зачёт: }}{} \\newline".format(
+            yapper(q["zachet"], **kwargs)
+        )
     if "nezachet" in q:
         res += "\n\\textbf{{Незачёт: }}{} \\newline".format(
-            yapper(q["nezachet"])
+            yapper(q["nezachet"], **kwargs)
         )
     if "comment" in q:
         res += "\n\\textbf{{Комментарий: }}{} \\newline".format(
-            yapper(q["comment"])
+            yapper(q["comment"], **kwargs)
         )
     if "source" in q:
         res += "\n\\textbf{{Источник{}: }}{} \\newline".format(
-            "и" if isinstance(q["source"], list) else "", yapper(q["source"])
+            "и" if isinstance(q["source"], list) else "",
+            yapper(q["source"], **kwargs),
         )
     if "author" in q:
-        res += "\n\\textbf{{Автор: }}{} \\newline".format(yapper(q["author"]))
+        res += "\n\\textbf{{Автор: }}{} \\newline".format(
+            yapper(q["author"], **kwargs)
+        )
     res += "\n\\end{minipage}\n"
     return res
 
@@ -1307,7 +1339,7 @@ def texrepl(zz):
     return zz
 
 
-def texformat(s):
+def texformat(s, **kwargs):
     res = ""
     for run in parse_4s_elem(s):
         if run[0] == "":
@@ -1315,7 +1347,12 @@ def texformat(s):
         if run[0] == "em":
             res += "\\emph{" + texrepl(run[1]) + "}"
         if run[0] == "img":
-            imgfile, w, h = parseimg(run[1], dimensions="ems")
+            imgfile, w, h = parseimg(
+                run[1],
+                dimensions="ems",
+                tmp_dir=kwargs.get("tmp_dir"),
+                targetdir=kwargs.get("targetdir"),
+            )
             res += (
                 "\\includegraphics"
                 + "[width={}{}]".format(
@@ -1332,20 +1369,20 @@ def texformat(s):
     return res
 
 
-def texyapper(e):
+def texyapper(e, **kwargs):
     if isinstance(e, basestring):
-        return tex_element_layout(e)
+        return tex_element_layout(e, **kwargs)
     elif isinstance(e, list):
         if not any(isinstance(x, list) for x in e):
-            return tex_element_layout(e)
+            return tex_element_layout(e, **kwargs)
         else:
-            return "  \n".join([tex_element_layout(x) for x in e])
+            return "  \n".join([tex_element_layout(x, **kwargs) for x in e])
 
 
-def tex_element_layout(e):
+def tex_element_layout(e, **kwargs):
     res = ""
     if isinstance(e, basestring):
-        res = texformat(e)
+        res = texformat(e, **kwargs)
         return res
     if isinstance(e, list):
         res = """
@@ -1353,26 +1390,24 @@ def tex_element_layout(e):
 {}
 \\end{{compactenum}}
 """.format(
-            "\n".join(["\\item {}".format(tex_element_layout(x)) for x in e])
+            "\n".join(
+                [
+                    "\\item {}".format(tex_element_layout(x, **kwargs))
+                    for x in e
+                ]
+            )
         )
     return res
 
 
 def gui_compose(largs, sourcedir=None):
-
-    global im
     global args
     global console_mode
     args = largs
-    global __file__  # to fix stupid __file__
-    __file__ = os.path.abspath(__file__)  # handling in python 2
-
     global debug
-    global TARGETDIR
-    global SOURCEDIR
-    SOURCEDIR = sourcedir
     global logger
     global retry_wrapper
+    assert sourcedir is not None
 
     logger = logging.getLogger("composer")
     logger.setLevel(logging.DEBUG)
@@ -1404,13 +1439,13 @@ def gui_compose(largs, sourcedir=None):
         else:
             console_mode = True
 
-    ld = get_lastdir(sourcedir)
+    ld = get_lastdir()
     if args.filename:
         if isinstance(args.filename, list):
             ld = os.path.dirname(os.path.abspath(args.filename[0]))
         else:
             ld = os.path.dirname(os.path.abspath(args.filename))
-    set_lastdir(ld, sourcedir)
+    set_lastdir(ld)
     if not args.filename:
         print("No file specified.")
         sys.exit(1)
@@ -1418,28 +1453,28 @@ def gui_compose(largs, sourcedir=None):
     if isinstance(args.filename, list):
         if not args.merge:
             for fn in args.filename:
-                TARGETDIR = os.path.dirname(os.path.abspath(fn))
+                targetdir = os.path.dirname(os.path.abspath(fn))
                 filename = os.path.basename(os.path.abspath(fn))
-                process_file_wrapper(filename)
+                process_file_wrapper(filename, sourcedir, targetdir)
         else:
-            TARGETDIR = os.path.dirname(os.path.abspath(args.filename[0]))
-            process_file_wrapper(args.filename)
+            targetdir = os.path.dirname(os.path.abspath(args.filename[0]))
+            process_file_wrapper(args.filename, sourcedir, targetdir)
     else:
-        TARGETDIR = os.path.dirname(os.path.abspath(args.filename))
+        targetdir = os.path.dirname(os.path.abspath(args.filename))
         filename = os.path.basename(os.path.abspath(args.filename))
-        process_file_wrapper(filename)
+        process_file_wrapper(filename, sourcedir, targetdir)
 
 
-def process_file_wrapper(filename):
-    with make_temp_directory(dir=SOURCEDIR) as tmp_dir:
+def process_file_wrapper(filename, sourcedir, targetdir):
+    resourcedir = os.path.join(sourcedir, "resources")
+    with make_temp_directory(dir=get_chgksuite_dir()) as tmp_dir:
         for fn in [
             args.docx_template,
-            os.path.join(SOURCEDIR, "fix-unnumbered-sections.sty"),
+            os.path.join(resourcedir, "fix-unnumbered-sections.sty"),
             args.tex_header,
         ]:
             shutil.copy(fn, tmp_dir)
-        process_file(filename, tmp_dir)
-        os.chdir(SOURCEDIR)
+        process_file(filename, tmp_dir, sourcedir, targetdir)
 
 
 def parse_filepath(filepath):
@@ -1456,24 +1491,23 @@ def make_merged_filename(filelist):
     return prefix + suffix
 
 
-def process_file(filename, srcdir):
-    global im
+def process_file(filename, tmp_dir, sourcedir, targetdir):
     global args
-    SOURCEDIR = srcdir
-    os.chdir(SOURCEDIR)
 
     if isinstance(filename, list):
         structure = []
         for x in filename:
-            structure.extend(parse_filepath(x))
+            structure.extend(parse_filepath(os.path.join(targetdir, x)))
         filename = make_merged_filename(filename)
     else:
-        structure = parse_filepath(os.path.join(TARGETDIR, filename))
+        structure = parse_filepath(os.path.join(targetdir, filename))
 
     if args.debug:
-        with codecs.open(
-            make_filename(filename, "dbg", nots=args.nots), "w", "utf8"
-        ) as output_file:
+        debug_fn = os.path.join(
+            targetdir,
+            make_filename(os.path.basename(filename), "dbg", nots=args.nots),
+        )
+        with codecs.open(debug_fn, "w", "utf8") as output_file:
             output_file.write(
                 json.dumps(structure, indent=2, ensure_ascii=False)
             )
@@ -1490,17 +1524,19 @@ def process_file(filename, srcdir):
     if args.filetype == "docx":
 
         outfilename = os.path.join(
-            SOURCEDIR, make_filename(filename, "docx", nots=args.nots)
+            targetdir, make_filename(filename, "docx", nots=args.nots)
         )
         logger.debug(args.docx_template)
         gui_compose.doc = Document(args.docx_template)
         qcount = 0
         logger.debug(log_wrap(structure))
+        def _docx_format(*args):
+            return docx_format(*args, tmp_dir=tmp_dir, targetdir=targetdir)
 
         for element in structure:
             if element[0] == "meta":
                 p = gui_compose.doc.add_paragraph()
-                docx_format(element[1], p, False)
+                _docx_format(element[1], p, False)
                 gui_compose.doc.add_paragraph()
 
             if element[0] in ["editor", "date", "heading", "section"]:
@@ -1523,20 +1559,20 @@ def process_file(filename, srcdir):
                 if "handout" in q:
                     p = gui_compose.doc.add_paragraph()
                     p.add_run("[Раздаточный материал: ")
-                    docx_format(q["handout"], p, WHITEN["handout"])
+                    _docx_format(q["handout"], p, WHITEN["handout"])
                     p = gui_compose.doc.add_paragraph()
                     p.add_run("]")
                 if not args.noparagraph:
                     p = gui_compose.doc.add_paragraph()
 
-                docx_format(q["question"], p, False)
+                _docx_format(q["question"], p, False)
                 p = gui_compose.doc.add_paragraph()
 
                 if not args.noanswers:
                     if not args.no_line_break:
                         p = gui_compose.doc.add_paragraph()
                     p.add_run("Ответ: ").bold = True
-                    docx_format(q["answer"], p, True)
+                    _docx_format(q["answer"], p, True)
 
                     for field in [
                         "zachet",
@@ -1553,28 +1589,21 @@ def process_file(filename, srcdir):
                                 p.add_run("Источники: ").bold = True
                             else:
                                 p.add_run(FIELDS[field]).bold = True
-                            docx_format(q[field], p, WHITEN[field])
+                            _docx_format(q[field], p, WHITEN[field])
 
                 gui_compose.doc.add_paragraph()
                 if not args.one_line_break:
                     gui_compose.doc.add_paragraph()
 
         gui_compose.doc.save(outfilename)
-        if os.path.abspath(SOURCEDIR.lower()) != os.path.abspath(
-            TARGETDIR.lower()
-        ):
-            shutil.copy(outfilename, TARGETDIR)
-        logger.info(
-            "Output: {}".format(
-                os.path.join(TARGETDIR, os.path.basename(outfilename))
-            )
-        )
+        logger.info("Output: {}".format(outfilename))
 
     if args.filetype == "tex":
 
         outfilename = os.path.join(
-            SOURCEDIR, make_filename(filename, "tex", nots=args.nots)
+            tmp_dir, make_filename(filename, "tex", nots=args.nots)
         )
+        tkwargs = {"targetdir": targetdir, "tmp_dir": tmp_dir}
 
         gui_compose.counter = 1
 
@@ -1612,12 +1641,14 @@ def process_file(filename, srcdir):
                 )
                 firsttour = False
             elif element[0] == "Question":
-                gui_compose.tex += tex_format_question(element[1])
+                gui_compose.tex += tex_format_question(element[1], **tkwargs)
 
         gui_compose.tex += "\\end{document}"
 
         with codecs.open(outfilename, "w", "utf8") as outfile:
             outfile.write(gui_compose.tex)
+        cwd = os.getcwd()
+        os.chdir(tmp_dir)
         subprocess.call(
             shlex.split(
                 'xelatex -synctex=1 -interaction=nonstopmode "{}"'.format(
@@ -1625,30 +1656,17 @@ def process_file(filename, srcdir):
                 )
             )
         )
-        logger.info(
-            "Output: {}".format(
-                os.path.join(TARGETDIR, os.path.basename(outfilename))
-                + "\n"
-                + os.path.join(
-                    TARGETDIR,
-                    os.path.splitext(os.path.basename(outfilename))[0]
-                    + ".pdf",
-                )
-            )
+        os.chdir(cwd)
+        pdf_filename = (
+            os.path.splitext(os.path.basename(outfilename))[0] + ".pdf"
         )
-        if os.path.normpath(SOURCEDIR.lower()) != os.path.normpath(
-            TARGETDIR.lower()
-        ):
-            shutil.copy(os.path.splitext(outfilename)[0] + ".pdf", TARGETDIR)
-        if args.rawtex and (
-            os.path.normpath(SOURCEDIR.lower())
-            != os.path.normpath(TARGETDIR.lower())
-        ):
-            shutil.copy(outfilename, TARGETDIR)
-            shutil.copy(args.tex_header, TARGETDIR)
+        logger.info("Output: {}".format(os.path.join(targetdir, pdf_filename)))
+        shutil.copy(os.path.join(tmp_dir, pdf_filename), targetdir)
+        if args.rawtex:
+            shutil.copy(outfilename, targetdir)
+            shutil.copy(args.tex_header, targetdir)
             shutil.copy(
-                os.path.join(SOURCEDIR, "fix-unnumbered-sections.sty"),
-                TARGETDIR,
+                os.path.join(tmp_dir, "fix-unnumbered-sections.sty"), targetdir
             )
 
     if args.filetype == "lj":
@@ -1663,8 +1681,6 @@ def process_file(filename, srcdir):
 
             args.password = getpass.getpass()
 
-        im = pyimgur.Imgur(IMGUR_CLIENT_ID)
-
         gui_compose.counter = 1
         if args.splittours:
             tours = split_into_tours(structure, general_impression=args.genimp)
@@ -1676,14 +1692,14 @@ def process_file(filename, srcdir):
     if args.filetype == "base":
         gui_compose.counter = 1
         outfilename = os.path.join(
-            TARGETDIR, make_filename(filename, "txt", nots=args.nots)
+            targetdir, make_filename(filename, "txt", nots=args.nots)
         )
         output_base(structure, outfilename, args)
 
     if args.filetype == "redditmd":
         gui_compose.counter = 1
         outfilename = os.path.join(
-            TARGETDIR, make_filename(filename, "md", nots=args.nots)
+            targetdir, make_filename(filename, "md", nots=args.nots)
         )
         output_reddit(structure, outfilename, args)
 

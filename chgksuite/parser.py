@@ -29,10 +29,10 @@ from bs4 import BeautifulSoup
 from parse import parse
 import html2text
 
-import typotools
-from typotools import remove_excessive_whitespace as rew
-from chgk_parser_db import chgk_parse_db
-from chgk_common import (
+import chgksuite.typotools as typotools
+from .typotools import remove_excessive_whitespace as rew
+from .parser_db import chgk_parse_db
+from .common import (
     get_lastdir,
     set_lastdir,
     DummyLogger,
@@ -41,7 +41,7 @@ from chgk_common import (
     check_question,
     QUESTION_LABELS,
 )
-from chgk_composer import gui_compose
+from .composer import gui_compose
 
 debug = False
 console_mode = False
@@ -111,11 +111,11 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     structure = []
 
     if not regexes:
-        regexes = load_regexes(
-            "{}/regexes.json".format(
-                os.path.dirname(os.path.abspath(__file__))
-            )
-        )
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+        resources_dir = os.path.join(parent_dir, "resources")
+        regexes_file = os.path.join(resources_dir, "regexes.json")
+        regexes = load_regexes(regexes_file)
     elif isinstance(regexes, basestring):
         regexes = load_regexes(regexes)
 
@@ -492,7 +492,6 @@ class UnknownEncodingException(Exception):
 
 
 def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", regexes=None):
-    os.chdir(os.path.dirname(os.path.abspath(txtfile)))
     raw = open(txtfile, "rb").read()
     if not encoding:
         if chardet.detect(raw)["confidence"] > 0.7:
@@ -509,15 +508,17 @@ def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", regexes=None):
     return chgk_parse(text, defaultauthor=defaultauthor, regexes=regexes)
 
 
-def generate_imgname(ext):
+def generate_imgname(target_dir, ext):
     imgcounter = 1
-    while os.path.isfile("{:03}.{}".format(imgcounter, ext)):
+    while os.path.isfile(
+        os.path.join(target_dir, "{:03}.{}".format(imgcounter, ext))
+    ):
         imgcounter += 1
     return "{:03}.{}".format(imgcounter, ext)
 
 
 def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
-    os.chdir(os.path.dirname(os.path.abspath(docxfile)))
+    target_dir = os.path.dirname(os.path.abspath(docxfile))
     input_docx = (
         PyDocX.to_html(docxfile)
         .replace("</strong><strong>", "")
@@ -527,7 +528,9 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
     bsoup = BeautifulSoup(input_docx, "html.parser")
 
     if debug:
-        with codecs.open("debug.pydocx", "w", "utf8") as dbg:
+        with codecs.open(
+            os.path.join(target_dir, "debug.pydocx"), "w", "utf8"
+        ) as dbg:
             dbg.write(input_docx)
 
     for tag in bsoup.find_all("style"):
@@ -556,8 +559,8 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
             tag.string = "- " + tag.string
     for tag in bsoup.find_all("img"):
         imgparse = parse("data:image/{ext};base64,{b64}", tag["src"])
-        imgname = generate_imgname(imgparse["ext"])
-        with open(imgname, "wb") as f:
+        imgname = generate_imgname(target_dir, imgparse["ext"])
+        with open(os.path.join(target_dir, imgname), "wb") as f:
             f.write(base64.b64decode(imgparse["b64"]))
         imgpath = os.path.basename(imgname)
         tag.insert_before("(img {})".format(imgpath))
@@ -576,9 +579,13 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
                 tag.unwrap()
 
     if debug:
-        with codecs.open("debug_raw.html", "w", "utf8") as dbg:
+        with codecs.open(
+            os.path.join(target_dir, "debug_raw.html"), "w", "utf8"
+        ) as dbg:
             dbg.write(str(bsoup))
-        with codecs.open("debug.html", "w", "utf8") as dbg:
+        with codecs.open(
+            os.path.join(target_dir, "debug.html"), "w", "utf8"
+        ) as dbg:
             dbg.write(bsoup.prettify())
 
     h = html2text.HTML2Text()
@@ -604,7 +611,9 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
     txt = re.sub(r"_ *_", "", txt)  # fix bad italic from Word
 
     if debug:
-        with codecs.open("debug.debug", "w", "utf8") as dbg:
+        with codecs.open(
+            os.path.join(target_dir, "debug.debug"), "w", "utf8"
+        ) as dbg:
             dbg.write(txt)
 
     final_structure = chgk_parse(
@@ -691,8 +700,8 @@ def compose_4s(structure):
 
 
 def chgk_parse_wrapper(abspath, args, regexes=None):
-    os.chdir(os.path.dirname(os.path.abspath(abspath)))
     abspath = os.path.basename(abspath)
+    target_dir = os.path.dirname(abspath)
     defaultauthor = ""
     if args.defaultauthor:
         defaultauthor = os.path.splitext(os.path.basename(abspath))[0]
@@ -710,7 +719,7 @@ def chgk_parse_wrapper(abspath, args, regexes=None):
     else:
         sys.stderr.write("Error: unsupported file format." + SEP)
         sys.exit()
-    outfilename = make_filename(abspath)
+    outfilename = os.path.join(target_dir, make_filename(abspath))
     logger.info("Output: {}".format(os.path.abspath(outfilename)))
     with codecs.open(outfilename, "w", "utf8") as output_file:
         output_file.write(compose_4s(final_structure))
@@ -750,11 +759,11 @@ def gui_parse(args, sourcedir):
     if args.filename:
         console_mode = True
 
-    ld = get_lastdir(sourcedir)
+    ld = get_lastdir()
     if args.parsedir:
         if os.path.isdir(args.filename):
             ld = args.filename
-            set_lastdir(ld, sourcedir)
+            set_lastdir(ld)
             for filename in os.listdir(args.filename):
                 if filename.endswith((".docx", ".txt")) and not os.path.isfile(
                     os.path.join(args.filename, make_filename(filename))
@@ -777,7 +786,7 @@ def gui_parse(args, sourcedir):
     else:
         if args.filename:
             ld = os.path.dirname(os.path.abspath(args.filename))
-            set_lastdir(ld, sourcedir)
+            set_lastdir(ld)
         if not args.filename:
             print("No file specified.")
             sys.exit(0)

@@ -21,13 +21,18 @@ lastdir = os.path.join(os.path.dirname(os.path.abspath('__file__')),
                        'lastdir')
 
 
-def set_lastdir(path, sourcedir):
-    lastdir = os.path.join(sourcedir, "lastdir")
-    if os.path.isfile(path):
-        path = os.path.dirname(path)
-    if os.path.isdir(path):
-        with codecs.open(lastdir, 'w', 'utf8') as f:
-            f.write(path)
+def get_chgksuite_dir():
+    chgksuite_dir = os.path.join(os.path.expanduser("~"), ".chgksuite")
+    if not os.path.isdir(chgksuite_dir):
+        os.mkdir(chgksuite_dir)
+    return chgksuite_dir
+
+
+def set_lastdir(path):
+    chgksuite_dir = get_chgksuite_dir()
+    lastdir = os.path.join(chgksuite_dir, "lastdir")
+    with codecs.open(lastdir, 'w', 'utf8') as f:
+        f.write(path)
 
 
 def bring_to_front(root):
@@ -36,8 +41,9 @@ def bring_to_front(root):
     root.after_idle(root.attributes, '-topmost', False)
 
 
-def get_lastdir(sourcedir):
-    lastdir = os.path.join(sourcedir, "lastdir")
+def get_lastdir():
+    chgksuite_dir = get_chgksuite_dir()
+    lastdir = os.path.join(chgksuite_dir, "lastdir")
     if os.path.isfile(lastdir):
         with codecs.open(lastdir, 'r', 'utf8') as f:
             return f.read().rstrip()
