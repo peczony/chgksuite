@@ -7,4 +7,5 @@ setup(
     entry_points={
         "console_scripts": ["chgksuite = chgksuite.__main__:main"]
     },
+    include_package_data=True
 )
