@@ -1,0 +1,7 @@
+include README.md
+include history.md
+include resources/cheader.tex
+include resources/regexes.json
+include resources/trello.json
+include resources/fix-unnumbered-sections.sty
+include resources/template.docx
