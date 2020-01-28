@@ -15,10 +15,15 @@ currentdir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe()))
 )
 parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir)
+# sys.path.insert(0, parentdir)
 
-from chgk_parser import chgk_parse, chgk_parse_txt, chgk_parse_docx, compose_4s
-from chgk_composer import parse_4s
+from chgksuite.parser import (
+    chgk_parse,
+    chgk_parse_txt,
+    chgk_parse_docx,
+    compose_4s,
+)
+from chgksuite.composer import parse_4s
 
 
 class DefaultArgs(object):
@@ -65,20 +70,24 @@ def normalize(string):
 def test_canonical_equality():
     for filename in os.listdir(currentdir):
         if filename.endswith(".canon"):
-            print("Testing {}...".format(filename[:-6]))
-            parsed = workaround_chgk_parse(
-                os.path.join(currentdir, filename[:-6])
-            )
-            for filename1 in os.listdir(currentdir):
-                if filename1.endswith(
-                    (".jpg", ".jpeg", ".png", ".gif")
-                ) and not filename1.startswith("ALLOWED"):
-                    os.remove(os.path.join(currentdir, filename1))
-            with codecs.open(
-                os.path.join(currentdir, filename), "r", "utf8"
-            ) as f:
-                canonical = f.read()
-            assert normalize(canonical) == normalize(compose_4s(parsed))
+            print(os.getcwd())
+            with make_temp_directory(dir=".") as temp_dir:
+                to_parse_fn = filename[:-6]
+                print(os.getcwd())
+                shutil.copy(os.path.join(currentdir, filename), temp_dir)
+                print(os.getcwd())
+                shutil.copy(os.path.join(currentdir, to_parse_fn), temp_dir)
+                print(os.getcwd())
+                print("Testing {}...".format(filename[:-6]))
+                print(os.getcwd())
+                parsed = workaround_chgk_parse(
+                    os.path.join(temp_dir, to_parse_fn)
+                )
+                with codecs.open(
+                    os.path.join(temp_dir, filename), "r", "utf8"
+                ) as f:
+                    canonical = f.read()
+                assert normalize(canonical) == normalize(compose_4s(parsed))
 
 
 def test_composition():
@@ -90,32 +99,32 @@ def test_composition():
             print("Testing {}...".format(filename))
             with make_temp_directory(dir=".") as temp_dir:
                 shutil.copy(os.path.join(currentdir, filename), temp_dir)
-                os.chdir(temp_dir)
-                parsed = workaround_chgk_parse(filename)
+                temp_dir_filename = os.path.join(temp_dir, filename)
+                parsed = workaround_chgk_parse(temp_dir_filename)
                 file4s = os.path.splitext(filename)[0] + ".4s"
-                with codecs.open(file4s, "w", "utf8") as f:
+                composed_abspath = os.path.join(temp_dir, file4s)
+                print(composed_abspath)
+                with codecs.open(composed_abspath, "w", "utf8") as f:
                     f.write(compose_4s(parsed))
-                abspath = os.path.abspath(file4s)
-                os.chdir(currentdir)
-                os.chdir("..")
-                subprocess.call(
+                code = subprocess.call(
                     [
                         "python",
-                        "chgksuite.py",
+                        "-m",
+                        "chgksuite",
                         "compose",
-                        "{}".format(abspath),
                         "docx",
+                        composed_abspath,
                     ]
                 )
-                subprocess.call(
+                assert 0 == code
+                code = subprocess.call(
                     [
                         "python",
-                        "chgksuite.py",
+                        "-m",
+                        "chgksuite",
                         "compose",
-                        "{}".format(abspath),
                         "tex",
+                        composed_abspath,
                     ]
                 )
-                # subprocess.call(['python', 'chgksuite.py', 'compose',
-                #     '{}'.format(abspath), 'lj', '-l', ljlogin, '-p', ljpassword])
-                os.chdir(currentdir)
+                assert 0 == code

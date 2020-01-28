@@ -14,10 +14,10 @@ except ImportError:
     import tkinter.filedialog as filedialog
     import tkinter.ttk as ttk
 
-from chgk_parser import gui_parse
-from chgk_composer import gui_compose
-from chgk_trello import gui_trello
-from chgk_common import (
+from chgksuite.parser import gui_parse
+from chgksuite.composer import gui_compose
+from chgksuite.trello import gui_trello
+from chgksuite.common import (
     on_close,
     button_factory,
     toggle_factory,
@@ -25,6 +25,7 @@ from chgk_common import (
     bring_to_front,
     get_lastdir,
     ensure_utf8,
+    get_source_dirs
 )
 
 from collections import defaultdict
@@ -297,17 +298,12 @@ class SubparsersWrapper(object):
         return pw
 
 
-def main():
-    if getattr(sys, "frozen", False):
-        sourcedir = os.path.dirname(sys.executable)
-    else:
-        sourcedir = os.path.dirname(
-            os.path.abspath(os.path.realpath(__file__))
-        )
+def app():
+    sourcedir, resourcedir = get_source_dirs()
 
     if isinstance(sourcedir, bytes):
         sourcedir = sourcedir.decode("utf8")
-    ld = get_lastdir(sourcedir)
+    ld = get_lastdir()
     parser = ParserWrapper(
         argparse.ArgumentParser(prog="chgksuite"), lastdir=ld
     )
@@ -617,11 +613,11 @@ def main():
     args = parser.parse_args()
 
     if not args.regexes:
-        args.regexes = os.path.join(sourcedir, "regexes.json")
+        args.regexes = os.path.join(resourcedir, "regexes.json")
     if not args.docx_template:
-        args.docx_template = os.path.join(sourcedir, "template.docx")
+        args.docx_template = os.path.join(resourcedir, "template.docx")
     if not args.tex_header:
-        args.tex_header = os.path.join(sourcedir, "cheader.tex")
+        args.tex_header = os.path.join(resourcedir, "cheader.tex")
     if args.config:
         with open(args.config, "r") as f:
             config = json.load(f)
@@ -679,7 +675,3 @@ def main():
         gui_compose(args, sourcedir=sourcedir)
     if args.action == "trello":
         gui_trello(args, sourcedir=sourcedir)
-
-
-if __name__ == "__main__":
-    main()

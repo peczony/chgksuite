@@ -18,7 +18,7 @@ import logging
 
 from ply import lex
 
-from typotools import recursive_typography as rt
+from chgksuite.typotools import recursive_typography as rt
 
 re_list = re.compile(r'^\s{3}\d+\.\s(.+)$', re.I | re.U)
 

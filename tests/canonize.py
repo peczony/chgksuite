@@ -11,10 +11,10 @@ currentdir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe()))
 )
 parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir)
+# sys.path.insert(0, parentdir)
 
-from chgk_parser import chgk_parse, chgk_parse_txt, chgk_parse_docx, compose_4s
-from chgk_composer import parse_4s
+from chgksuite.parser import chgk_parse, chgk_parse_txt, chgk_parse_docx, compose_4s
+from chgksuite.composer import parse_4s
 
 
 from chgksuite_test import DefaultArgs

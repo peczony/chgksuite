@@ -1,4 +1,4 @@
-cp -f ../fix-unnumbered-sections.sty ../regexes.json ../template.docx ../trello.json ../cheader.tex .;
-zip chgksuite_v${VERSION}_mac.zip chgksuite fix-unnumbered-sections.sty regexes.json template.docx trello.json cheader.tex;
-zip chgksuite_v${VERSION}_win.zip chgksuite.exe fix-unnumbered-sections.sty regexes.json template.docx trello.json cheader.tex;
-rm fix-unnumbered-sections.sty regexes.json template.docx trello.json cheader.tex;
+cp -rf ../chgksuite/resources .;
+zip -r chgksuite_v${VERSION}_mac.zip resources chgksuite;
+zip -r chgksuite_v${VERSION}_win.zip resources chgksuite.exe;
+rm -rf resources;
