@@ -300,11 +300,12 @@ class SubparsersWrapper(object):
 def app():
     if getattr(sys, "frozen", False):
         sourcedir = os.path.dirname(sys.executable)
+        resourcedir = os.path.join(sourcedir, "resources")
     else:
-        sourcedir = os.path.dirname(os.path.dirname(
+        sourcedir = os.path.dirname(
             os.path.abspath(os.path.realpath(__file__))
-        ))
-    resourcedir = os.path.join(sourcedir, "resources")
+        )
+        resourcedir = os.path.join(sourcedir, "resources")
 
     if isinstance(sourcedir, bytes):
         sourcedir = sourcedir.decode("utf8")
