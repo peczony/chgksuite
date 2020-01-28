@@ -28,6 +28,18 @@ def get_chgksuite_dir():
     return chgksuite_dir
 
 
+def get_source_dirs():
+    if getattr(sys, "frozen", False):
+        sourcedir = os.path.dirname(sys.executable)
+        resourcedir = os.path.join(sourcedir, "resources")
+    else:
+        sourcedir = os.path.dirname(
+            os.path.abspath(os.path.realpath(__file__))
+        )
+        resourcedir = os.path.join(sourcedir, "resources")
+    return sourcedir, resourcedir
+
+
 def set_lastdir(path):
     chgksuite_dir = get_chgksuite_dir()
     lastdir = os.path.join(chgksuite_dir, "lastdir")

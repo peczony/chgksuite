@@ -25,6 +25,7 @@ from chgksuite.common import (
     bring_to_front,
     get_lastdir,
     ensure_utf8,
+    get_source_dirs
 )
 
 from collections import defaultdict
@@ -298,14 +299,7 @@ class SubparsersWrapper(object):
 
 
 def app():
-    if getattr(sys, "frozen", False):
-        sourcedir = os.path.dirname(sys.executable)
-        resourcedir = os.path.join(sourcedir, "resources")
-    else:
-        sourcedir = os.path.dirname(
-            os.path.abspath(os.path.realpath(__file__))
-        )
-        resourcedir = os.path.join(sourcedir, "resources")
+    sourcedir, resourcedir = get_source_dirs()
 
     if isinstance(sourcedir, bytes):
         sourcedir = sourcedir.decode("utf8")

@@ -40,6 +40,7 @@ from chgksuite.common import (
     DefaultNamespace,
     check_question,
     QUESTION_LABELS,
+    get_source_dirs
 )
 from chgksuite.composer import gui_compose
 
@@ -111,10 +112,8 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     structure = []
 
     if not regexes:
-        current_dir = os.path.dirname(os.path.realpath(__file__))
-        parent_dir = os.path.dirname(current_dir)
-        resources_dir = os.path.join(parent_dir, "resources")
-        regexes_file = os.path.join(resources_dir, "regexes.json")
+        _, resourcedir = get_source_dirs()
+        regexes_file = os.path.join(resourcedir, "regexes.json")
         regexes = load_regexes(regexes_file)
     elif isinstance(regexes, basestring):
         regexes = load_regexes(regexes)
