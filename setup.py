@@ -2,10 +2,15 @@ from setuptools import setup
 
 setup(
     name="chgksuite",
-    version="0.6",
+    version="0.6.0",
     packages=["chgksuite"],
-    entry_points={
-        "console_scripts": ["chgksuite = chgksuite.__main__:main"]
+    package_data={
+        "chgksuite": [
+            "resources/*.json",
+            "resources/*.docx",
+            "resources/*.tex",
+            "resources/*.sty",
+        ]
     },
-    include_package_data=True
+    entry_points={"console_scripts": ["chgksuite = chgksuite.__main__:main"]},
 )
