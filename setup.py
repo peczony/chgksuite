@@ -30,4 +30,18 @@ setup(
         ]
     },
     entry_points={"console_scripts": ["chgksuite = chgksuite.__main__:main"]},
+    install_requires=[
+        "beautifulsoup4",
+        "chardet",
+        "html2text",
+        "parse",
+        "PyDocX",
+        "pyimgur",
+        "python-docx",
+        "requests",
+        "Pillow",
+        "ply",
+        "dateparser",
+        "pyperclip",
+    ]
 )
