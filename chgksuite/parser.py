@@ -47,8 +47,8 @@ from chgksuite.composer import gui_compose
 debug = False
 console_mode = False
 
-ENC = "utf8" if sys.platform != "win32" else "cp1251"
-CONSOLE_ENC = ENC if sys.platform != "win32" else "cp866"
+ENC = sys.stdout.encoding or "utf8"
+CONSOLE_ENC = sys.stdout.encoding or "utf8"
 SEP = os.linesep
 EDITORS = {
     "win32": "notepad",
@@ -737,7 +737,7 @@ def gui_parse(args, sourcedir):
 
     logger = logging.getLogger("parser")
     logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler("parser.log")
+    fh = logging.FileHandler("parser.log", encoding="utf8")
     fh.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
     if debug:

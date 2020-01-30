@@ -420,7 +420,7 @@ def chgk_parse_db(text, debug=False):
     if not logger:
         logger = logging.getLogger('parser_db')
         logger.setLevel(logging.DEBUG)
-        fh = logging.FileHandler('parser_db.log')
+        fh = logging.FileHandler('parser_db.log', encoding="utf8")
         fh.setLevel(logging.DEBUG)
         ch = logging.StreamHandler()
         if debug:

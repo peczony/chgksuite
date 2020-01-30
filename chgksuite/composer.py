@@ -85,8 +85,8 @@ REQUIRED_LABELS = set(["question", "answer"])
 IMGUR_CLIENT_ID = "8da1bd97da30ac1"
 im = pyimgur.Imgur(IMGUR_CLIENT_ID)
 
-ENC = "utf8" if sys.platform != "win32" else "cp1251"
-CONSOLE_ENC = ENC if sys.platform != "win32" else "cp866"
+ENC = sys.stdout.encoding or "utf8"
+CONSOLE_ENC = ENC
 
 FIELDS = {
     "zachet": "Зачёт: ",
@@ -1411,7 +1411,7 @@ def gui_compose(largs, sourcedir=None):
 
     logger = logging.getLogger("composer")
     logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler("composer.log")
+    fh = logging.FileHandler("composer.log", "utf8")
     fh.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
     if args.debug:
