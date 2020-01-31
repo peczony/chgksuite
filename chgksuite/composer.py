@@ -781,7 +781,7 @@ def split_into_tours(structure, general_impression=False):
     return result
 
 
-def lj_process(structure):
+def lj_process(structure, args):
     final_structure = [{"header": "", "content": ""}]
     i = 0
     heading = ""
@@ -837,14 +837,10 @@ def lj_process(structure):
     if debug:
         with codecs.open("lj.debug", "w", "utf8") as f:
             f.write(log_wrap(final_structure))
-    lj_post(final_structure)
+    return final_structure
 
 
-def lj_post(stru):
-
-    lj = ServerProxy("http://www.livejournal.com/interface/xmlrpc").LJ.XMLRPC
-
-    chal, response = get_chal(lj, args.password)
+def _lj_post(lj, stru, args, edit=False, add_params=None):
 
     now = datetime.datetime.now()
     year = now.strftime("%Y")
@@ -853,63 +849,95 @@ def lj_post(stru):
     hour = now.strftime("%H")
     minute = now.strftime("%M")
 
+    chal, response = get_chal(lj, args.password)
+
     params = {
         "username": args.login,
         "auth_method": "challenge",
         "auth_challenge": chal,
         "auth_response": response,
-        "subject": stru[0]["header"],
-        "event": stru[0]["content"],
+        "subject": stru["header"],
+        "event": stru["content"],
         "year": year,
         "mon": month,
         "day": day,
         "hour": hour,
         "min": minute,
     }
+    if edit:
+        params["itemid"] = stru["itemid"]
+    if add_params:
+        params.update(add_params)
 
+    try:
+        post = retry_wrapper(lj.editevent if edit else lj.postevent, [params])
+        logger.info("Edited a post" if edit else "Created a post")
+        logger.debug(log_wrap(post))
+        time.sleep(5)
+    except Exception as e:
+        sys.stderr.write(
+            "Error issued by LJ API: {}".format(traceback.format_exc(e))
+        )
+        sys.exit(1)
+    return post
+
+
+def _lj_comment(lj, stru, args):
+    chal, response = get_chal(lj, args.password)
+    params = {
+        "username": args.login,
+        "auth_method": "challenge",
+        "auth_challenge": chal,
+        "auth_response": response,
+        "journal": stru["journal"],
+        "ditemid": stru["ditemid"],
+        "parenttalkid": 0,
+        "body": stru["content"],
+        "subject": stru["header"],
+    }
+    try:
+        comment = retry_wrapper(lj.addcomment, [params])
+    except Exception as e:
+        sys.stderr.write(
+            "Error issued by LJ API: {}".format(traceback.format_exc(e))
+        )
+        sys.exit(1)
+    logger.info("Added a comment")
+    logger.debug(log_wrap(comment))
+    time.sleep(random.randint(5, 7))
+
+
+def lj_post(stru, args, edit=False):
+
+    lj = ServerProxy("http://www.livejournal.com/interface/xmlrpc").LJ.XMLRPC
+
+    add_params = {}
     community = args.community
     if community == "":
-        params["security"] = "private"
+        add_params["security"] = "private"
     elif community.startswith("--group"):
-        params["security"] = "usemask"
-        params["allowmask"] = community.split("--group")[1] or "2"
+        add_params["security"] = "usemask"
+        add_params["allowmask"] = community.split("--group")[1] or "2"
     else:
-        params["usejournal"] = community
+        add_params["usejournal"] = community
     if community == "--group":
         community = ""
 
     journal = community if community else args.login
 
-    try:
-        post = retry_wrapper(lj.postevent, [params])
-        ditemid = post["ditemid"]
-        logger.info("Created a post")
-        logger.debug(log_wrap(post))
-        time.sleep(5)
+    post = _lj_post(lj, stru[0], args, edit=edit, add_params=add_params)
 
-        for _, x in enumerate(stru[1:], start=1):
-            chal, response = get_chal(lj, args.password)
-            params = {
-                "username": args.login,
-                "auth_method": "challenge",
-                "auth_challenge": chal,
-                "auth_response": response,
-                "journal": journal,
-                "ditemid": ditemid,
-                "parenttalkid": 0,
-                "body": x["content"],
-                "subject": x["header"],
-            }
-            comment = retry_wrapper(lj.addcomment, [params])
-            logger.info("Added a comment")
-            logger.debug(log_wrap(comment))
-            time.sleep(random.randint(5, 7))
+    comments = stru[1:]
 
-    except:
-        sys.stderr.write(
-            "Error issued by LJ API: {}".format(traceback.format_exc())
-        )
-        sys.exit(1)
+    if not comments:
+        return post
+
+    for comment in stru[1:]:
+        comment["ditemid"] = post["ditemid"]
+        comment["journal"] = journal
+        _lj_comment(lj, comment, args)
+
+    return post
 
 
 def baseyapper(e, **kwargs):
@@ -1411,7 +1439,7 @@ def gui_compose(largs, sourcedir=None):
 
     logger = logging.getLogger("composer")
     logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler("composer.log", "utf8")
+    fh = logging.FileHandler("composer.log", encoding="utf8")
     fh.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
     if args.debug:
@@ -1489,6 +1517,18 @@ def make_merged_filename(filelist):
     prefix = os.path.commonprefix(filelist)
     suffix = "_".join(x[len(prefix) :] for x in filelist)
     return prefix + suffix
+
+
+def generate_navigation(strus):
+    titles = [x[0][0]["header"].split(". ")[-1] for x in strus]
+    urls = [x[1]["url"] for x in strus]
+    result = []
+    for i in range(len(titles)):
+        inner = []
+        for j in range(len(urls)):
+            inner.append(titles[j] if j == i else '<a href="{}">{}</a>'.format(urls[j], titles[j]))
+        result.append(" | ".join(inner))
+    return result
 
 
 def process_file(filename, tmp_dir, sourcedir, targetdir):
@@ -1684,10 +1724,23 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
         gui_compose.counter = 1
         if args.splittours:
             tours = split_into_tours(structure, general_impression=args.genimp)
+            strus = []
             for tour in tours:
-                lj_process(tour)
+                stru = lj_process(tour, args)
+                post = lj_post(stru, args)
+                strus.append((stru, post))
+            if args.navigation:
+                navigation = generate_navigation(strus)
+                for i, (stru, post) in enumerate(strus):
+                    newstru = {
+                        "header": stru[0]["header"],
+                        "content": stru[0]["content"] + "\n\n" + navigation[i],
+                        "itemid": post["itemid"]
+                    }
+                    lj_post([newstru], args, edit=True)
         else:
-            lj_process(structure)
+            stru = lj_process(structure, args)
+            post = lj_post(stru, args)
 
     if args.filetype == "base":
         gui_compose.counter = 1

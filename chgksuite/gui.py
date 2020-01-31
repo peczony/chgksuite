@@ -510,6 +510,12 @@ def app():
         caption="Пост с общими впечатлениями",
     )
     cmdcompose_lj.add_argument(
+        "--navigation",
+        action="store_true",
+        help="add navigation to posts.",
+        caption="Добавить навигацию к постам",
+    )
+    cmdcompose_lj.add_argument(
         "--login", "-l", help="livejournal login", caption="ЖЖ-логин"
     )
     cmdcompose_lj.add_argument(
