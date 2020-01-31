@@ -17,6 +17,7 @@ except ImportError:
 from chgksuite.parser import gui_parse
 from chgksuite.composer import gui_compose
 from chgksuite.trello import gui_trello
+from chgksuite.version import __version__
 from chgksuite.common import (
     on_close,
     button_factory,
@@ -150,7 +151,7 @@ class ParserWrapper(object):
 
     def init_tk(self):
         self.tk = tk.Tk()
-        self.tk.title("chgksuite")
+        self.tk.title("chgksuite v{}".format(__version__))
         self.tk.minsize(600, 300)
         self.tk.eval("tk::PlaceWindow . center")
         self.mainframe = tk.Frame(self.tk)
@@ -305,7 +306,7 @@ def app():
         sourcedir = sourcedir.decode("utf8")
     ld = get_lastdir()
     parser = ParserWrapper(
-        argparse.ArgumentParser(prog="chgksuite"), lastdir=ld
+        argparse.ArgumentParser(prog="chgksuite".format(__version__)), lastdir=ld
     )
     parser.add_argument(
         "--debug",
@@ -322,6 +323,13 @@ def app():
         caption="Файл конфигурации",
         advanced=True,
         argtype="filename",
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version="%(prog)s " + __version__,
+        hide=True
     )
     subparsers = parser.add_subparsers(dest="action")
 
