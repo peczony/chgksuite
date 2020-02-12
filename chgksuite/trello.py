@@ -12,7 +12,8 @@ import pdb
 import webbrowser
 from collections import defaultdict
 from chgksuite.common import (
-    get_lastdir, set_lastdir, on_close, log_wrap, bring_to_front
+    get_lastdir, set_lastdir, on_close, log_wrap, bring_to_front,
+    get_chgksuite_dir
 )
 try:
     basestring
@@ -67,7 +68,7 @@ def upload_file(filepath, trello):
 
 
 def gui_trello_upload(args, sourcedir):
-    ld = get_lastdir(sourcedir)
+    ld = get_lastdir()
 
     if not args.board_id:
         board_id = get_board_id()
@@ -85,11 +86,11 @@ def gui_trello_upload(args, sourcedir):
                 if filename.endswith('.4s'):
                     filepath = os.path.join(args.filename[0], filename)
                     upload_file(filepath, trelloconfig)
-            set_lastdir(args.filename[0], sourcedir)
+            set_lastdir(args.filename[0])
         else:
             for filename in args.filename:
                 upload_file(filename, trelloconfig)
-                set_lastdir(filename, sourcedir)
+                set_lastdir(filename)
     elif isinstance(args.filename, basestring):
         if os.path.isdir(args.filename):
             for filename in os.listdir(args.filename):
@@ -99,7 +100,7 @@ def gui_trello_upload(args, sourcedir):
                     set_lastdir(filepath)
         elif os.path.isfile(args.filename):
             upload_file(args.filename, trelloconfig)
-            set_lastdir(args.filename, sourcedir)
+            set_lastdir(args.filename)
 
 
 def onlyanswers_line_check(line):
@@ -158,10 +159,7 @@ def add_themes_list(group):
 
 
 def gui_trello_download(args, sourcedir):
-    ld = get_lastdir(sourcedir)
-
-    if not args.folder:
-        args.folder = filedialog.askdirectory(initialdir=ld)
+    ld = get_lastdir()
 
     template_path = args.docx_template
 
@@ -174,7 +172,7 @@ def gui_trello_download(args, sourcedir):
 
     params = args.trelloconfig['params']
     ld = args.folder
-    set_lastdir(ld, sourcedir)
+    set_lastdir(ld)
     os.chdir(args.folder)
 
     if args.si or args.qb:
@@ -321,17 +319,20 @@ def get_token(tokenpath):
     token = input('Please paste the obtained token: ').rstrip()
     with codecs.open(tokenpath, 'w', 'utf8') as f:
         f.write(token)
+    return token
 
 
 def gui_trello(args, sourcedir=None):
-    tokenpath = os.path.join(sourcedir, '.trello_token')
+    csdir = get_chgksuite_dir()
+    resourcedir = os.path.join(sourcedir, "resources")
+    tokenpath = os.path.join(csdir, '.trello_token')
     if not os.path.isfile(tokenpath):
-        get_token(tokenpath)
+        token = get_token(tokenpath)
     else:
         with codecs.open(tokenpath, 'r', 'utf8') as f:
             token = f.read().rstrip()
 
-    with open(os.path.join(sourcedir, 'trello.json')) as f:
+    with open(os.path.join(resourcedir, 'trello.json')) as f:
         args.trelloconfig = json.load(f)
     args.trelloconfig['params']['token'] = token
 
