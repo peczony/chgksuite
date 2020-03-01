@@ -134,16 +134,19 @@ def proportional_resize(tup):
     return tup
 
 
-def imgsize(imgfile, dimensions="pixels", emsize=25, dpi=120):
+def imgsize(imgfile):
     img = Image.open(imgfile)
     width, height = proportional_resize((img.width, img.height))
+    return width, height
+
+
+def convert_size(width, height, dimensions="pixels", emsize=25, dpi=120):
+    if dimensions == "pixels":
+        return width, height
     if dimensions == "ems":
         return width / emsize, height / emsize
     if dimensions == "inches":
         return width / dpi, height / dpi
-    if dimensions == "pixels":
-        return width, height
-    return width, height
 
 
 def search_for_imgfile(imgfile, tmp_dir, targetdir):
@@ -158,6 +161,18 @@ def search_for_imgfile(imgfile, tmp_dir, targetdir):
     raise Exception("Image file {} not found".format(imgfile))
 
 
+def parse_single_size(ssize, dpi=120, emsize=25):
+    if ssize.endswith("in"):
+        ssize = ssize[:-2]
+        return float(ssize) * dpi
+    if ssize.endswith("em"):
+        ssize = ssize[:-2]
+        return float(ssize) * emsize
+    if ssize.endswith("px"):
+        ssize = ssize[:-2]
+    return float(ssize)
+
+
 def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
     width = -1
     height = -1
@@ -167,15 +182,16 @@ def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
     imgfile = search_for_imgfile(imgfile, tmp_dir, targetdir)
 
     if len(sp) == 1:
-        width, height = imgsize(imgfile, dimensions=dimensions)
+        width, height = convert_size(*imgsize(imgfile), dimensions=dimensions)
         return imgfile.replace("\\", "/"), width, height
     else:
         for spsp in sp[:-1]:
             spspsp = spsp.split("=")
             if spspsp[0] == "w":
-                width = spspsp[1]
+                width = parse_single_size(spspsp[1])
             if spspsp[0] == "h":
-                height = spspsp[1]
+                height = parse_single_size(spspsp[1])
+        width, height = convert_size(width, height, dimensions=dimensions)
         return imgfile.replace("\\", "/"), width, height
 
 
@@ -1526,7 +1542,11 @@ def generate_navigation(strus):
     for i in range(len(titles)):
         inner = []
         for j in range(len(urls)):
-            inner.append(titles[j] if j == i else '<a href="{}">{}</a>'.format(urls[j], titles[j]))
+            inner.append(
+                titles[j]
+                if j == i
+                else '<a href="{}">{}</a>'.format(urls[j], titles[j])
+            )
         result.append(" | ".join(inner))
     return result
 
@@ -1570,6 +1590,7 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
         gui_compose.doc = Document(args.docx_template)
         qcount = 0
         logger.debug(log_wrap(structure))
+
         def _docx_format(*args):
             return docx_format(*args, tmp_dir=tmp_dir, targetdir=targetdir)
 
@@ -1735,7 +1756,7 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
                     newstru = {
                         "header": stru[0]["header"],
                         "content": stru[0]["content"] + "\n\n" + navigation[i],
-                        "itemid": post["itemid"]
+                        "itemid": post["itemid"],
                     }
                     lj_post([newstru], args, edit=True)
         else:
