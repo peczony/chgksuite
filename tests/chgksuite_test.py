@@ -10,6 +10,7 @@ import tempfile
 import shutil
 import contextlib
 import subprocess
+import pytest
 
 currentdir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe()))
@@ -90,7 +91,7 @@ def test_canonical_equality():
                 assert normalize(canonical) == normalize(compose_4s(parsed))
 
 
-def test_composition():
+def test_docx_composition():
     for filename in os.listdir(currentdir):
         if (
             filename.endswith((".docx", ".txt"))
@@ -117,6 +118,25 @@ def test_composition():
                     ]
                 )
                 assert 0 == code
+
+
+@pytest.mark.tex
+def test_tex_composition():
+    for filename in os.listdir(currentdir):
+        if (
+            filename.endswith((".docx", ".txt"))
+            and filename == "Kubok_knyagini_Olgi-2015.docx"
+        ):
+            print("Testing {}...".format(filename))
+            with make_temp_directory(dir=".") as temp_dir:
+                shutil.copy(os.path.join(currentdir, filename), temp_dir)
+                temp_dir_filename = os.path.join(temp_dir, filename)
+                parsed = workaround_chgk_parse(temp_dir_filename)
+                file4s = os.path.splitext(filename)[0] + ".4s"
+                composed_abspath = os.path.join(temp_dir, file4s)
+                print(composed_abspath)
+                with codecs.open(composed_abspath, "w", "utf8") as f:
+                    f.write(compose_4s(parsed))
                 code = subprocess.call(
                     [
                         "python",
