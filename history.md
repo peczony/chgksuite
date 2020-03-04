@@ -1,5 +1,13 @@
 # What’s new
 
+## v0.6.1
+
+Из-за бага всё, связанное с трелло, не работало. Пофиксил. ([коммит](https://gitlab.com/peczony/chgksuite/-/commit/9aaf6ffbcd478187ed103dadb3ffe17dc63f449c))
+
+На системах, где не установлен тех, падал тест. Это глупо. Распилил тест на два, тот, что связан с техом, по умолчанию пропускается, если есть желание его протестировать, можно запустить с ключом `--tex`. ([коммит](https://gitlab.com/peczony/chgksuite/-/commit/0a8817b9b6deea17385def5a62d905e9c5a31ad2))
+
+Теперь можно при картинках явно указывать, в каких единицах заданы ширина и высота. ([коммит](https://gitlab.com/peczony/chgksuite/-/commit/288a1a6e24036238481a0813d6c808f12d5d1a83))
+
 ## v0.6.0
 
 Теперь chgksuite есть на PYPI: https://pypi.org/project/chgksuite
