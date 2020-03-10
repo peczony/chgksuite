@@ -64,7 +64,7 @@ logger = DummyLogger()
 
 
 def make_filename(s):
-    return os.path.splitext(os.path.basename(s))[0] + ".4s"
+    return os.path.splitext(s)[0] + ".4s"
 
 
 def debug_print(s):
@@ -698,8 +698,8 @@ def compose_4s(structure):
     return result
 
 
-def chgk_parse_wrapper(abspath, args, regexes=None):
-    abspath = os.path.basename(abspath)
+def chgk_parse_wrapper(path, args, regexes=None):
+    abspath = os.path.abspath(path)
     target_dir = os.path.dirname(abspath)
     defaultauthor = ""
     if args.defaultauthor:
