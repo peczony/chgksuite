@@ -1,5 +1,9 @@
 # What’s new
 
+## v0.6.2
+
+Исправил баг, который присутствовал с 0.6.0 — распарсить можно было только файл, который лежит в той же папке, что и chgksuite. ([коммит](https://gitlab.com/peczony/chgksuite/-/commit/36486f32ba36077e9645e6a2b3def7593374bf8b))
+
 ## v0.6.1
 
 Из-за бага всё, связанное с трелло, не работало. Пофиксил. ([коммит](https://gitlab.com/peczony/chgksuite/-/commit/9aaf6ffbcd478187ed103dadb3ffe17dc63f449c))
