@@ -492,20 +492,20 @@ def docx_format(el, para, whiten, **kwargs):
     if isinstance(el, list):
 
         if len(el) > 1 and isinstance(el[1], list):
-            docx_format(el[0], para, whiten)
+            docx_format(el[0], para, whiten, **kwargs)
             licount = 0
             for li in el[1]:
                 licount += 1
 
                 p = gui_compose.doc.add_paragraph("{}. ".format(licount))
-                docx_format(li, p, whiten)
+                docx_format(li, p, whiten, **kwargs)
         else:
             licount = 0
             for li in el:
                 licount += 1
 
                 p = gui_compose.doc.add_paragraph("{}. ".format(licount))
-                docx_format(li, p, whiten)
+                docx_format(li, p, whiten, **kwargs)
 
     if isinstance(el, basestring):
         logger.debug("parsing element {}:".format(log_wrap(el)))
@@ -583,8 +583,11 @@ def docx_format(el, para, whiten, **kwargs):
                 para = gui_compose.doc.add_paragraph()
 
 
-def html_format_question(q):
-    yapper = htmlyapper
+def html_format_question(q, **kwargs):
+
+    def yapper(x):
+        return htmlyapper(x, **kwargs)
+
     if "setcounter" in q:
         gui_compose.counter = int(q["setcounter"])
     res = "<strong>Вопрос {}.</strong> {}".format(
@@ -666,7 +669,12 @@ def htmlformat(s, **kwargs):
         if run[0] == "em":
             res += "<em>" + htmlrepl(run[1]) + "</em>"
         if run[0] == "img":
-            imgfile, w, h = parseimg(run[1])
+            imgfile, w, h = parseimg(
+                run[1],
+                dimensions="pixels",
+                targetdir=kwargs.get("targetdir"),
+                tmp_dir=kwargs.get("tmp_dir"),
+            )
             if os.path.isfile(imgfile):
                 # with open(imgfile, 'rb') as f:
                 #     imgdata = f.read()
@@ -797,12 +805,15 @@ def split_into_tours(structure, general_impression=False):
     return result
 
 
-def lj_process(structure, args):
+def lj_process(structure, args, **kwargs):
     final_structure = [{"header": "", "content": ""}]
     i = 0
     heading = ""
     ljheading = ""
-    yapper = htmlyapper
+
+    def yapper(x):
+        return htmlyapper(x, **kwargs)
+
     while i < len(structure) and structure[i][0] != "Question":
         if structure[i][0] == "heading":
             final_structure[0]["content"] += "<center>{}</center>".format(
@@ -840,7 +851,7 @@ def lj_process(structure, args):
                         if "number" in element[1]
                         else gui_compose.counter
                     ),
-                    "content": html_format_question(element[1]),
+                    "content": html_format_question(element[1], **kwargs),
                 }
             )
         if element[0] == "meta":
@@ -1046,11 +1057,13 @@ def wrap_date(s):
     return formatted
 
 
-def base_format_element(pair):
+def base_format_element(pair, **kwargs):
     if pair[0] == "Question":
-        return base_format_question(pair[1])
+        return base_format_question(pair[1], **kwargs)
     if pair[0] in BASE_MAPPING:
-        return "{}:\n{}\n\n".format(BASE_MAPPING[pair[0]], baseyapper(pair[1]))
+        return "{}:\n{}\n\n".format(
+            BASE_MAPPING[pair[0]], baseyapper(pair[1], **kwargs)
+        )
     elif pair[0] == "date":
         re_search = re_date_sep.search(pair[1])
         if re_search:
@@ -1074,7 +1087,7 @@ def check_if_zero(Question):
     return False
 
 
-def output_base(structure, outfile, args):
+def output_base(structure, outfile, args, **kwargs):
     result = []
     lasttour = 0
     zeroq = 1
@@ -1110,7 +1123,7 @@ def output_base(structure, outfile, args):
         if pair[0] == "editor":
             pair[1] = re.sub(re_editors, "", pair[1])
             logger.info('Поле "Редактор" было автоматически изменено.')
-        res = base_format_element(pair)
+        res = base_format_element(pair, **kwargs)
         if res:
             result.append(res)
     text = "".join(result)
@@ -1121,26 +1134,30 @@ def output_base(structure, outfile, args):
         pyperclip.copy(text)
 
 
-def base_format_question(q):
+def base_format_question(q, **kwargs):
+
+    def _baseyapper(x):
+        return baseyapper(x, **kwargs)
+
     if "setcounter" in q:
         gui_compose.counter = int(q["setcounter"])
     res = "Вопрос {}:\n{}\n\n".format(
         gui_compose.counter if "number" not in q else q["number"],
-        baseyapper(q["question"]),
+        _baseyapper(q["question"]),
     )
     if "number" not in q:
         gui_compose.counter += 1
-    res += "Ответ:\n{}\n\n".format(baseyapper(q["answer"]))
+    res += "Ответ:\n{}\n\n".format(_baseyapper(q["answer"]))
     if "zachet" in q:
-        res += "Зачет:\n{}\n\n".format(baseyapper(q["zachet"]))
+        res += "Зачет:\n{}\n\n".format(_baseyapper(q["zachet"]))
     if "nezachet" in q:
-        res += "Незачет:\n{}\n\n".format(baseyapper(q["zachet"]))
+        res += "Незачет:\n{}\n\n".format(_baseyapper(q["zachet"]))
     if "comment" in q:
-        res += "Комментарий:\n{}\n\n".format(baseyapper(q["comment"]))
+        res += "Комментарий:\n{}\n\n".format(_baseyapper(q["comment"]))
     if "source" in q:
-        res += "Источник:\n{}\n\n".format(baseyapper(q["source"]))
+        res += "Источник:\n{}\n\n".format(_baseyapper(q["source"]))
     if "author" in q:
-        res += "Автор:\n{}\n\n".format(baseyapper(q["author"]))
+        res += "Автор:\n{}\n\n".format(_baseyapper(q["author"]))
     return res
 
 
@@ -1553,6 +1570,7 @@ def generate_navigation(strus):
 
 def process_file(filename, tmp_dir, sourcedir, targetdir):
     global args
+    dir_kwargs = dict(tmp_dir=tmp_dir, targetdir=targetdir)
 
     if isinstance(filename, list):
         structure = []
@@ -1592,7 +1610,7 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
         logger.debug(log_wrap(structure))
 
         def _docx_format(*args):
-            return docx_format(*args, tmp_dir=tmp_dir, targetdir=targetdir)
+            return docx_format(*args, **dir_kwargs)
 
         for element in structure:
             if element[0] == "meta":
@@ -1664,7 +1682,6 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
         outfilename = os.path.join(
             tmp_dir, make_filename(filename, "tex", nots=args.nots)
         )
-        tkwargs = {"targetdir": targetdir, "tmp_dir": tmp_dir}
 
         gui_compose.counter = 1
 
@@ -1702,7 +1719,9 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
                 )
                 firsttour = False
             elif element[0] == "Question":
-                gui_compose.tex += tex_format_question(element[1], **tkwargs)
+                gui_compose.tex += tex_format_question(
+                    element[1], **dir_kwargs
+                )
 
         gui_compose.tex += "\\end{document}"
 
@@ -1747,7 +1766,7 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
             tours = split_into_tours(structure, general_impression=args.genimp)
             strus = []
             for tour in tours:
-                stru = lj_process(tour, args)
+                stru = lj_process(tour, args, **dir_kwargs)
                 post = lj_post(stru, args)
                 strus.append((stru, post))
             if args.navigation:
@@ -1760,7 +1779,7 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
                     }
                     lj_post([newstru], args, edit=True)
         else:
-            stru = lj_process(structure, args)
+            stru = lj_process(structure, args, **dir_kwargs)
             post = lj_post(stru, args)
 
     if args.filetype == "base":
@@ -1768,14 +1787,14 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
         outfilename = os.path.join(
             targetdir, make_filename(filename, "txt", nots=args.nots)
         )
-        output_base(structure, outfilename, args)
+        output_base(structure, outfilename, args, **dir_kwargs)
 
     if args.filetype == "redditmd":
         gui_compose.counter = 1
         outfilename = os.path.join(
             targetdir, make_filename(filename, "md", nots=args.nots)
         )
-        output_reddit(structure, outfilename, args)
+        output_reddit(structure, outfilename, args, **dir_kwargs)
 
     if not console_mode:
         input("Press Enter to continue...")
