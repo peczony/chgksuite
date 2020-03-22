@@ -1088,6 +1088,21 @@ def check_if_zero(Question):
 
 
 def output_base(structure, outfile, args, **kwargs):
+
+    def _baseyapper(x):
+        return baseyapper(x, **kwargs)
+
+    def _get_last_value(dct, key):
+        if isinstance(dct[key], list):
+            return dct[key][-1]
+        return dct[key]
+
+    def _add_to_dct(dct, key, to_add):
+        if isinstance(dct[key], list):
+            dct[key][-1] += to_add
+        else:
+            dct[key] += to_add
+
     result = []
     lasttour = 0
     zeroq = 1
@@ -1109,17 +1124,14 @@ def output_base(structure, outfile, args, **kwargs):
             structure.insert(lasttour, ["section", tourheader])
     for pair in structure:
         if pair[0] == "Question" and "nezachet" in pair[1]:
-            nezachet = pair[1].pop("nezachet")
-            if "zachet" in pair[1]:
-                pair[1]["zachet"] += "{} Незачёт: {}".format(
-                    "." if not pair[1]["zachet"].endswith(".") else "",
-                    nezachet,
-                )
-            else:
-                pair[1]["answer"] += "{} Незачёт: {}".format(
-                    "." if not pair[1]["answer"].endswith(".") else "",
-                    nezachet,
-                )
+            field = "zachet" if "zachet" in pair[1] else "answer"
+            last_val = _get_last_value(pair[1], field)
+            nezachet = _baseyapper(pair[1].pop("nezachet"))
+            to_add = "{}\n   Незачёт: {}".format(
+                "." if not last_val.endswith(".") else "",
+                nezachet,
+            )
+            _add_to_dct(pair[1], field, to_add)
         if pair[0] == "editor":
             pair[1] = re.sub(re_editors, "", pair[1])
             logger.info('Поле "Редактор" было автоматически изменено.')
