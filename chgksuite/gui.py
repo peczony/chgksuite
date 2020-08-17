@@ -552,6 +552,14 @@ def app():
         caption="Имя 4s-файла",
         filetypes=[("chgksuite markup files", "*.4s")],
     )
+    cmdcompose_pptx = cmdcompose_filetype.add_parser("pptx")
+    cmdcompose_pptx.add_argument(
+        "filename",
+        nargs="*",
+        help="file(s) to compose from.",
+        caption="Имя 4s-файла",
+        filetypes=[("chgksuite markup files", "*.4s")],
+    )
 
     cmdtrello = subparsers.add_parser("trello")
     cmdtrello_subcommands = cmdtrello.add_subparsers(dest="trellosubcommand")

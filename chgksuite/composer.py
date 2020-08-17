@@ -48,6 +48,9 @@ from docx.shared import Inches
 from PIL import Image
 import pyimgur
 
+from pptx import Presentation
+from pptx.util import Inches as PptxInches, Pt
+
 from chgksuite.common import (
     get_lastdir,
     get_chgksuite_dir,
@@ -510,35 +513,7 @@ def docx_format(el, para, whiten, **kwargs):
     if isinstance(el, basestring):
         logger.debug("parsing element {}:".format(log_wrap(el)))
 
-        while "`" in el:
-            if el.index("`") + 1 >= len(el):
-                el = el.replace("`", "")
-            else:
-                if el.index("`") + 2 < len(el) and re.search(
-                    r"\s", el[el.index("`") + 2]
-                ):
-                    el = el[: el.index("`") + 2] + "" + el[el.index("`") + 2 :]
-                if el.index("`") + 1 < len(el) and re_lowercase.search(
-                    el[el.index("`") + 1]
-                ):
-                    el = (
-                        el[: el.index("`") + 1]
-                        + ""
-                        + el[el.index("`") + 1]
-                        + "\u0301"
-                        + el[el.index("`") + 2 :]
-                    )
-                elif el.index("`") + 1 < len(el) and re_uppercase.search(
-                    el[el.index("`") + 1]
-                ):
-                    el = (
-                        el[: el.index("`") + 1]
-                        + ""
-                        + el[el.index("`") + 1]
-                        + "\u0301"
-                        + el[el.index("`") + 2 :]
-                    )
-                el = el[: el.index("`")] + el[el.index("`") + 1 :]
+        el = backtick_replace(el)
         parsed = parse_4s_elem(el)
         images_exist = False
 
@@ -1580,6 +1555,246 @@ def generate_navigation(strus):
     return result
 
 
+def find_min_context_index(structure):
+    types_ = [x[0] for x in structure]
+    try:
+        min_section = types_.index("section")
+    except ValueError:
+        min_section = None
+    try:
+        min_question = types_.index("Question")
+    except ValueError:
+        min_question = None
+    if min_section is not None and min_question is not None:
+        return min(min_section, min_question)
+    elif min_section is not None:
+        return min_section
+    else:
+        return min_question
+
+
+def backtick_replace(el):
+    while "`" in el:
+        if el.index("`") + 1 >= len(el):
+            el = el.replace("`", "")
+        else:
+            if el.index("`") + 2 < len(el) and re.search(
+                r"\s", el[el.index("`") + 2]
+            ):
+                el = el[: el.index("`") + 2] + "" + el[el.index("`") + 2 :]
+            if el.index("`") + 1 < len(el) and re_lowercase.search(
+                el[el.index("`") + 1]
+            ):
+                el = (
+                    el[: el.index("`") + 1]
+                    + ""
+                    + el[el.index("`") + 1]
+                    + "\u0301"
+                    + el[el.index("`") + 2 :]
+                )
+            elif el.index("`") + 1 < len(el) and re_uppercase.search(
+                el[el.index("`") + 1]
+            ):
+                el = (
+                    el[: el.index("`") + 1]
+                    + ""
+                    + el[el.index("`") + 1]
+                    + "\u0301"
+                    + el[el.index("`") + 2 :]
+                )
+            el = el[: el.index("`")] + el[el.index("`") + 1 :]
+    return el
+
+
+class PptxExporter(object):
+    def __init__(self, structure, args, dir_kwargs):
+        self.structure = structure
+        self.args = args
+        self.dir_kwargs = dir_kwargs
+        self.qcount = 0
+
+    @staticmethod
+    def add_editor_info(tb, editor, meta, slide):
+        tf = tb.text_frame
+        tf.word_wrap = True
+        p = tf.add_paragraph()
+        r = p.add_run()
+        r.text = editor
+        for elem in meta:
+            p = tf.add_paragraph()
+            self.pptx_format(elem[1], para, tf, slide)
+
+    def get_textbox(self, slide, left=None, top=None, width=None, height=None):
+        default = PptxInches(0.5)
+        if left is None:
+            left = default
+        if top is None:
+            top = default
+        if width is None:
+            width = Inches(8)
+        if height is None:
+            height = Inches(4.5)
+        textbox = slide.shapes.add_textbox(left, top, width, height)
+        return textbox
+
+
+    def pptx_format(self, el, para, tf, slide):
+        if isinstance(el, list):
+            if len(el) > 1 and isinstance(el[1], list):
+                self.pptx_format(el[0], para, tf, slide)
+                licount = 0
+                for li in el[1]:
+                    licount += 1
+                    p = self.init_paragraph(tf)
+                    r = p.add_run()
+                    r.text = "{}. ".format(licount)
+                    self.pptx_format(li, p, tf, slide)
+            else:
+                licount = 0
+                for li in el:
+                    licount += 1
+                    p = self.init_paragraph(tf)
+                    r = p.add_run()
+                    r.text = "{}. ".format(licount)
+                    self.pptx_format(li, p, tf, slide)
+
+        if isinstance(el, basestring):
+            logger.debug("parsing element {}:".format(log_wrap(el)))
+            el = backtick_replace(el)
+
+            for run in parse_4s_elem(el):
+                if run[0] in ("", "sc"):
+                    r = para.add_run()
+                    r.text = run[1]
+
+                elif run[0] == "em":
+                    r = para.add_run()
+                    r.text = run[1]
+                    r.italic = True
+
+                elif run[0] == "img":
+                    imgfile, width, height = parseimg(
+                        run[1],
+                        dimensions="inches",
+                        tmp_dir=self.dir_kwargs.get("tmp_dir"),
+                        targetdir=self.dir_kwargs.get("targetdir"),
+                    )
+                    slide.shapes.add_picture(
+                        imgfile,
+                        left=PptxInches(3),
+                        top=PptxInches(1),
+                        width=PptxInches(width),
+                        height=PptxInches(height)
+                    )
+                    para = self.init_paragraph(tf)
+
+
+    def process_header(self, header):
+        if "editor" in header:
+            index_ = [x[0] for x in header].index("editor")
+            editor_info = header[index_:]
+            header = header[:index_]
+        else:
+            editor_info = []
+        heading = [x for x in header if x[0] == "heading"]
+        ljheading = [x for x in header if x[0] == "ljheading"]
+        title_text = heading or ljheading
+        date_text = [x for x in header if x[0] == "date"]
+        if title_text:
+            slide = self.prs.slides.add_slide(self.TITLE_SLIDE)
+            title = slide.shapes.title
+            title.text = title_text[0][1]
+            if date_text:
+                subtitle = slide.placeholders[1]
+                subtitle.text = date_text[0][1]
+        if editor_info:
+            slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+            textbox = self.get_textbox(slide)
+            editor = [x[1] for x in editor_info if x[0] == "editor"][0]
+            meta = [x for x in editor_info if x[0] == "meta"]
+            self.add_editor_info(textbox, editor, meta, slide)
+
+
+    def process_question(self, q):
+        slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+        textbox = self.get_textbox(slide)
+        tf = textbox.text_frame
+        tf.word_wrap = True
+        p = self.init_paragraph(tf)
+        if "number" not in q:
+            self.qcount += 1
+        if "setcounter" in q:
+            self.qcount = int(q["setcounter"])
+        r = p.add_run()
+        r.text = "Вопрос {}. ".format(
+            self.qcount if "number" not in q else q["number"]
+        )
+        r.font.bold = True
+
+        if "handout" in q:
+            p = self.init_paragraph(tf)
+            p.add_run("[Раздаточный материал: ")
+            self.pptx_format(q["handout"], p, tf, slide)
+            p = self.init_paragraph(tf)
+            p.add_run("]")
+        if not self.args.noparagraph:
+            p = self.init_paragraph(tf)
+
+        self.pptx_format(q["question"], p, tf, slide)
+
+        slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+        textbox = self.get_textbox(slide)
+        tf = textbox.text_frame
+        tf.word_wrap = True
+
+        p = self.init_paragraph(tf)
+        r = p.add_run()
+        r.text = "Ответ: "
+        r.font.bold = True
+        self.pptx_format(q["answer"], p, tf, slide)
+
+
+    def init_paragraph(self, text_frame):
+        p = text_frame.add_paragraph()
+        p.font.size = Pt(24)
+        return p
+
+
+    def export(self, outfilename):
+        self.outfilename = outfilename
+        self.prs = Presentation()
+        self.TITLE_SLIDE = self.prs.slide_layouts[0]
+        self.BLANK_SLIDE = self.prs.slide_layouts[6]
+        min_content_index = find_min_context_index(self.structure)
+        header = self.structure[:min_content_index]
+        content = self.structure[min_content_index:]
+        self.process_header(header)
+        slide = None
+        for element in content:
+            if element[0] == "section":
+                slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+                textbox = self.get_textbox(slide)
+                tf = textbox.text_frame
+                tf.word_wrap = True
+                p = self.init_paragraph(tf)
+                p.text = element[1]
+                p.font.size = Pt(30)
+            if element[0] == "editor":
+                if slide is None:
+                    slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+                    textbox = self.get_textbox(slide)
+                    tf = textbox.text_frame
+                    tf.word_wrap = True
+                p = self.init_paragraph(tf)
+                p.text = element[1]
+            if element[0] == "meta":
+                p = self.init_paragraph(tf)
+                self.pptx_format(element[1], p, tf, slide)
+            if element[0] == "Question":
+                self.process_question(element[1])
+        self.prs.save(outfilename)
+
+
 def process_file(filename, tmp_dir, sourcedir, targetdir):
     global args
     dir_kwargs = dict(tmp_dir=tmp_dir, targetdir=targetdir)
@@ -1807,6 +2022,13 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
             targetdir, make_filename(filename, "md", nots=args.nots)
         )
         output_reddit(structure, outfilename, args, **dir_kwargs)
+
+    if args.filetype == "pptx":
+        outfilename = os.path.join(
+            targetdir, make_filename(filename, "pptx", nots=args.nots)
+        )
+        exporter = PptxExporter(structure, args, dir_kwargs)
+        exporter.export(outfilename)
 
     if not console_mode:
         input("Press Enter to continue...")
