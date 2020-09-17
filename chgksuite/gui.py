@@ -560,6 +560,20 @@ def app():
         caption="Имя 4s-файла",
         filetypes=[("chgksuite markup files", "*.4s")],
     )
+    cmdcompose_pptx.add_argument(
+        "--pptx_template",
+        help="a pptx template file.",
+        advanced=True,
+        caption="Файл-образец",
+        argtype="filename",
+    )
+    cmdcompose_pptx.add_argument(
+        "--addcomment",
+        help="add comment to answer page.",
+        action="store_true",
+        advanced=True,
+        caption="Добавить комментарии к ответам",
+    )
 
     cmdtrello = subparsers.add_parser("trello")
     cmdtrello_subcommands = cmdtrello.add_subparsers(dest="trellosubcommand")

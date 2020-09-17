@@ -26,6 +26,7 @@ import traceback
 import urllib
 import dateparser
 import pyperclip
+from pptx.enum.text import PP_ALIGN
 
 try:
     basestring
@@ -559,7 +560,6 @@ def docx_format(el, para, whiten, **kwargs):
 
 
 def html_format_question(q, **kwargs):
-
     def yapper(x):
         return htmlyapper(x, **kwargs)
 
@@ -1063,7 +1063,6 @@ def check_if_zero(Question):
 
 
 def output_base(structure, outfile, args, **kwargs):
-
     def _baseyapper(x):
         return baseyapper(x, **kwargs)
 
@@ -1103,8 +1102,7 @@ def output_base(structure, outfile, args, **kwargs):
             last_val = _get_last_value(pair[1], field)
             nezachet = _baseyapper(pair[1].pop("nezachet"))
             to_add = "{}\n   Незачёт: {}".format(
-                "." if not last_val.endswith(".") else "",
-                nezachet,
+                "." if not last_val.endswith(".") else "", nezachet
             )
             _add_to_dct(pair[1], field, to_add)
         if pair[0] == "editor":
@@ -1122,7 +1120,6 @@ def output_base(structure, outfile, args, **kwargs):
 
 
 def base_format_question(q, **kwargs):
-
     def _baseyapper(x):
         return baseyapper(x, **kwargs)
 
@@ -1622,21 +1619,20 @@ class PptxExporter(object):
         r.text = editor
         for elem in meta:
             p = tf.add_paragraph()
-            self.pptx_format(elem[1], para, tf, slide)
+            self.pptx_format(self.pptx_process_text(elem[1]), para, tf, slide)
 
     def get_textbox(self, slide, left=None, top=None, width=None, height=None):
-        default = PptxInches(0.5)
+        default = PptxInches(1.3)
         if left is None:
             left = default
         if top is None:
             top = default
         if width is None:
-            width = Inches(8)
+            width = PptxInches(9.5)
         if height is None:
-            height = Inches(4.5)
+            height = PptxInches(5.1)
         textbox = slide.shapes.add_textbox(left, top, width, height)
         return textbox
-
 
     def pptx_format(self, el, para, tf, slide):
         if isinstance(el, list):
@@ -1684,10 +1680,23 @@ class PptxExporter(object):
                         left=PptxInches(3),
                         top=PptxInches(1),
                         width=PptxInches(width),
-                        height=PptxInches(height)
+                        height=PptxInches(height),
                     )
                     para = self.init_paragraph(tf)
 
+    def pptx_process_text(self, s):
+        if isinstance(s, list):
+            for i in range(len(s)):
+                s[i] = self.pptx_process_text(s[i])
+            return s
+        s = s.replace("\u0301", "")
+        if "Раздат" not in s:
+            while "[" in s and "]" in s:
+                s = re.sub("\[.+?\]", "", s)
+        s = re.sub(" +", " ", s)
+        for punct in (".", ",", "!", "?", ":"):
+            s = s.replace(" " + punct, punct)
+        return s
 
     def process_header(self, header):
         if "editor" in header:
@@ -1714,13 +1723,13 @@ class PptxExporter(object):
             meta = [x for x in editor_info if x[0] == "meta"]
             self.add_editor_info(textbox, editor, meta, slide)
 
-
     def process_question(self, q):
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         textbox = self.get_textbox(slide)
         tf = textbox.text_frame
         tf.word_wrap = True
         p = self.init_paragraph(tf)
+        p.alignment = PP_ALIGN.CENTER
         if "number" not in q:
             self.qcount += 1
         if "setcounter" in q:
@@ -1730,6 +1739,7 @@ class PptxExporter(object):
             self.qcount if "number" not in q else q["number"]
         )
         r.font.bold = True
+        p = self.init_paragraph(tf)
 
         if "handout" in q:
             p = self.init_paragraph(tf)
@@ -1740,8 +1750,11 @@ class PptxExporter(object):
         if not self.args.noparagraph:
             p = self.init_paragraph(tf)
 
-        self.pptx_format(q["question"], p, tf, slide)
+        question_text = self.pptx_process_text(q["question"])
+        p.font.size = Pt(self.determine_size(question_text))
+        self.pptx_format(question_text, p, tf, slide)
 
+        slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         textbox = self.get_textbox(slide)
         tf = textbox.text_frame
@@ -1751,18 +1764,41 @@ class PptxExporter(object):
         r = p.add_run()
         r.text = "Ответ: "
         r.font.bold = True
-        self.pptx_format(q["answer"], p, tf, slide)
+        self.pptx_format(self.pptx_process_text(q["answer"]), p, tf, slide)
+        if self.args.addcomment:
+            comment_text = self.pptx_process_text(q["comment"])
+            p = self.init_paragraph(tf, text=comment_text)
+            r = p.add_run()
+            r.text = "Комментарий: "
+            r.font.bold = True
+            self.pptx_format(comment_text, p, tf, slide)
 
+    @staticmethod
+    def determine_size(text):
+        if len(text) <= 280:
+            return 32
+        elif len(text) <= 380:
+            return 28
+        elif len(text) <= 520:
+            return 24
+        else:
+            return 20
 
-    def init_paragraph(self, text_frame):
+    def init_paragraph(self, text_frame, text=None):
         p = text_frame.add_paragraph()
-        p.font.size = Pt(24)
+        p.font.name = "Source Sans Pro"
+        size = 32
+        if text:
+            size = self.determine_size(text)
+        p.font.size = Pt(size)
         return p
-
 
     def export(self, outfilename):
         self.outfilename = outfilename
-        self.prs = Presentation()
+        if self.args.pptx_template:
+            self.prs = Presentation(self.args.pptx_template)
+        else:
+            self.prs = Presentation()
         self.TITLE_SLIDE = self.prs.slide_layouts[0]
         self.BLANK_SLIDE = self.prs.slide_layouts[6]
         min_content_index = find_min_context_index(self.structure)
@@ -1778,7 +1814,7 @@ class PptxExporter(object):
                 tf.word_wrap = True
                 p = self.init_paragraph(tf)
                 p.text = element[1]
-                p.font.size = Pt(30)
+                p.font.size = Pt(36)
             if element[0] == "editor":
                 if slide is None:
                     slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
@@ -1788,7 +1824,7 @@ class PptxExporter(object):
                 p = self.init_paragraph(tf)
                 p.text = element[1]
             if element[0] == "meta":
-                p = self.init_paragraph(tf)
+                p = self.init_paragraph(tf, text=element[1])
                 self.pptx_format(element[1], p, tf, slide)
             if element[0] == "Question":
                 self.process_question(element[1])
