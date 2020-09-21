@@ -1752,7 +1752,8 @@ class PptxExporter(object):
         p.font.size = Pt(self.determine_size(question_text))
         self.pptx_format(question_text, p, tf, slide)
 
-        slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+        if args.addplug:
+            slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         textbox = self.get_textbox(slide)
         tf = textbox.text_frame

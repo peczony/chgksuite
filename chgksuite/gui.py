@@ -580,6 +580,13 @@ def app():
         advanced=True,
         caption="Добавить комментарии к ответам",
     )
+    cmdcompose_pptx.add_argument(
+        "--addplug",
+        help="add blank slide between question and answer.",
+        action="store_true",
+        advanced=True,
+        caption="Добавлять слайд-заглушку перед ответом",
+    )
 
     cmdtrello = subparsers.add_parser("trello")
     cmdtrello_subcommands = cmdtrello.add_subparsers(dest="trellosubcommand")
