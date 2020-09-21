@@ -915,15 +915,13 @@ def lj_post(stru, args, edit=False):
 
     add_params = {}
     community = args.community
-    if community == "":
-        add_params["security"] = "private"
-    elif community.startswith("--group"):
-        add_params["security"] = "usemask"
-        add_params["allowmask"] = community.split("--group")[1] or "2"
-    else:
+    if community:
         add_params["usejournal"] = community
-    if community == "--group":
-        community = ""
+    if args.friendsonly:
+        add_params["security"] = "usemask"
+        add_params["allowmask"] = "1"
+    else:
+        add_params["security"] = "private"
 
     journal = community if community else args.login
 
