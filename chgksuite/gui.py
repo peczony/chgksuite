@@ -536,10 +536,9 @@ def app():
         caption="ЖЖ-сообщество",
     )
     cmdcompose_lj.add_argument(
-        "--friendsonly",
-        action="store_true",
-        help="make post friends-only.",
-        caption="Пост только для друзей (по умолчанию — только для себя)",
+        "--security",
+        help="set to 'friends' to make post friends-only, else specify allowmask.",
+        caption="Указание группы друзей (или 'friends' для всех друзей)",
     )
     cmdcompose_base = cmdcompose_filetype.add_parser("base")
     cmdcompose_base.add_argument(
