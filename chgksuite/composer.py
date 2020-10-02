@@ -1621,6 +1621,15 @@ class PptxExporter(object):
             p = tf.add_paragraph()
             self.pptx_format(self.pptx_process_text(elem[1]), para, tf, slide)
 
+    def get_textbox_qnumber(self, slide):
+        default = PptxInches(1.3)
+        return self.get_textbox(
+            slide,
+            left=PptxInches(11),
+            width=PptxInches(1),
+            height=PptxInches(1),
+        )
+
     def get_textbox(self, slide, left=None, top=None, width=None, height=None):
         default = PptxInches(1.3)
         if left is None:
@@ -1723,22 +1732,31 @@ class PptxExporter(object):
             meta = [x for x in editor_info if x[0] == "meta"]
             self.add_editor_info(textbox, editor, meta, slide)
 
+    def set_question_number(self, slide, number):
+        qntextbox = self.get_textbox_qnumber(slide)
+        qtf = qntextbox.text_frame
+        qtf_p = self.init_paragraph(qtf)
+        qtf_r = qtf_p.add_run()
+        qtf_r.text = number
+
     def process_question(self, q):
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         textbox = self.get_textbox(slide)
         tf = textbox.text_frame
         tf.word_wrap = True
-        p = self.init_paragraph(tf)
-        p.alignment = PP_ALIGN.CENTER
         if "number" not in q:
             self.qcount += 1
         if "setcounter" in q:
             self.qcount = int(q["setcounter"])
-        r = p.add_run()
-        r.text = "Вопрос {}. ".format(
-            self.qcount if "number" not in q else q["number"]
-        )
-        r.font.bold = True
+        number = str(self.qcount if "number" not in q else q["number"])
+        self.set_question_number(slide, number)
+        # p = self.init_paragraph(tf)
+        # p.alignment = PP_ALIGN.CENTER
+        # r = p.add_run()
+        # r.text = "Вопрос {}. ".format(
+        #     self.qcount if "number" not in q else q["number"]
+        # )
+        # r.font.bold = True
         p = self.init_paragraph(tf)
 
         if "handout" in q:
@@ -1747,8 +1765,6 @@ class PptxExporter(object):
             self.pptx_format(q["handout"], p, tf, slide)
             p = self.init_paragraph(tf)
             p.add_run("]")
-        if not self.args.noparagraph:
-            p = self.init_paragraph(tf)
 
         question_text = self.pptx_process_text(q["question"])
         p.font.size = Pt(self.determine_size(question_text))
@@ -1756,7 +1772,9 @@ class PptxExporter(object):
 
         if args.addplug:
             slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+            self.set_question_number(slide, number)
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+        self.set_question_number(slide, number)
         textbox = self.get_textbox(slide)
         tf = textbox.text_frame
         tf.word_wrap = True
