@@ -184,9 +184,10 @@ def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
     cwd = os.getcwd()
     imgfile = sp[-1]
     imgfile = search_for_imgfile(imgfile, tmp_dir, targetdir)
+    size = imgsize(imgfile)
 
     if len(sp) == 1:
-        width, height = convert_size(*imgsize(imgfile), dimensions=dimensions)
+        width, height = convert_size(*size, dimensions=dimensions)
         return imgfile.replace("\\", "/"), width, height
     else:
         for spsp in sp[:-1]:
@@ -195,6 +196,10 @@ def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
                 width = parse_single_size(spspsp[1])
             if spspsp[0] == "h":
                 height = parse_single_size(spspsp[1])
+        if width != -1 and height == -1:
+            height = size[1] * (width / size[0])
+        elif width == -1 and height != -1:
+            width = size[0] * (height / size[1])
         width, height = convert_size(width, height, dimensions=dimensions)
         return imgfile.replace("\\", "/"), width, height
 
