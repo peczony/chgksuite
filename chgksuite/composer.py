@@ -922,7 +922,7 @@ def lj_post(stru, args, edit=False):
     community = args.community
     if community:
         add_params["usejournal"] = community
-    if args.security:
+    elif args.security:
         add_params["security"] = "usemask"
         add_params["allowmask"] = (
             "1" if args.security == "friends" else args.security
