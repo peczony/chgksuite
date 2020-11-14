@@ -1560,15 +1560,15 @@ class DocxExporter(object):
                 for li in el[1]:
                     licount += 1
 
-                    p = self.doc.add_paragraph("{}. ".format(licount))
-                    self.docx_format(li, p, whiten, **kwargs)
+                    para.add_run("\n{}. ".format(licount))
+                    self.docx_format(li, para, whiten, **kwargs)
             else:
                 licount = 0
                 for li in el:
                     licount += 1
 
-                    p = self.doc.add_paragraph("{}. ".format(licount))
-                    self.docx_format(li, p, whiten, **kwargs)
+                    para.add_run("\n{}. ".format(licount))
+                    self.docx_format(li, para, whiten, **kwargs)
 
         if isinstance(el, basestring):
             logger.debug("parsing element {}:".format(log_wrap(el)))
@@ -1606,14 +1606,16 @@ class DocxExporter(object):
                         tmp_dir=kwargs.get("tmp_dir"),
                         targetdir=kwargs.get("targetdir"),
                     )
-                    self.doc.add_picture(
+                    r = para.add_run("\n")
+                    r.add_picture(
                         imgfile, width=Inches(width), height=Inches(height)
                     )
-                    para = self.doc.add_paragraph()
+                    r.add_text("\n")
 
     def add_question(self, element):
         q = element[1]
         p = self.doc.add_paragraph()
+        p.paragraph_format.keep_together = True
         if "number" not in q:
             self.qcount += 1
         if "setcounter" in q:
@@ -1625,20 +1627,19 @@ class DocxExporter(object):
         ).bold = True
 
         if "handout" in q:
-            p = self.doc.add_paragraph()
-            p.add_run("[Раздаточный материал: ")
+            p.add_run("\n[Раздаточный материал: ")
             self._docx_format(q["handout"], p, WHITEN["handout"])
-            p = self.doc.add_paragraph()
-            p.add_run("]")
+            p.add_run("\n]")
         if not args.noparagraph:
-            p = self.doc.add_paragraph()
+            p.add_run("\n")
 
         self._docx_format(q["question"], p, False)
         p = self.doc.add_paragraph()
+        p.paragraph_format.keep_together = True
 
         if not args.noanswers:
             if not args.no_line_break:
-                p = self.doc.add_paragraph()
+                p.add_run("\n")
             p.add_run("Ответ: ").bold = True
             self._docx_format(q["answer"], p, True)
 
@@ -1650,7 +1651,7 @@ class DocxExporter(object):
                 "author",
             ]:
                 if field in q:
-                    p = self.doc.add_paragraph()
+                    p.add_run("\n")
                     if field == "source" and isinstance(
                         q[field], list
                     ):
