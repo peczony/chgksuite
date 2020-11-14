@@ -497,73 +497,6 @@ def parse_4s(s, randomize=False):
     return final_structure
 
 
-def docx_format(el, para, whiten, **kwargs):
-    if isinstance(el, list):
-
-        if len(el) > 1 and isinstance(el[1], list):
-            docx_format(el[0], para, whiten, **kwargs)
-            licount = 0
-            for li in el[1]:
-                licount += 1
-
-                p = gui_compose.doc.add_paragraph("{}. ".format(licount))
-                docx_format(li, p, whiten, **kwargs)
-        else:
-            licount = 0
-            for li in el:
-                licount += 1
-
-                p = gui_compose.doc.add_paragraph("{}. ".format(licount))
-                docx_format(li, p, whiten, **kwargs)
-
-    if isinstance(el, basestring):
-        logger.debug("parsing element {}:".format(log_wrap(el)))
-
-        el = backtick_replace(el)
-        parsed = parse_4s_elem(el)
-        images_exist = False
-
-        for run in parsed:
-            if run[0] == "img":
-                images_exist = True
-
-        for run in parse_4s_elem(el):
-            if run[0] == "":
-                r = para.add_run(run[1])
-                if whiten and not args.nospoilers:
-                    r.style = "Whitened"
-                # if images_exist:
-                #     para = gui_compose.doc.add_paragraph()
-
-            elif run[0] == "em":
-                r = para.add_run(run[1])
-                r.italic = True
-                if whiten and not args.nospoilers:
-                    r.style = "Whitened"
-                # if images_exist:
-                #     para = gui_compose.doc.add_paragraph()
-
-            elif run[0] == "sc":
-                r = para.add_run(run[1])
-                r.small_caps = True
-                if whiten and not args.nospoilers:
-                    r.style = "Whitened"
-                # if images_exist:
-                #     para = gui_compose.doc.add_paragraph()
-
-            elif run[0] == "img":
-                imgfile, width, height = parseimg(
-                    run[1],
-                    dimensions="inches",
-                    tmp_dir=kwargs.get("tmp_dir"),
-                    targetdir=kwargs.get("targetdir"),
-                )
-                gui_compose.doc.add_picture(
-                    imgfile, width=Inches(width), height=Inches(height)
-                )
-                para = gui_compose.doc.add_paragraph()
-
-
 def html_format_question(q, **kwargs):
     def yapper(x):
         return htmlyapper(x, **kwargs)
@@ -977,7 +910,7 @@ def baseformat(s, **kwargs):
                 if w_orig != w or h_orig != h:
                     print("resizing image {}".format(imgfile))
                     pil_image = pil_image.resize(
-                        (w, h), resample=Image.LANCZOS
+                        (int(w), int(h)), resample=Image.LANCZOS
                     )
                     bn, ext = os.path.splitext(imgfile)
                     resized_fn = "{}_resized.png".format(bn)
@@ -1608,6 +1541,150 @@ def backtick_replace(el):
     return el
 
 
+class DocxExporter(object):
+    def __init__(self, structure, args, dir_kwargs):
+        self.structure = structure
+        self.args = args
+        self.dir_kwargs = dir_kwargs
+        self.qcount = 0
+
+    def _docx_format(self, *args):
+        return self.docx_format(*args, **self.dir_kwargs)
+
+    def docx_format(self, el, para, whiten, **kwargs):
+        if isinstance(el, list):
+
+            if len(el) > 1 and isinstance(el[1], list):
+                self.docx_format(el[0], para, whiten, **kwargs)
+                licount = 0
+                for li in el[1]:
+                    licount += 1
+
+                    p = self.doc.add_paragraph("{}. ".format(licount))
+                    self.docx_format(li, p, whiten, **kwargs)
+            else:
+                licount = 0
+                for li in el:
+                    licount += 1
+
+                    p = self.doc.add_paragraph("{}. ".format(licount))
+                    self.docx_format(li, p, whiten, **kwargs)
+
+        if isinstance(el, basestring):
+            logger.debug("parsing element {}:".format(log_wrap(el)))
+
+            el = backtick_replace(el)
+            parsed = parse_4s_elem(el)
+            images_exist = False
+
+            for run in parsed:
+                if run[0] == "img":
+                    images_exist = True
+
+            for run in parse_4s_elem(el):
+                if run[0] == "":
+                    r = para.add_run(run[1])
+                    if whiten and not args.nospoilers:
+                        r.style = "Whitened"
+
+                elif run[0] == "em":
+                    r = para.add_run(run[1])
+                    r.italic = True
+                    if whiten and not args.nospoilers:
+                        r.style = "Whitened"
+
+                elif run[0] == "sc":
+                    r = para.add_run(run[1])
+                    r.small_caps = True
+                    if whiten and not args.nospoilers:
+                        r.style = "Whitened"
+
+                elif run[0] == "img":
+                    imgfile, width, height = parseimg(
+                        run[1],
+                        dimensions="inches",
+                        tmp_dir=kwargs.get("tmp_dir"),
+                        targetdir=kwargs.get("targetdir"),
+                    )
+                    self.doc.add_picture(
+                        imgfile, width=Inches(width), height=Inches(height)
+                    )
+                    para = self.doc.add_paragraph()
+
+    def add_question(self, element):
+        q = element[1]
+        p = self.doc.add_paragraph()
+        if "number" not in q:
+            self.qcount += 1
+        if "setcounter" in q:
+            self.qcount = int(q["setcounter"])
+        p.add_run(
+            "Вопрос {}. ".format(
+                qcount if "number" not in q else q["number"]
+            )
+        ).bold = True
+
+        if "handout" in q:
+            p = self.doc.add_paragraph()
+            p.add_run("[Раздаточный материал: ")
+            self._docx_format(q["handout"], p, WHITEN["handout"])
+            p = self.doc.add_paragraph()
+            p.add_run("]")
+        if not args.noparagraph:
+            p = self.doc.add_paragraph()
+
+        self._docx_format(q["question"], p, False)
+        p = self.doc.add_paragraph()
+
+        if not args.noanswers:
+            if not args.no_line_break:
+                p = self.doc.add_paragraph()
+            p.add_run("Ответ: ").bold = True
+            self._docx_format(q["answer"], p, True)
+
+            for field in [
+                "zachet",
+                "nezachet",
+                "comment",
+                "source",
+                "author",
+            ]:
+                if field in q:
+                    p = self.doc.add_paragraph()
+                    if field == "source" and isinstance(
+                        q[field], list
+                    ):
+                        p.add_run("Источники: ").bold = True
+                    else:
+                        p.add_run(FIELDS[field]).bold = True
+                    self._docx_format(q[field], p, WHITEN[field])
+
+        self.doc.add_paragraph()
+        if not args.one_line_break:
+            self.doc.add_paragraph()
+
+    def export(self, outfilename):
+        logger.debug(args.docx_template)
+        self.doc = Document(args.docx_template)
+        logger.debug(log_wrap(self.structure))
+
+        for element in self.structure:
+            if element[0] == "meta":
+                p = self.doc.add_paragraph()
+                self._docx_format(element[1], p, False)
+                self.doc.add_paragraph()
+
+            if element[0] in ["editor", "date", "heading", "section"]:
+                self.doc.add_paragraph(element[1]).alignment = 1
+                self.doc.add_paragraph()
+
+            if element[0] == "Question":
+                self.add_question(element)
+
+        self.doc.save(outfilename)
+        logger.info("Output: {}".format(outfilename))
+
+
 class PptxExporter(object):
     def __init__(self, structure, args, dir_kwargs):
         self.structure = structure
@@ -1891,78 +1968,8 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
         outfilename = os.path.join(
             targetdir, make_filename(filename, "docx", nots=args.nots)
         )
-        logger.debug(args.docx_template)
-        gui_compose.doc = Document(args.docx_template)
-        qcount = 0
-        logger.debug(log_wrap(structure))
-
-        def _docx_format(*args):
-            return docx_format(*args, **dir_kwargs)
-
-        for element in structure:
-            if element[0] == "meta":
-                p = gui_compose.doc.add_paragraph()
-                _docx_format(element[1], p, False)
-                gui_compose.doc.add_paragraph()
-
-            if element[0] in ["editor", "date", "heading", "section"]:
-                gui_compose.doc.add_paragraph(element[1]).alignment = 1
-                gui_compose.doc.add_paragraph()
-
-            if element[0] == "Question":
-                q = element[1]
-                p = gui_compose.doc.add_paragraph()
-                if "number" not in q:
-                    qcount += 1
-                if "setcounter" in q:
-                    qcount = int(q["setcounter"])
-                p.add_run(
-                    "Вопрос {}. ".format(
-                        qcount if "number" not in q else q["number"]
-                    )
-                ).bold = True
-
-                if "handout" in q:
-                    p = gui_compose.doc.add_paragraph()
-                    p.add_run("[Раздаточный материал: ")
-                    _docx_format(q["handout"], p, WHITEN["handout"])
-                    p = gui_compose.doc.add_paragraph()
-                    p.add_run("]")
-                if not args.noparagraph:
-                    p = gui_compose.doc.add_paragraph()
-
-                _docx_format(q["question"], p, False)
-                p = gui_compose.doc.add_paragraph()
-
-                if not args.noanswers:
-                    if not args.no_line_break:
-                        p = gui_compose.doc.add_paragraph()
-                    p.add_run("Ответ: ").bold = True
-                    _docx_format(q["answer"], p, True)
-
-                    for field in [
-                        "zachet",
-                        "nezachet",
-                        "comment",
-                        "source",
-                        "author",
-                    ]:
-                        if field in q:
-                            p = gui_compose.doc.add_paragraph()
-                            if field == "source" and isinstance(
-                                q[field], list
-                            ):
-                                p.add_run("Источники: ").bold = True
-                            else:
-                                p.add_run(FIELDS[field]).bold = True
-                            _docx_format(q[field], p, WHITEN[field])
-
-                gui_compose.doc.add_paragraph()
-                if not args.one_line_break:
-                    gui_compose.doc.add_paragraph()
-
-        gui_compose.doc.save(outfilename)
-        logger.info("Output: {}".format(outfilename))
+        exporter = DocxExporter(structure, args, dir_kwargs)
+        exporter.export(outfilename)
 
     if args.filetype == "tex":
 
