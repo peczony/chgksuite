@@ -1639,7 +1639,8 @@ class DocxExporter(object):
 
         if not args.noanswers:
             if not args.no_line_break:
-                p.add_run("\n")
+                p = self.doc.add_paragraph()
+                p.paragraph_format.keep_together = True
             p.add_run("Ответ: ").bold = True
             self._docx_format(q["answer"], p, True)
 
@@ -1651,7 +1652,11 @@ class DocxExporter(object):
                 "author",
             ]:
                 if field in q:
-                    p.add_run("\n")
+                    if field == "source":
+                        p = self.doc.add_paragraph()
+                        p.paragraph_format.keep_together = True
+                    else:
+                        p.add_run("\n")
                     if field == "source" and isinstance(
                         q[field], list
                     ):
