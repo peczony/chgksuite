@@ -1,0 +1,31 @@
+template_path = "template.pptx"
+add_plug = true
+add_comment = true
+
+[textbox]
+left = 1.3
+top = 1.3
+width = 9.5
+height = 5.1
+
+[number_textbox]
+left = 11
+width = 1
+height = 1
+
+[picture]
+left = 3
+top = 1
+
+[text_size_grid]
+default = 32
+smallest = 20
+section = 36
+elements = [
+    {length=280, size=32},
+    {length=380, size=28},
+    {length=520, size=24},
+]
+
+[font]
+name = "Arial"

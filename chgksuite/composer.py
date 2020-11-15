@@ -26,6 +26,7 @@ import traceback
 import urllib
 import dateparser
 import pyperclip
+import toml
 from pptx.enum.text import PP_ALIGN
 
 try:
@@ -1681,8 +1682,10 @@ class DocxExporter(object):
                 self.doc.add_paragraph()
 
             if element[0] in ["editor", "date", "heading", "section"]:
-                self.doc.add_paragraph(element[1]).alignment = 1
-                self.doc.add_paragraph()
+                para = self.doc.add_paragraph(element[1])
+                para.alignment = 1
+                para.paragraph_format.keep_with_next = True
+                para.add_run("\n")
 
             if element[0] == "Question":
                 self.add_question(element)
@@ -1695,6 +1698,9 @@ class PptxExporter(object):
     def __init__(self, structure, args, dir_kwargs):
         self.structure = structure
         self.args = args
+        self.config_path = os.path.abspath(args.pptx_config)
+        with open(self.config_path) as f:
+            self.c = toml.load(f)
         self.dir_kwargs = dir_kwargs
         self.qcount = 0
 
@@ -1710,24 +1716,22 @@ class PptxExporter(object):
             self.pptx_format(self.pptx_process_text(elem[1]), para, tf, slide)
 
     def get_textbox_qnumber(self, slide):
-        default = PptxInches(1.3)
         return self.get_textbox(
             slide,
-            left=PptxInches(11),
-            width=PptxInches(1),
-            height=PptxInches(1),
+            left=PptxInches(self.c["number_textbox"]["left"]),
+            width=PptxInches(self.c["number_textbox"]["width"]),
+            height=PptxInches(self.c["number_textbox"]["height"]),
         )
 
     def get_textbox(self, slide, left=None, top=None, width=None, height=None):
-        default = PptxInches(1.3)
         if left is None:
-            left = default
+            left = PptxInches(self.c["textbox"]["left"])
         if top is None:
-            top = default
+            top = PptxInches(self.c["textbox"]["top"])
         if width is None:
-            width = PptxInches(9.5)
+            width = PptxInches(self.c["textbox"]["width"])
         if height is None:
-            height = PptxInches(5.1)
+            height = PptxInches(self.c["textbox"]["height"])
         textbox = slide.shapes.add_textbox(left, top, width, height)
         return textbox
 
@@ -1774,8 +1778,8 @@ class PptxExporter(object):
                     )
                     slide.shapes.add_picture(
                         imgfile,
-                        left=PptxInches(3),
-                        top=PptxInches(1),
+                        left=PptxInches(self.c["picture"]["left"]),
+                        top=PptxInches(self.c["picture"]["top"]),
                         width=PptxInches(width),
                         height=PptxInches(height),
                     )
@@ -1858,7 +1862,7 @@ class PptxExporter(object):
         p.font.size = Pt(self.determine_size(question_text))
         self.pptx_format(question_text, p, tf, slide)
 
-        if args.addplug:
+        if self.c["add_plug"]:
             slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
             self.set_question_number(slide, number)
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
@@ -1872,7 +1876,7 @@ class PptxExporter(object):
         r.text = "Ответ: "
         r.font.bold = True
         self.pptx_format(self.pptx_process_text(q["answer"]), p, tf, slide)
-        if self.args.addcomment:
+        if self.c["add_comment"]:
             comment_text = self.pptx_process_text(q["comment"])
             p = self.init_paragraph(tf, text=comment_text)
             r = p.add_run()
@@ -1880,21 +1884,16 @@ class PptxExporter(object):
             r.font.bold = True
             self.pptx_format(comment_text, p, tf, slide)
 
-    @staticmethod
-    def determine_size(text):
-        if len(text) <= 280:
-            return 32
-        elif len(text) <= 380:
-            return 28
-        elif len(text) <= 520:
-            return 24
-        else:
-            return 20
+    def determine_size(self, text):
+        for element in self.c["text_size_grid"]["elements"]:
+            if len(text) <= element["length"]:
+                return element["size"]
+        return self.c["text_size_grid"]["smallest"]
 
     def init_paragraph(self, text_frame, text=None):
         p = text_frame.add_paragraph()
-        p.font.name = "Source Sans Pro"
-        size = 32
+        p.font.name = self.c["font"]["name"]
+        size = self.c["text_size_grid"]["default"]
         if text:
             size = self.determine_size(text)
         p.font.size = Pt(size)
@@ -1902,10 +1901,11 @@ class PptxExporter(object):
 
     def export(self, outfilename):
         self.outfilename = outfilename
-        if self.args.pptx_template:
-            self.prs = Presentation(self.args.pptx_template)
-        else:
-            self.prs = Presentation()
+        wd = os.getcwd()
+        os.chdir(os.path.dirname(self.config_path))
+        template = os.path.abspath(self.c["template_path"])
+        os.chdir(wd)
+        self.prs = Presentation(template)
         self.TITLE_SLIDE = self.prs.slide_layouts[0]
         self.BLANK_SLIDE = self.prs.slide_layouts[6]
         min_content_index = find_min_context_index(self.structure)
@@ -1921,7 +1921,7 @@ class PptxExporter(object):
                 tf.word_wrap = True
                 p = self.init_paragraph(tf)
                 p.text = element[1]
-                p.font.size = Pt(36)
+                p.font.size = Pt(self.c["text_size_grid"]["section"])
             if element[0] == "editor":
                 if slide is None:
                     slide = self.prs.slides.add_slide(self.BLANK_SLIDE)

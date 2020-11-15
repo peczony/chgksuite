@@ -566,25 +566,11 @@ def app():
         filetypes=[("chgksuite markup files", "*.4s")],
     )
     cmdcompose_pptx.add_argument(
-        "--pptx_template",
-        help="a pptx template file.",
+        "--pptx_config",
+        help="a pptx config file.",
         advanced=True,
-        caption="Файл-образец",
+        caption="Файл конфигурации",
         argtype="filename",
-    )
-    cmdcompose_pptx.add_argument(
-        "--addcomment",
-        help="add comment to answer page.",
-        action="store_true",
-        advanced=True,
-        caption="Добавить комментарии к ответам",
-    )
-    cmdcompose_pptx.add_argument(
-        "--addplug",
-        help="add blank slide between question and answer.",
-        action="store_true",
-        advanced=True,
-        caption="Добавлять слайд-заглушку перед ответом",
     )
 
     cmdtrello = subparsers.add_parser("trello")
@@ -664,6 +650,8 @@ def app():
         args.regexes = os.path.join(resourcedir, "regexes.json")
     if not args.docx_template:
         args.docx_template = os.path.join(resourcedir, "template.docx")
+    if not args.pptx_config:
+        args.pptx_config = os.path.join(resourcedir, "pptx_config.toml")
     if not args.tex_header:
         args.tex_header = os.path.join(resourcedir, "cheader.tex")
     if args.config:
