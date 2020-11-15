@@ -20,3 +20,5 @@ six==1.14.0
 soupsieve==1.9.5
 tzlocal==2.0.0
 urllib3==1.25.8
+python-pptx=0.6.18
+toml=0.10.2

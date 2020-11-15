@@ -37,6 +37,8 @@ setup(
         "chgksuite": [
             "resources/*.json",
             "resources/*.docx",
+            "resources/*.pptx",
+            "resources/*.toml",
             "resources/*.tex",
             "resources/*.sty",
         ]
@@ -50,10 +52,12 @@ setup(
         "PyDocX",
         "pyimgur",
         "python-docx",
+        "python-pptx",
         "requests",
         "Pillow",
         "ply",
         "dateparser",
         "pyperclip",
+        "toml"
     ]
 )
