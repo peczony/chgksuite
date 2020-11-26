@@ -66,7 +66,10 @@ from chgksuite.common import (
     bring_to_front,
 )
 import chgksuite.typotools as typotools
-from chgksuite.typotools import remove_excessive_whitespace as rew
+from chgksuite.typotools import (
+    remove_excessive_whitespace as rew,
+    replace_no_break_spaces
+)
 
 args = None
 debug = False
@@ -1576,31 +1579,9 @@ class DocxExporter(object):
 
             el = backtick_replace(el)
             parsed = parse_4s_elem(el)
-            images_exist = False
-
-            for run in parsed:
-                if run[0] == "img":
-                    images_exist = True
 
             for run in parse_4s_elem(el):
-                if run[0] == "":
-                    r = para.add_run(run[1])
-                    if whiten and not args.nospoilers:
-                        r.style = "Whitened"
-
-                elif run[0] == "em":
-                    r = para.add_run(run[1])
-                    r.italic = True
-                    if whiten and not args.nospoilers:
-                        r.style = "Whitened"
-
-                elif run[0] == "sc":
-                    r = para.add_run(run[1])
-                    r.small_caps = True
-                    if whiten and not args.nospoilers:
-                        r.style = "Whitened"
-
-                elif run[0] == "img":
+                if run[0] == "img":
                     imgfile, width, height = parseimg(
                         run[1],
                         dimensions="inches",
@@ -1612,6 +1593,14 @@ class DocxExporter(object):
                         imgfile, width=Inches(width), height=Inches(height)
                     )
                     r.add_text("\n")
+
+                r = para.add_run(replace_no_break_spaces(run[1]))
+                if run[0] == "em":
+                    r.italic = True
+                elif run[0] == "sc":
+                    r.small_caps = True
+                if whiten and not args.nospoilers:
+                    r.style = "Whitened"
 
     def add_question(self, element):
         q = element[1]
@@ -1673,8 +1662,10 @@ class DocxExporter(object):
     def export(self, outfilename):
         logger.debug(args.docx_template)
         self.doc = Document(args.docx_template)
+        para = None
         logger.debug(log_wrap(self.structure))
 
+        firsttour = True
         for element in self.structure:
             if element[0] == "meta":
                 p = self.doc.add_paragraph()
@@ -1682,7 +1673,16 @@ class DocxExporter(object):
                 self.doc.add_paragraph()
 
             if element[0] in ["editor", "date", "heading", "section"]:
-                para = self.doc.add_paragraph(element[1])
+                if para is None:
+                    para = self.doc.paragraphs[0]
+                    para.add_run(element[1])
+                else:
+                    para = self.doc.add_paragraph(element[1])
+                if element[0] == "section":
+                    if not firsttour:
+                        para.paragraph_format.page_break_before = True
+                    else:
+                        firsttour = False
                 para.alignment = 1
                 para.paragraph_format.keep_with_next = True
                 para.add_run("\n")
@@ -1936,6 +1936,7 @@ class PptxExporter(object):
             if element[0] == "Question":
                 self.process_question(element[1])
         self.prs.save(outfilename)
+        logger.info("Output: {}".format(outfilename))
 
 
 def process_file(filename, tmp_dir, sourcedir, targetdir):

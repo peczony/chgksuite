@@ -25,6 +25,32 @@ LOWERCASE_RUSSIAN = set(list('абвгдеёжзийклмнопрстуфхцч
 UPPERCASE_RUSSIAN = set(list('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'))
 POTENTIAL_ACCENTS = set(list('АОУЫЭЯЕЮИ'))
 BAD_BEGINNINGS = set(['Мак', 'мак', "О'", 'о’', 'О’', "о'"])
+NO_BREAK_SEQUENCES = [
+    "а",
+    "без",
+    "в",
+    "где",
+    "для",
+    "же",
+    "за",
+    "и",
+    "или",
+    "из",
+    "из-за",
+    "к",
+    "как",
+    "на",
+    "не",
+    "ни",
+    "о",
+    "от",
+    "по",
+    "при",
+    "с",
+    "то",
+    "у",
+    "что"
+]
 
 re_bad_wsp_start = re.compile(r'^[{}]+'.format(''.join(WHITESPACE)))
 re_bad_wsp_end = re.compile(r'[{}]+$'.format(''.join(WHITESPACE)))
@@ -87,6 +113,14 @@ def get_dashes_right(s):
     s = re.sub(r'(?<=\s)-+(?=\s)', '—', s)
     # s = re.sub(r'(?<=\d)-(?<=\d)','–',s)
     # s = re.sub(r'-(?=\d)','−',s)
+    return s
+
+
+def replace_no_break_spaces(s):
+    for sp in (NO_BREAK_SEQUENCES + [x.title() for x in NO_BREAK_SEQUENCES]):
+        r_from = "([ \u00a0]){sp} ".format(sp=sp)
+        r_to = "\g<1>{sp}\u00a0".format(sp=sp)
+        s = re.sub(r_from, r_to, s)
     return s
 
 
