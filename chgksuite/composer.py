@@ -1593,6 +1593,7 @@ class DocxExporter(object):
                         imgfile, width=Inches(width), height=Inches(height)
                     )
                     r.add_text("\n")
+                    continue
 
                 r = para.add_run(replace_no_break_spaces(run[1]))
                 if run[0] == "em":
