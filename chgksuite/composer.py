@@ -1604,6 +1604,9 @@ class DocxExporter(object):
                     r.style = "Whitened"
 
     def add_question(self, element):
+        self.doc.add_paragraph()
+        if not args.one_line_break:
+            self.doc.add_paragraph()
         q = element[1]
         p = self.doc.add_paragraph()
         p.paragraph_format.keep_together = True
@@ -1655,10 +1658,6 @@ class DocxExporter(object):
                     else:
                         p.add_run(FIELDS[field]).bold = True
                     self._docx_format(q[field], p, WHITEN[field])
-
-        self.doc.add_paragraph()
-        if not args.one_line_break:
-            self.doc.add_paragraph()
 
     def export(self, outfilename):
         logger.debug(args.docx_template)
