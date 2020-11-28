@@ -46,12 +46,12 @@ except AttributeError:
 
 
 from docx import Document
-from docx.shared import Inches
+from docx.shared import Inches, Pt as DocxPt
 from PIL import Image
 import pyimgur
 
 from pptx import Presentation
-from pptx.util import Inches as PptxInches, Pt
+from pptx.util import Inches as PptxInches, Pt as PptxPt
 
 from chgksuite.common import (
     get_lastdir,
@@ -1604,11 +1604,9 @@ class DocxExporter(object):
                     r.style = "Whitened"
 
     def add_question(self, element):
-        self.doc.add_paragraph()
-        if not args.one_line_break:
-            self.doc.add_paragraph()
         q = element[1]
         p = self.doc.add_paragraph()
+        p.paragraph_format.space_before = DocxPt(18)
         p.paragraph_format.keep_together = True
         if "number" not in q:
             self.qcount += 1
@@ -1628,13 +1626,11 @@ class DocxExporter(object):
             p.add_run("\n")
 
         self._docx_format(q["question"], p, False)
-        p = self.doc.add_paragraph()
-        p.paragraph_format.keep_together = True
 
         if not args.noanswers:
-            if not args.no_line_break:
-                p = self.doc.add_paragraph()
-                p.paragraph_format.keep_together = True
+            p = self.doc.add_paragraph()
+            p.paragraph_format.keep_together = True
+            p.paragraph_format.space_before = DocxPt(6)
             p.add_run("Ответ: ").bold = True
             self._docx_format(q["answer"], p, True)
 
@@ -1859,7 +1855,7 @@ class PptxExporter(object):
             p.add_run("]")
 
         question_text = self.pptx_process_text(q["question"])
-        p.font.size = Pt(self.determine_size(question_text))
+        p.font.size = PptxPt(self.determine_size(question_text))
         self.pptx_format(question_text, p, tf, slide)
 
         if self.c["add_plug"]:
@@ -1896,7 +1892,7 @@ class PptxExporter(object):
         size = self.c["text_size_grid"]["default"]
         if text:
             size = self.determine_size(text)
-        p.font.size = Pt(size)
+        p.font.size = PptxPt(size)
         return p
 
     def export(self, outfilename):
@@ -1921,7 +1917,7 @@ class PptxExporter(object):
                 tf.word_wrap = True
                 p = self.init_paragraph(tf)
                 p.text = element[1]
-                p.font.size = Pt(self.c["text_size_grid"]["section"])
+                p.font.size = PptxPt(self.c["text_size_grid"]["section"])
             if element[0] == "editor":
                 if slide is None:
                     slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
