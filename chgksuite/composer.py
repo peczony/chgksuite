@@ -1700,16 +1700,15 @@ class PptxExporter(object):
         self.dir_kwargs = dir_kwargs
         self.qcount = 0
 
-    @staticmethod
-    def add_editor_info(tb, editor, meta, slide):
+    def add_editor_info(self, tb, editor, meta, slide):
         tf = tb.text_frame
         tf.word_wrap = True
         p = tf.add_paragraph()
         r = p.add_run()
-        r.text = editor
+        r.text = self.pptx_process_text(editor)
         for elem in meta:
             p = tf.add_paragraph()
-            self.pptx_format(self.pptx_process_text(elem[1]), para, tf, slide)
+            self.pptx_format(self.pptx_process_text(elem[1]), p, tf, slide)
 
     def get_textbox_qnumber(self, slide):
         return self.get_textbox(
@@ -1872,6 +1871,13 @@ class PptxExporter(object):
         r.text = "Ответ: "
         r.font.bold = True
         self.pptx_format(self.pptx_process_text(q["answer"]), p, tf, slide)
+        if q.get("zachet") and self.c["add_zachet"]:
+            zachet_text = self.pptx_process_text(q["zachet"])
+            p = self.init_paragraph(tf, text=zachet_text)
+            r = p.add_run()
+            r.text = "Зачёт: "
+            r.font.bold = True
+            self.pptx_format(zachet_text, p, tf, slide)
         if self.c["add_comment"]:
             comment_text = self.pptx_process_text(q["comment"])
             p = self.init_paragraph(tf, text=comment_text)
@@ -1916,7 +1922,7 @@ class PptxExporter(object):
                 tf = textbox.text_frame
                 tf.word_wrap = True
                 p = self.init_paragraph(tf)
-                p.text = element[1]
+                p.text = self.pptx_process_text(element[1])
                 p.font.size = PptxPt(self.c["text_size_grid"]["section"])
             if element[0] == "editor":
                 if slide is None:
@@ -1925,10 +1931,10 @@ class PptxExporter(object):
                     tf = textbox.text_frame
                     tf.word_wrap = True
                 p = self.init_paragraph(tf)
-                p.text = element[1]
+                p.text = self.pptx_process_text(element[1])
             if element[0] == "meta":
                 p = self.init_paragraph(tf, text=element[1])
-                self.pptx_format(element[1], p, tf, slide)
+                self.pptx_format(self.pptx_process_text(element[1]), p, tf, slide)
             if element[0] == "Question":
                 self.process_question(element[1])
         self.prs.save(outfilename)
