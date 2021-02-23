@@ -28,6 +28,7 @@ import dateparser
 import pyperclip
 import toml
 from pptx.enum.text import PP_ALIGN
+from pptx.dml.color import RGBColor
 
 try:
     basestring
@@ -68,7 +69,7 @@ from chgksuite.common import (
 import chgksuite.typotools as typotools
 from chgksuite.typotools import (
     remove_excessive_whitespace as rew,
-    replace_no_break_spaces
+    replace_no_break_spaces,
 )
 
 args = None
@@ -81,9 +82,7 @@ re_url = re.compile(
     re.DOTALL,
 )
 re_perc = re.compile(r"(%[0-9a-fA-F]{2})+")
-re_scaps = re.compile(
-    r"(^|[\s])([\[\]\(\)«»А-Я \u0301`ЁA-Z]{2,})([\s,!\.;:-\?]|$)"
-)
+re_scaps = re.compile(r"(^|[\s])([\[\]\(\)«»А-Я \u0301`ЁA-Z]{2,})([\s,!\.;:-\?]|$)")
 re_em = re.compile(r"_(.+?)_")
 re_lowercase = re.compile(r"[а-яё]")
 re_uppercase = re.compile(r"[А-ЯЁ]")
@@ -122,9 +121,7 @@ def make_filename(s, ext, nots=False):
     bn = os.path.splitext(os.path.basename(s))[0]
     if nots:
         return bn + "." + ext
-    return "{}_{}.{}".format(
-        bn, datetime.datetime.now().strftime("%Y%m%dT%H%M"), ext
-    )
+    return "{}_{}.{}".format(bn, datetime.datetime.now().strftime("%Y%m%dT%H%M"), ext)
 
 
 @contextlib.contextmanager
@@ -233,9 +230,7 @@ def parse_4s_elem(s):
     #     s = s.replace(gr0, '(sc '+gr0.lower()+')')
 
     grs = sorted(
-        [match.group(0) for match in re_perc.finditer(s)],
-        key=len,
-        reverse=True,
+        [match.group(0) for match in re_perc.finditer(s)], key=len, reverse=True
     )
     for gr in grs:
         try:
@@ -264,9 +259,7 @@ def parse_4s_elem(s):
         ):
             topart.append(i)
             if typotools.find_matching_closing_bracket(s, i) is not None:
-                topart.append(
-                    typotools.find_matching_closing_bracket(s, i) + 1
-                )
+                topart.append(typotools.find_matching_closing_bracket(s, i) + 1)
                 i = typotools.find_matching_closing_bracket(s, i)
         # if (s[i] == '(' and i + len('(sc') < len(s) and ''.join(s[i:
         #                     i+len('(sc')])=='(sc'):
@@ -280,9 +273,7 @@ def parse_4s_elem(s):
 
     topart = sorted(topart)
 
-    parts = [
-        ["", "".join(x.replace("\u6565", ""))] for x in partition(s, topart)
-    ]
+    parts = [["", "".join(x.replace("\u6565", ""))] for x in partition(s, topart)]
 
     for part in parts:
         if not part[1]:
@@ -315,9 +306,7 @@ def parse_4s_elem(s):
             part[1] = part[1].replace("$$$$UNDERSCORE$$$$", "_")
         except:
             sys.stderr.write(
-                "Error on part {}: {}".format(
-                    log_wrap(part), traceback.format_exc()
-                )
+                "Error on part {}: {}".format(log_wrap(part), traceback.format_exc())
             )
 
     return parts
@@ -337,9 +326,7 @@ def process_list(element):
         if (num + 1) == len(list_markers):
             inner_list.append(rew("\n".join(sp[index:])[1:]))
         else:
-            inner_list.append(
-                rew("\n".join(sp[index : list_markers[num + 1]])[1:])
-            )
+            inner_list.append(rew("\n".join(sp[index : list_markers[num + 1]])[1:]))
     if preamble:
         element[1] = [preamble, inner_list]
     else:
@@ -380,10 +367,7 @@ def parse_4s(s, randomize=False):
         else:
             if line.split()[0] in mapping:
                 structure.append(
-                    [
-                        mapping[line.split()[0]],
-                        rew(line[len(line.split()[0]) :]),
-                    ]
+                    [mapping[line.split()[0]], rew(line[len(line.split()[0]) :])]
                 )
             else:
                 if len(structure) >= 1:
@@ -406,14 +390,14 @@ def parse_4s(s, randomize=False):
         if element[0] in QUESTION_LABELS:
             if element[0] in current_question:
 
-                if isinstance(
-                    current_question[element[0]], basestring
-                ) and isinstance(element[1], basestring):
+                if isinstance(current_question[element[0]], basestring) and isinstance(
+                    element[1], basestring
+                ):
                     current_question[element[0]] += "\n" + element[1]
 
-                elif isinstance(
-                    current_question[element[0]], list
-                ) and isinstance(element[1], basestring):
+                elif isinstance(current_question[element[0]], list) and isinstance(
+                    element[1], basestring
+                ):
                     current_question[element[0]][0] += "\n" + element[1]
 
                 elif isinstance(
@@ -424,9 +408,9 @@ def parse_4s(s, randomize=False):
                         element[1][1],
                     ]
 
-                elif isinstance(
-                    current_question[element[0]], list
-                ) and isinstance(element[1], list):
+                elif isinstance(current_question[element[0]], list) and isinstance(
+                    element[1], list
+                ):
                     current_question[element[0]][0] += "\n" + element[1][0]
                     current_question[element[0]][1] += element[1][1]
             else:
@@ -509,8 +493,7 @@ def html_format_question(q, **kwargs):
         gui_compose.counter = int(q["setcounter"])
     res = "<strong>Вопрос {}.</strong> {}".format(
         gui_compose.counter if "number" not in q else q["number"],
-        yapper(q["question"])
-        + ("\n<lj-spoiler>" if not args.nospoilers else ""),
+        yapper(q["question"]) + ("\n<lj-spoiler>" if not args.nospoilers else ""),
     )
     if "number" not in q:
         gui_compose.counter += 1
@@ -520,9 +503,7 @@ def html_format_question(q, **kwargs):
     if "nezachet" in q:
         res += "\n<strong>Незачёт: </strong>{}".format(yapper(q["nezachet"]))
     if "comment" in q:
-        res += "\n<strong>Комментарий: </strong>{}".format(
-            yapper(q["comment"])
-        )
+        res += "\n<strong>Комментарий: </strong>{}".format(yapper(q["comment"]))
     if "source" in q:
         res += "\n<strong>Источник{}: </strong>{}".format(
             "и" if isinstance(q["source"], list) else "", yapper(q["source"])
@@ -549,9 +530,7 @@ def htmlrepl(zz):
         if zz.index("`") + 1 >= len(zz):
             zz = zz.replace("`", "")
         else:
-            if zz.index("`") + 2 < len(zz) and re.search(
-                r"\s", zz[zz.index("`") + 2]
-            ):
+            if zz.index("`") + 2 < len(zz) and re.search(r"\s", zz[zz.index("`") + 2]):
                 zz = zz[: zz.index("`") + 2] + "" + zz[zz.index("`") + 2 :]
             if zz.index("`") + 1 < len(zz) and re_lowercase.search(
                 zz[zz.index("`") + 1]
@@ -641,9 +620,7 @@ def md5(s):
 def get_chal(lj, passwd):
     chal = None
     chal = retry_wrapper(lj.getchallenge)["challenge"]
-    response = md5(
-        chal.encode("utf8") + md5(passwd.encode("utf8")).encode("utf8")
-    )
+    response = md5(chal.encode("utf8") + md5(passwd.encode("utf8")).encode("utf8"))
     return (chal, response)
 
 
@@ -691,8 +668,7 @@ def split_into_tours(structure, general_impression=False):
     globalsep = "." if not globalheading.endswith(".") else ""
     currentheading = result[0][find_heading(result[0])[0]][1]
     result[0][find_heading(result[0])[0]][1] += "{} {}".format(
-        "." if not currentheading.endswith(".") else "",
-        find_tour(result[0])[1][1],
+        "." if not currentheading.endswith(".") else "", find_tour(result[0])[1][1]
     )
     for tour in result[1:]:
         if not find_heading(tour):
@@ -700,9 +676,7 @@ def split_into_tours(structure, general_impression=False):
                 0,
                 [
                     "ljheading",
-                    "{}{} {}".format(
-                        globalheading, globalsep, find_tour(tour)[1][1]
-                    ),
+                    "{}{} {}".format(globalheading, globalsep, find_tour(tour)[1][1]),
                 ],
             )
     if general_impression:
@@ -749,9 +723,7 @@ def lj_process(structure, args, **kwargs):
                 yapper(structure[i][1])
             )
         if structure[i][0] == "meta":
-            final_structure[0]["content"] += "\n{}".format(
-                yapper(structure[i][1])
-            )
+            final_structure[0]["content"] += "\n{}".format(yapper(structure[i][1]))
         i += 1
 
     if ljheading != "":
@@ -772,9 +744,7 @@ def lj_process(structure, args, **kwargs):
                 }
             )
         if element[0] == "meta":
-            final_structure.append(
-                {"header": "", "content": yapper(element[1])}
-            )
+            final_structure.append({"header": "", "content": yapper(element[1])})
 
     if not final_structure[0]["content"]:
         final_structure[0]["content"] = "Вопросы в комментариях."
@@ -819,9 +789,7 @@ def _lj_post(lj, stru, args, edit=False, add_params=None):
         logger.debug(log_wrap(post))
         time.sleep(5)
     except Exception as e:
-        sys.stderr.write(
-            "Error issued by LJ API: {}".format(traceback.format_exc(e))
-        )
+        sys.stderr.write("Error issued by LJ API: {}".format(traceback.format_exc(e)))
         sys.exit(1)
     return post
 
@@ -842,9 +810,7 @@ def _lj_comment(lj, stru, args):
     try:
         comment = retry_wrapper(lj.addcomment, [params])
     except Exception as e:
-        sys.stderr.write(
-            "Error issued by LJ API: {}".format(traceback.format_exc(e))
-        )
+        sys.stderr.write("Error issued by LJ API: {}".format(traceback.format_exc(e)))
         sys.exit(1)
     logger.info("Added a comment")
     logger.debug(log_wrap(comment))
@@ -861,9 +827,7 @@ def lj_post(stru, args, edit=False):
         add_params["usejournal"] = community
     elif args.security:
         add_params["security"] = "usemask"
-        add_params["allowmask"] = (
-            "1" if args.security == "friends" else args.security
-        )
+        add_params["allowmask"] = "1" if args.security == "friends" else args.security
     else:
         add_params["security"] = "private"
 
@@ -964,9 +928,7 @@ def wrap_date(s):
     if isinstance(parsed, datetime.datetime):
         parsed = parsed.date()
     if not parsed:
-        print(
-            "unable to parse date {}, setting to default 2010-01-01".format(s)
-        )
+        print("unable to parse date {}, setting to default 2010-01-01".format(s))
         return datetime.date(2010, 1, 1).strftime("%d-%b-%Y")
     if parsed > datetime.date.today():
         parsed = parsed.replace(year=parsed.year - 1)
@@ -1156,21 +1118,13 @@ def reddit_format_question(q, **kwargs):
     if "zachet" in q:
         res += "__Зачёт:__ {}  \n".format(reddityapper(q["zachet"], **kwargs))
     if "nezachet" in q:
-        res += "__Незачёт:__ {}  \n".format(
-            reddityapper(q["nezachet"], **kwargs)
-        )
+        res += "__Незачёт:__ {}  \n".format(reddityapper(q["nezachet"], **kwargs))
     if "comment" in q:
-        res += "__Комментарий:__ {}  \n".format(
-            reddityapper(q["comment"], **kwargs)
-        )
+        res += "__Комментарий:__ {}  \n".format(reddityapper(q["comment"], **kwargs))
     if "source" in q:
-        res += "__Источник:__ {}  \n".format(
-            reddityapper(q["source"], **kwargs)
-        )
+        res += "__Источник:__ {}  \n".format(reddityapper(q["source"], **kwargs))
     if "author" in q:
-        res += "!<\n__Автор:__ {}  \n".format(
-            reddityapper(q["author"], **kwargs)
-        )
+        res += "!<\n__Автор:__ {}  \n".format(reddityapper(q["author"], **kwargs))
     else:
         res += "!<\n"
     return res
@@ -1201,13 +1155,9 @@ def tex_format_question(q, **kwargs):
     )
     if "number" not in q:
         gui_compose.counter += 1
-    res += "\n\\textbf{{Ответ: }}{} \\newline".format(
-        yapper(q["answer"], **kwargs)
-    )
+    res += "\n\\textbf{{Ответ: }}{} \\newline".format(yapper(q["answer"], **kwargs))
     if "zachet" in q:
-        res += "\n\\textbf{{Зачёт: }}{} \\newline".format(
-            yapper(q["zachet"], **kwargs)
-        )
+        res += "\n\\textbf{{Зачёт: }}{} \\newline".format(yapper(q["zachet"], **kwargs))
     if "nezachet" in q:
         res += "\n\\textbf{{Незачёт: }}{} \\newline".format(
             yapper(q["nezachet"], **kwargs)
@@ -1218,13 +1168,10 @@ def tex_format_question(q, **kwargs):
         )
     if "source" in q:
         res += "\n\\textbf{{Источник{}: }}{} \\newline".format(
-            "и" if isinstance(q["source"], list) else "",
-            yapper(q["source"], **kwargs),
+            "и" if isinstance(q["source"], list) else "", yapper(q["source"], **kwargs)
         )
     if "author" in q:
-        res += "\n\\textbf{{Автор: }}{} \\newline".format(
-            yapper(q["author"], **kwargs)
-        )
+        res += "\n\\textbf{{Автор: }}{} \\newline".format(yapper(q["author"], **kwargs))
     res += "\n\\end{minipage}\n"
     return res
 
@@ -1245,13 +1192,9 @@ def texrepl(zz):
     zz = re.sub('"', "''", zz)
 
     for match in sorted(
-        [x for x in re_scaps.finditer(zz)],
-        key=lambda x: len(x.group(2)),
-        reverse=True,
+        [x for x in re_scaps.finditer(zz)], key=lambda x: len(x.group(2)), reverse=True
     ):
-        zz = zz.replace(
-            match.group(2), "\\tsc{" + match.group(2).lower() + "}"
-        )
+        zz = zz.replace(match.group(2), "\\tsc{" + match.group(2).lower() + "}")
 
     # while re_scaps.search(zz):
     #     zz = zz.replace(re_scaps.search(zz).group(2),
@@ -1278,9 +1221,7 @@ def texrepl(zz):
         zz = zz.replace(s, hashurls[s])
     hashurls = {v: k for k, v in hashurls.items()}
     for s in sorted(hashurls):
-        zz = zz.replace(
-            s, "\\url{{{}}}".format(hashurls[s].replace("\\\\", "\\"))
-        )
+        zz = zz.replace(s, "\\url{{{}}}".format(hashurls[s].replace("\\\\", "\\")))
 
     # debug_print('URLS FOR REPLACING: ' +
     #             pprint.pformat(torepl).decode('unicode_escape'))
@@ -1297,9 +1238,7 @@ def texrepl(zz):
         if zz.index("`") + 1 >= len(zz):
             zz = zz.replace("`", "")
         else:
-            if zz.index("`") + 2 < len(zz) and re.search(
-                r"\s", zz[zz.index("`") + 2]
-            ):
+            if zz.index("`") + 2 < len(zz) and re.search(r"\s", zz[zz.index("`") + 2]):
                 zz = zz[: zz.index("`") + 2] + "" + zz[zz.index("`") + 2 :]
             if zz.index("`") + 1 < len(zz) and re_lowercase.search(
                 zz[zz.index("`") + 1]
@@ -1377,12 +1316,7 @@ def tex_element_layout(e, **kwargs):
 {}
 \\end{{compactenum}}
 """.format(
-            "\n".join(
-                [
-                    "\\item {}".format(tex_element_layout(x, **kwargs))
-                    for x in e
-                ]
-            )
+            "\n".join(["\\item {}".format(tex_element_layout(x, **kwargs)) for x in e])
         )
     return res
 
@@ -1517,9 +1451,7 @@ def backtick_replace(el):
         if el.index("`") + 1 >= len(el):
             el = el.replace("`", "")
         else:
-            if el.index("`") + 2 < len(el) and re.search(
-                r"\s", el[el.index("`") + 2]
-            ):
+            if el.index("`") + 2 < len(el) and re.search(r"\s", el[el.index("`") + 2]):
                 el = el[: el.index("`") + 2] + "" + el[el.index("`") + 2 :]
             if el.index("`") + 1 < len(el) and re_lowercase.search(
                 el[el.index("`") + 1]
@@ -1589,9 +1521,7 @@ class DocxExporter(object):
                         targetdir=kwargs.get("targetdir"),
                     )
                     r = para.add_run("\n")
-                    r.add_picture(
-                        imgfile, width=Inches(width), height=Inches(height)
-                    )
+                    r.add_picture(imgfile, width=Inches(width), height=Inches(height))
                     r.add_text("\n")
                     continue
 
@@ -1613,9 +1543,7 @@ class DocxExporter(object):
         if "setcounter" in q:
             self.qcount = int(q["setcounter"])
         p.add_run(
-            "Вопрос {}. ".format(
-                qcount if "number" not in q else q["number"]
-            )
+            "Вопрос {}. ".format(qcount if "number" not in q else q["number"])
         ).bold = True
 
         if "handout" in q:
@@ -1634,22 +1562,14 @@ class DocxExporter(object):
             p.add_run("Ответ: ").bold = True
             self._docx_format(q["answer"], p, True)
 
-            for field in [
-                "zachet",
-                "nezachet",
-                "comment",
-                "source",
-                "author",
-            ]:
+            for field in ["zachet", "nezachet", "comment", "source", "author"]:
                 if field in q:
                     if field == "source":
                         p = self.doc.add_paragraph()
                         p.paragraph_format.keep_together = True
                     else:
                         p.add_run("\n")
-                    if field == "source" and isinstance(
-                        q[field], list
-                    ):
+                    if field == "source" and isinstance(q[field], list):
                         p.add_run("Источники: ").bold = True
                     else:
                         p.add_run(FIELDS[field]).bold = True
@@ -1711,12 +1631,14 @@ class PptxExporter(object):
             self.pptx_format(self.pptx_process_text(elem[1]), p, tf, slide)
 
     def get_textbox_qnumber(self, slide):
-        return self.get_textbox(
-            slide,
-            left=PptxInches(self.c["number_textbox"]["left"]),
-            width=PptxInches(self.c["number_textbox"]["width"]),
-            height=PptxInches(self.c["number_textbox"]["height"]),
-        )
+        kwargs = {}
+        for param in ("left", "top", "width", "height"):
+            try:
+                kwargs[param] = PptxInches(self.c["number_textbox"][param])
+            except KeyError:
+                pass
+
+        return self.get_textbox(slide, **kwargs)
 
     def get_textbox(self, slide, left=None, top=None, width=None, height=None):
         if left is None:
@@ -1825,6 +1747,8 @@ class PptxExporter(object):
         qtf_p = self.init_paragraph(qtf)
         qtf_r = qtf_p.add_run()
         qtf_r.text = number
+        if self.c["number_textbox"].get("color"):
+            qtf_r.font.color.rgb = RGBColor(*self.c["number_textbox"]["color"])
 
     def process_question(self, q):
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
@@ -1871,14 +1795,14 @@ class PptxExporter(object):
         r.text = "Ответ: "
         r.font.bold = True
         self.pptx_format(self.pptx_process_text(q["answer"]), p, tf, slide)
-        if q.get("zachet") and self.c["add_zachet"]:
+        if q.get("zachet") and self.c.get("add_zachet"):
             zachet_text = self.pptx_process_text(q["zachet"])
             p = self.init_paragraph(tf, text=zachet_text)
             r = p.add_run()
             r.text = "Зачёт: "
             r.font.bold = True
             self.pptx_format(zachet_text, p, tf, slide)
-        if self.c["add_comment"]:
+        if self.c["add_comment"] and "comment" in q:
             comment_text = self.pptx_process_text(q["comment"])
             p = self.init_paragraph(tf, text=comment_text)
             r = p.add_run()
@@ -1955,13 +1879,10 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
 
     if args.debug:
         debug_fn = os.path.join(
-            targetdir,
-            make_filename(os.path.basename(filename), "dbg", nots=args.nots),
+            targetdir, make_filename(os.path.basename(filename), "dbg", nots=args.nots)
         )
         with codecs.open(debug_fn, "w", "utf8") as output_file:
-            output_file.write(
-                json.dumps(structure, indent=2, ensure_ascii=False)
-            )
+            output_file.write(json.dumps(structure, indent=2, ensure_ascii=False))
 
     if not args.filetype:
         print("Filetype not specified.")
@@ -1998,18 +1919,12 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
         firsttour = True
         for element in structure:
             if element[0] == "heading":
-                gui_compose.tex += (
-                    "\n{{\\huge {}}}\n"
-                    "\\vspace{{0.8em}}\n".format(
-                        tex_element_layout(element[1])
-                    )
+                gui_compose.tex += "\n{{\\huge {}}}\n" "\\vspace{{0.8em}}\n".format(
+                    tex_element_layout(element[1])
                 )
             if element[0] == "date":
-                gui_compose.tex += (
-                    "\n{{\\large {}}}\n"
-                    "\\vspace{{0.8em}}\n".format(
-                        tex_element_layout(element[1])
-                    )
+                gui_compose.tex += "\n{{\\large {}}}\n" "\\vspace{{0.8em}}\n".format(
+                    tex_element_layout(element[1])
                 )
             if element[0] in {"meta", "editor"}:
                 gui_compose.tex += "\n{}\n\\vspace{{0.8em}}\n".format(
@@ -2022,9 +1937,7 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
                 )
                 firsttour = False
             elif element[0] == "Question":
-                gui_compose.tex += tex_format_question(
-                    element[1], **dir_kwargs
-                )
+                gui_compose.tex += tex_format_question(element[1], **dir_kwargs)
 
         gui_compose.tex += "\\end{document}"
 
@@ -2034,23 +1947,17 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
         os.chdir(tmp_dir)
         subprocess.call(
             shlex.split(
-                'xelatex -synctex=1 -interaction=nonstopmode "{}"'.format(
-                    outfilename
-                )
+                'xelatex -synctex=1 -interaction=nonstopmode "{}"'.format(outfilename)
             )
         )
         os.chdir(cwd)
-        pdf_filename = (
-            os.path.splitext(os.path.basename(outfilename))[0] + ".pdf"
-        )
+        pdf_filename = os.path.splitext(os.path.basename(outfilename))[0] + ".pdf"
         logger.info("Output: {}".format(os.path.join(targetdir, pdf_filename)))
         shutil.copy(os.path.join(tmp_dir, pdf_filename), targetdir)
         if args.rawtex:
             shutil.copy(outfilename, targetdir)
             shutil.copy(args.tex_header, targetdir)
-            shutil.copy(
-                os.path.join(tmp_dir, "fix-unnumbered-sections.sty"), targetdir
-            )
+            shutil.copy(os.path.join(tmp_dir, "fix-unnumbered-sections.sty"), targetdir)
 
     if args.filetype == "lj":
 
