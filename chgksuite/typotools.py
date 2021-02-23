@@ -40,17 +40,24 @@ NO_BREAK_SEQUENCES = [
     "к",
     "как",
     "на",
+    "над",
     "не",
     "ни",
     "но",
     "о",
     "от",
     "по",
+    "под",
     "при",
     "с",
     "то",
     "у",
     "что"
+]
+NO_BREAK_SEQUENCES_LEFT = [
+    "бы",
+    "ли",
+    "же"
 ]
 
 re_bad_wsp_start = re.compile(r'^[{}]+'.format(''.join(WHITESPACE)))
@@ -121,6 +128,10 @@ def replace_no_break_spaces(s):
     for sp in (NO_BREAK_SEQUENCES + [x.title() for x in NO_BREAK_SEQUENCES]):
         r_from = "([ \u00a0]){sp} ".format(sp=sp)
         r_to = "\g<1>{sp}\u00a0".format(sp=sp)
+        s = re.sub(r_from, r_to, s)
+    for sp in (NO_BREAK_SEQUENCES_LEFT + [x.title() for x in NO_BREAK_SEQUENCES_LEFT]):
+        r_from = " {sp}([ \u00a0])".format(sp=sp)
+        r_to = "\u00a0{sp}\g<1>".format(sp=sp)
         s = re.sub(r_from, r_to, s)
     return s
 
