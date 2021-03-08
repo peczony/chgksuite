@@ -1702,15 +1702,21 @@ class PptxExporter(object):
                     )
                     para = self.init_paragraph(tf)
 
+    @staticmethod
+    def remove_square_brackets(s):
+        s = re.sub("\\[Раздат(.+?)\\]", "{Раздат\\1}", s)
+        while "[" in s and "]" in s:
+            s = re.sub(" ?\\[.+?\\]", "", s)
+        s = re.sub("\\{Раздат(.+?)\\}", "[Раздат\\1]", s)
+        return s
+
     def pptx_process_text(self, s):
         if isinstance(s, list):
             for i in range(len(s)):
                 s[i] = self.pptx_process_text(s[i])
             return s
         s = s.replace("\u0301", "")
-        if "Раздат" not in s:
-            while "[" in s and "]" in s:
-                s = re.sub("\[.+?\]", "", s)
+        s = self.remove_square_brackets(s)
         s = re.sub(" +", " ", s)
         for punct in (".", ",", "!", "?", ":"):
             s = s.replace(" " + punct, punct)
