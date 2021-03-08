@@ -8,6 +8,7 @@ try:
 except ImportError:
     from xmlrpc.client import ServerProxy
 import codecs
+import copy
 import contextlib
 import logging
 import datetime
@@ -1704,10 +1705,15 @@ class PptxExporter(object):
 
     @staticmethod
     def remove_square_brackets(s):
-        s = re.sub("\\[Раздат(.+?)\\]", "{Раздат\\1}", s)
-        while "[" in s and "]" in s:
-            s = re.sub(" ?\\[.+?\\]", "", s)
-        s = re.sub("\\{Раздат(.+?)\\}", "[Раздат\\1]", s)
+        s = re.sub("\\[Раздат(.+?)\\]", "{Раздат\\1}", s, flags=re.DOTALL)
+        i = 0
+        while "[" in s and "]" in s and i < 10:
+            s = re.sub(" *\\[.+?\\]", "", s, flags=re.DOTALL)
+            s = s.strip()
+            i += 1
+        if i == 10:
+            sys.stderr.write(f"Error replacing square brackets on question: {s}, retries exceeded\n")
+        s = re.sub("\\{Раздат(.+?)\\}", "[Раздат\\1]", s, flags=re.DOTALL)
         return s
 
     def pptx_process_text(self, s):
@@ -1756,17 +1762,12 @@ class PptxExporter(object):
         if self.c["number_textbox"].get("color"):
             qtf_r.font.color.rgb = RGBColor(*self.c["number_textbox"]["color"])
 
-    def process_question(self, q):
+    def process_question_text(self, q):
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         textbox = self.get_textbox(slide)
         tf = textbox.text_frame
         tf.word_wrap = True
-        if "number" not in q:
-            self.qcount += 1
-        if "setcounter" in q:
-            self.qcount = int(q["setcounter"])
-        number = str(self.qcount if "number" not in q else q["number"])
-        self.set_question_number(slide, number)
+        self.set_question_number(slide, self.number)
         p = self.init_paragraph(tf)
 
         if "handout" in q:
@@ -1780,11 +1781,26 @@ class PptxExporter(object):
         p.font.size = PptxPt(self.determine_size(question_text))
         self.pptx_format(question_text, p, tf, slide)
 
+    def process_question(self, q):
+        if "number" not in q:
+            self.qcount += 1
+        if "setcounter" in q:
+            self.qcount = int(q["setcounter"])
+        self.number = str(self.qcount if "number" not in q else q["number"])
+
+        if isinstance(q["question"], list):
+            for i in range(len(q["question"][1])):
+                qn = copy.deepcopy(q)
+                qn["question"][1] = q["question"][1][:i + 1]
+                self.process_question_text(qn)
+        else:
+            self.process_question_text(q)
+
         if self.c["add_plug"]:
             slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
-            self.set_question_number(slide, number)
+            self.set_question_number(slide, self.number)
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
-        self.set_question_number(slide, number)
+        self.set_question_number(slide, self.number)
         textbox = self.get_textbox(slide)
         tf = textbox.text_frame
         tf.word_wrap = True
