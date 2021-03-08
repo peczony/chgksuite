@@ -1767,13 +1767,6 @@ class PptxExporter(object):
             self.qcount = int(q["setcounter"])
         number = str(self.qcount if "number" not in q else q["number"])
         self.set_question_number(slide, number)
-        # p = self.init_paragraph(tf)
-        # p.alignment = PP_ALIGN.CENTER
-        # r = p.add_run()
-        # r.text = "Вопрос {}. ".format(
-        #     self.qcount if "number" not in q else q["number"]
-        # )
-        # r.font.bold = True
         p = self.init_paragraph(tf)
 
         if "handout" in q:
