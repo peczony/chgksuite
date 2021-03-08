@@ -187,10 +187,10 @@ def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
     imgfile = sp[-1]
     imgfile = search_for_imgfile(imgfile, tmp_dir, targetdir)
     size = imgsize(imgfile)
+    big = False
 
     if len(sp) == 1:
         width, height = convert_size(*size, dimensions=dimensions)
-        return imgfile.replace("\\", "/"), width, height
     else:
         for spsp in sp[:-1]:
             spspsp = spsp.split("=")
@@ -198,12 +198,19 @@ def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
                 width = parse_single_size(spspsp[1])
             if spspsp[0] == "h":
                 height = parse_single_size(spspsp[1])
+            if spspsp[0] == "big":
+                big = True
         if width != -1 and height == -1:
             height = size[1] * (width / size[0])
         elif width == -1 and height != -1:
             width = size[0] * (height / size[1])
         width, height = convert_size(width, height, dimensions=dimensions)
-        return imgfile.replace("\\", "/"), width, height
+    return {
+        "imgfile": imgfile.replace("\\", "/"),
+        "width": width,
+        "height": height,
+        "big": big
+    }
 
 
 def partition(alist, indices):
@@ -566,12 +573,15 @@ def htmlformat(s, **kwargs):
         if run[0] == "em":
             res += "<em>" + htmlrepl(run[1]) + "</em>"
         if run[0] == "img":
-            imgfile, w, h = parseimg(
+            parsed_image = parseimg(
                 run[1],
                 dimensions="pixels",
                 targetdir=kwargs.get("targetdir"),
                 tmp_dir=kwargs.get("tmp_dir"),
             )
+            imgfile = parsed_image["imgfile"]
+            w = parsed_image["width"]
+            h = parsed_image["height"]
             if os.path.isfile(imgfile):
                 # with open(imgfile, 'rb') as f:
                 #     imgdata = f.read()
@@ -867,12 +877,15 @@ def baseformat(s, **kwargs):
         if run[0] == "em":
             res += run[1]
         if run[0] == "img":
-            imgfile, w, h = parseimg(
+            parsed_image = parseimg(
                 run[1],
                 dimensions="pixels",
                 targetdir=kwargs.get("targetdir"),
                 tmp_dir=kwargs.get("tmp_dir"),
             )
+            imgfile = parsed_image["imgfile"]
+            w = parsed_image["width"]
+            h = parsed_image["height"]
             if os.path.isfile(imgfile):
                 pil_image = Image.open(imgfile)
                 w_orig, h_orig = pil_image.size
@@ -1068,12 +1081,15 @@ def redditformat(s, **kwargs):
         if run[0] == "em":
             res += "_{}_".format(run[1])
         if run[0] == "img":
-            imgfile, w, h = parseimg(
+            parsed_image = parseimg(
                 run[1],
                 dimensions="ems",
                 targetdir=kwargs.get("targetdir"),
                 tmp_dir=kwargs.get("tmp_dir"),
             )
+            imgfile = parsed_image["imgfile"]
+            w = parsed_image["width"]
+            h = parsed_image["height"]
             if os.path.isfile(imgfile):
                 uploaded_image = im.upload_image(imgfile, title=imgfile)
                 imgfile = uploaded_image.link
@@ -1274,12 +1290,15 @@ def texformat(s, **kwargs):
         if run[0] == "em":
             res += "\\emph{" + texrepl(run[1]) + "}"
         if run[0] == "img":
-            imgfile, w, h = parseimg(
+            parsed_image = parseimg(
                 run[1],
                 dimensions="ems",
                 tmp_dir=kwargs.get("tmp_dir"),
                 targetdir=kwargs.get("targetdir"),
             )
+            imgfile = parsed_image["imgfile"]
+            w = parsed_image["width"]
+            h = parsed_image["height"]
             res += (
                 "\\includegraphics"
                 + "[width={}{}]".format(
@@ -1515,12 +1534,15 @@ class DocxExporter(object):
 
             for run in parse_4s_elem(el):
                 if run[0] == "img":
-                    imgfile, width, height = parseimg(
+                    parsed_image = parseimg(
                         run[1],
                         dimensions="inches",
                         tmp_dir=kwargs.get("tmp_dir"),
                         targetdir=kwargs.get("targetdir"),
                     )
+                    imgfile = parsed_image["imgfile"]
+                    width = parsed_image["width"]
+                    height = parsed_image["height"]
                     r = para.add_run("\n")
                     r.add_picture(imgfile, width=Inches(width), height=Inches(height))
                     r.add_text("\n")
@@ -1688,20 +1710,7 @@ class PptxExporter(object):
                     r.italic = True
 
                 elif run[0] == "img":
-                    imgfile, width, height = parseimg(
-                        run[1],
-                        dimensions="inches",
-                        tmp_dir=self.dir_kwargs.get("tmp_dir"),
-                        targetdir=self.dir_kwargs.get("targetdir"),
-                    )
-                    slide.shapes.add_picture(
-                        imgfile,
-                        left=PptxInches(self.c["picture"]["left"]),
-                        top=PptxInches(self.c["picture"]["top"]),
-                        width=PptxInches(width),
-                        height=PptxInches(height),
-                    )
-                    para = self.init_paragraph(tf)
+                    pass  # image processing is moved to other places
 
     @staticmethod
     def remove_square_brackets(s):
@@ -1716,13 +1725,16 @@ class PptxExporter(object):
         s = re.sub("\\{Раздат(.+?)\\}", "[Раздат\\1]", s, flags=re.DOTALL)
         return s
 
-    def pptx_process_text(self, s):
+    def pptx_process_text(self, s, image=None):
         if isinstance(s, list):
             for i in range(len(s)):
-                s[i] = self.pptx_process_text(s[i])
+                s[i] = self.pptx_process_text(s[i], image=image)
             return s
         s = s.replace("\u0301", "")
         s = self.remove_square_brackets(s)
+        if image:
+            s = re.sub("\\[Раздат(.+?)\\]", "", s, flags=re.DOTALL)
+            s = s.strip()
         s = re.sub(" +", " ", s)
         for punct in (".", ",", "!", "?", ":"):
             s = s.replace(" " + punct, punct)
@@ -1762,24 +1774,114 @@ class PptxExporter(object):
         if self.c["number_textbox"].get("color"):
             qtf_r.font.color.rgb = RGBColor(*self.c["number_textbox"]["color"])
 
+    def _get_image_from_4s(self, text):
+        if isinstance(text, list):
+            for el in text:
+                image = self._get_image_from_4s(el)
+                if image:
+                    return image
+        elif isinstance(text, str):
+            for run in parse_4s_elem(text):
+                if run[0] == "img":
+                    parsed_image = parseimg(
+                        run[1],
+                        dimensions="inches",
+                        tmp_dir=self.dir_kwargs.get("tmp_dir"),
+                        targetdir=self.dir_kwargs.get("targetdir"),
+                    )
+                    return parsed_image
+
+    def check_and_add_images(self, text, slide):
+        image = self._get_image_from_4s(text)
+        if image:
+            ratio = image["width"] / image["height"]
+            img_base_width = PptxInches(image["width"])
+            img_base_height = PptxInches(image["height"])
+            base_left = PptxInches(self.c["textbox"]["left"])
+            base_top = PptxInches(self.c["textbox"]["top"])
+            base_width = PptxInches(self.c["textbox"]["width"])
+            base_height = PptxInches(self.c["textbox"]["height"])
+            if ratio < 1:  # vertical image
+                max_width = base_width // 3
+                if img_base_width > max_width:
+                    img_width = max_width
+                    img_height = int(img_base_height * (max_width / img_base_width))
+                else:
+                    img_width = img_base_width
+                    img_height = img_base_height
+                left = base_left + img_width
+                top = base_top
+                width = base_width - img_width
+                height = base_height
+                img_left = base_left
+                img_top = int(base_top + 0.5 * (base_height - img_height))
+            else:  # horizontal/square image
+                max_height = base_height // 3
+                if img_base_height > max_height:
+                    img_height = max_height
+                    img_width = int(img_base_width * (max_height / img_base_height))
+                else:
+                    img_width = img_base_width
+                    img_height = img_base_height
+                left = base_left
+                top = base_top + img_height
+                width = base_width
+                height = base_height - img_height
+                img_top = base_top
+                img_left = int(base_left + 0.5 * (base_width - img_width))
+            slide.shapes.add_picture(
+                image["imgfile"],
+                left=img_left,
+                top=img_top,
+                width=img_width,
+                height=img_height,
+            )
+            textbox = slide.shapes.add_textbox(left, top, width, height)
+            return image, textbox
+        else:
+            return None, self.get_textbox(slide)
+
+    def add_slide_with_big_image(self, image, number=None):
+        slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+        if number:
+            self.set_question_number(slide, number)
+        img_width = PptxInches(image["width"])
+        img_height = PptxInches(image["height"])
+        base_left = PptxInches(self.c["textbox"]["left"])
+        base_top = PptxInches(self.c["textbox"]["top"])
+        base_width = PptxInches(self.c["textbox"]["width"])
+        base_height = PptxInches(self.c["textbox"]["height"])
+        if img_width > base_width:
+            img_width, img_height = (
+                base_width, int(img_height * (base_width / img_width))
+            )
+        if img_height > base_height:
+            img_width, img_height = (
+                int(img_width * (base_height / img_height)), base_height
+            )
+        img_left = int(base_left + 0.5 * (base_width - img_width))
+        img_top = int(base_top + 0.5 * (base_height - img_height))
+        slide.shapes.add_picture(
+            image["imgfile"],
+            left=img_left,
+            top=img_top,
+            width=img_width,
+            height=img_height,
+        )
+
     def process_question_text(self, q):
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
-        textbox = self.get_textbox(slide)
+        image, textbox = self.check_and_add_images(q["question"], slide)
         tf = textbox.text_frame
         tf.word_wrap = True
         self.set_question_number(slide, self.number)
         p = self.init_paragraph(tf)
-
-        if "handout" in q:
-            p = self.init_paragraph(tf)
-            p.add_run("[Раздаточный материал: ")
-            self.pptx_format(q["handout"], p, tf, slide)
-            p = self.init_paragraph(tf)
-            p.add_run("]")
-
-        question_text = self.pptx_process_text(q["question"])
+        question_text = self.pptx_process_text(q["question"], image=image)
         p.font.size = PptxPt(self.determine_size(question_text))
         self.pptx_format(question_text, p, tf, slide)
+        if image and image["big"]:
+            self.add_slide_with_big_image(image, number=self.number)
+
 
     def process_question(self, q):
         if "number" not in q:
@@ -1801,7 +1903,15 @@ class PptxExporter(object):
             self.set_question_number(slide, self.number)
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         self.set_question_number(slide, self.number)
-        textbox = self.get_textbox(slide)
+        fields = ["answer"]
+        if q.get("zachet") and self.c.get("add_zachet"):
+            fields.append("zachet")
+        if self.c["add_comment"] and "comment" in q:
+            fields.append("comment")
+        for field in fields:
+            image, textbox = self.check_and_add_images(q[field], slide)
+            if image:
+                break
         tf = textbox.text_frame
         tf.word_wrap = True
 
@@ -1824,6 +1934,8 @@ class PptxExporter(object):
             r.text = "Комментарий: "
             r.font.bold = True
             self.pptx_format(comment_text, p, tf, slide)
+        if image and image["big"]:
+            self.add_slide_with_big_image(image, number=self.number)
 
     def determine_size(self, text):
         for element in self.c["text_size_grid"]["elements"]:
