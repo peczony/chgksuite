@@ -52,7 +52,8 @@ NO_BREAK_SEQUENCES = [
     "с",
     "то",
     "у",
-    "что"
+    "что",
+    "перед"
 ]
 NO_BREAK_SEQUENCES_LEFT = [
     "бы",
