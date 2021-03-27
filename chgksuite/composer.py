@@ -1530,7 +1530,6 @@ class DocxExporter(object):
             logger.debug("parsing element {}:".format(log_wrap(el)))
 
             el = backtick_replace(el)
-            parsed = parse_4s_elem(el)
 
             for run in parse_4s_elem(el):
                 if run[0] == "img":
@@ -1738,6 +1737,7 @@ class PptxExporter(object):
         s = re.sub(" +", " ", s)
         for punct in (".", ",", "!", "?", ":"):
             s = s.replace(" " + punct, punct)
+        s = replace_no_break_spaces(s)
         return s
 
     def process_header(self, header):
