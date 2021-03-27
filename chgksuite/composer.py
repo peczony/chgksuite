@@ -182,7 +182,7 @@ def parse_single_size(ssize, dpi=120, emsize=25):
 def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
     width = -1
     height = -1
-    sp = s.split()
+    sp = shlex.split(s)
     cwd = os.getcwd()
     imgfile = sp[-1]
     imgfile = search_for_imgfile(imgfile, tmp_dir, targetdir)
@@ -1938,8 +1938,9 @@ class PptxExporter(object):
             self.add_slide_with_big_image(image, number=self.number)
 
     def determine_size(self, text):
+        len_for_size = len(text) + 50 * text.count("\n")
         for element in self.c["text_size_grid"]["elements"]:
-            if len(text) <= element["length"]:
+            if len_for_size <= element["length"]:
                 return element["size"]
         return self.c["text_size_grid"]["smallest"]
 
