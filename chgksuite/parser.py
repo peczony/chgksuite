@@ -667,15 +667,24 @@ def compose_4s(structure):
                     )
                 )
 
+    def tryint(s):
+        try:
+            return int(s)
+        except (TypeError, ValueError):
+            return
+
+    def is_zero(s):
+        return str(s).startswith("0") or not tryint(s)
+
     result = ""
     for element in structure:
         if element[0] in ["tour", "tourrev"]:
             checkNumber = True
-        if element[0] == "number" and checkNumber and int(element[1]) != 0:
-            checkNumber = False
-            result += "№№ " + element[1] + SEP
-        if element[0] == "number" and int(element[1]) == 0:
-            result += "№ " + element[1] + SEP
+        # if element[0] == "number" and checkNumber and int(element[1]) != 0:
+        #     checkNumber = False
+        #     result += "№№ " + element[1] + SEP
+        # if element[0] == "number" and int(element[1]) == 0:
+        #     result += "№ " + element[1] + SEP
         if element[0] in types_mapping and types_mapping[element[0]]:
             result += (
                 types_mapping[element[0]]
@@ -685,6 +694,8 @@ def compose_4s(structure):
             )
         elif element[0] == "Question":
             tmp = ""
+            if "number" in element[1] and is_zero(element[1]["number"]):
+                tmp += "№ " + element[1]["number"] + SEP
             for label in QUESTION_LABELS:
                 if label in element[1] and label in types_mapping:
                     tmp += (
