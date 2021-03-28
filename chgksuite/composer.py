@@ -91,18 +91,11 @@ re_editors = re.compile(r"^[рР]едакторы? *(пакета|тура)? *[�
 
 REQUIRED_LABELS = set(["question", "answer"])
 IMGUR_CLIENT_ID = "8da1bd97da30ac1"
+OVERRIDE_PREFIX = "!!"
 im = pyimgur.Imgur(IMGUR_CLIENT_ID)
 
 ENC = sys.stdout.encoding or "utf8"
 CONSOLE_ENC = ENC
-
-FIELDS = {
-    "zachet": "Зачёт: ",
-    "nezachet": "Незачёт: ",
-    "comment": "Комментарий: ",
-    "source": "Источник: ",
-    "author": "Автор: ",
-}
 
 WHITEN = {
     "handout": False,
@@ -508,11 +501,14 @@ def parse_4s(s, randomize=False):
                 if isinstance(val, list):
                     is_list = True
                     val = val[0]
-                sp1, sp2 = val.split(" ", 1)
-                if sp1.startswith("!!"):
+                sp = val.split(" ", 1)
+                if len(sp) == 1:
+                    continue
+                sp1, sp2 = sp
+                if sp1.startswith(OVERRIDE_PREFIX):
                     if "overrides" not in element[1]:
                         element[1]["overrides"] = {}
-                    element[1]["overrides"][field] = sp1[1:]
+                    element[1]["overrides"][field] = sp1[len(OVERRIDE_PREFIX):].replace("~", " ")
                     if is_list:
                         element[1][field][0] = sp2
                     else:
@@ -542,59 +538,6 @@ def find_tour(structure):
         if x[0] == "section":
             return (e, x)
     return None
-
-
-def split_into_tours(structure, general_impression=False):
-    result = []
-    current = []
-    mode = "meta"
-    for _, element in enumerate(structure):
-        if element[0] != "Question":
-            if mode == "meta":
-                current.append(element)
-            elif element[0] == "section":
-                result.append(current)
-                current = [element]
-                mode = "meta"
-            else:
-                current.append(element)
-        else:
-            if mode == "meta":
-                current.append(element)
-                mode = "questions"
-            else:
-                current.append(element)
-    result.append(current)
-    globalheading = find_heading(result[0])[1][1]
-    globalsep = "." if not globalheading.endswith(".") else ""
-    currentheading = result[0][find_heading(result[0])[0]][1]
-    result[0][find_heading(result[0])[0]][1] += "{} {}".format(
-        "." if not currentheading.endswith(".") else "", find_tour(result[0])[1][1]
-    )
-    for tour in result[1:]:
-        if not find_heading(tour):
-            tour.insert(
-                0,
-                [
-                    "ljheading",
-                    "{}{} {}".format(globalheading, globalsep, find_tour(tour)[1][1]),
-                ],
-            )
-    if general_impression:
-        result.append(
-            [
-                [
-                    "ljheading",
-                    "{}{} Общие впечатления".format(globalheading, globalsep),
-                ],
-                [
-                    "meta",
-                    "В комментариях к этому посту можно "
-                    "поделиться общими впечатлениями от вопросов.",
-                ],
-            ]
-        )
-    return result
 
 
 def baseyapper(e, **kwargs):
@@ -1234,12 +1177,25 @@ def backtick_replace(el):
             el = el[: el.index("`")] + el[el.index("`") + 1 :]
     return el
 
+class BaseExporter:
+    def __init__(self, *args, **kwargs):
+        self.structure = args[0]
+        self.args = args[1]
+        self.dir_kwargs = args[2]
+        with open(self.args.labels_file) as f:
+            self.labels = toml.load(f)
 
-class DocxExporter(object):
-    def __init__(self, structure, args, dir_kwargs):
-        self.structure = structure
-        self.args = args
-        self.dir_kwargs = dir_kwargs
+    def get_label(self, question, field):
+        if field in (question.get("overrides") or {}):
+            return question["overrides"][field]
+        if field == "source" and isinstance(question.get("source" or ""), list):
+            return self.labels["question_labels"]["sources"]
+        return self.labels["question_labels"][field]
+
+
+class DocxExporter(BaseExporter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.qcount = 0
 
     def _docx_format(self, *args):
@@ -1303,11 +1259,14 @@ class DocxExporter(object):
         if "setcounter" in q:
             self.qcount = int(q["setcounter"])
         p.add_run(
-            "Вопрос {}. ".format(qcount if "number" not in q else q["number"])
+            "{question} {num}. ".format(
+                question=self.get_label(q, "question"),
+                num=self.qcount if "number" not in q else q["number"]
+            )
         ).bold = True
 
         if "handout" in q:
-            p.add_run("\n[Раздаточный материал: ")
+            p.add_run("\n[{handout}: ".format(self.get_label(q, "handout")))
             self._docx_format(q["handout"], p, WHITEN["handout"])
             p.add_run("\n]")
         if not args.noparagraph:
@@ -1319,7 +1278,7 @@ class DocxExporter(object):
             p = self.doc.add_paragraph()
             p.paragraph_format.keep_together = True
             p.paragraph_format.space_before = DocxPt(6)
-            p.add_run("Ответ: ").bold = True
+            p.add_run(f"{self.get_label(q, 'answer')}: ").bold = True
             self._docx_format(q["answer"], p, True)
 
             for field in ["zachet", "nezachet", "comment", "source", "author"]:
@@ -1329,10 +1288,7 @@ class DocxExporter(object):
                         p.paragraph_format.keep_together = True
                     else:
                         p.add_run("\n")
-                    if field == "source" and isinstance(q[field], list):
-                        p.add_run("Источники: ").bold = True
-                    else:
-                        p.add_run(FIELDS[field]).bold = True
+                    p.add_run(f"{self.get_label(q, field)}: ").bold = True
                     self._docx_format(q[field], p, WHITEN[field])
 
     def export(self, outfilename):
@@ -1370,14 +1326,12 @@ class DocxExporter(object):
         logger.info("Output: {}".format(outfilename))
 
 
-class PptxExporter(object):
-    def __init__(self, structure, args, dir_kwargs):
-        self.structure = structure
-        self.args = args
-        self.config_path = os.path.abspath(args.pptx_config)
+class PptxExporter(BaseExporter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.config_path = os.path.abspath(self.args.pptx_config)
         with open(self.config_path) as f:
             self.c = toml.load(f)
-        self.dir_kwargs = dir_kwargs
         self.qcount = 0
 
     def add_editor_info(self, tb, editor, meta, slide):
@@ -1449,9 +1403,9 @@ class PptxExporter(object):
                 elif run[0] == "img":
                     pass  # image processing is moved to other places
 
-    @staticmethod
-    def remove_square_brackets(s):
-        s = re.sub("\\[Раздат(.+?)\\]", "{Раздат\\1}", s, flags=re.DOTALL)
+    def remove_square_brackets(self, s):
+        hs = self.labels["question_labels"]["handout_short"]
+        s = re.sub(f"\\[{hs}(.+?)\\]", "{" + hs + "\\1}", s, flags=re.DOTALL)
         i = 0
         while "[" in s and "]" in s and i < 10:
             s = re.sub(" *\\[.+?\\]", "", s, flags=re.DOTALL)
@@ -1461,10 +1415,11 @@ class PptxExporter(object):
             sys.stderr.write(
                 f"Error replacing square brackets on question: {s}, retries exceeded\n"
             )
-        s = re.sub("\\{Раздат(.+?)\\}", "[Раздат\\1]", s, flags=re.DOTALL)
+        s = re.sub("\\{" + hs + "(.+?)\\}", "[" + hs + "\\1]", s, flags=re.DOTALL)
         return s
 
     def pptx_process_text(self, s, image=None):
+        hs = self.labels["question_labels"]["handout_short"]
         if isinstance(s, list):
             for i in range(len(s)):
                 s[i] = self.pptx_process_text(s[i], image=image)
@@ -1472,7 +1427,7 @@ class PptxExporter(object):
         s = s.replace("\u0301", "")
         s = self.remove_square_brackets(s)
         if image:
-            s = re.sub("\\[Раздат(.+?)\\]", "", s, flags=re.DOTALL)
+            s = re.sub("\\[" + hs +  "(.+?)\\]", "", s, flags=re.DOTALL)
             s = s.strip()
         s = re.sub(" +", " ", s)
         for punct in (".", ",", "!", "?", ":"):
@@ -1677,21 +1632,21 @@ class PptxExporter(object):
 
         p = self.init_paragraph(tf)
         r = p.add_run()
-        r.text = "Ответ: "
+        r.text = f"{self.get_label(q, 'answer')}: "
         r.font.bold = True
         self.pptx_format(self.pptx_process_text(q["answer"]), p, tf, slide)
         if q.get("zachet") and self.c.get("add_zachet"):
             zachet_text = self.pptx_process_text(q["zachet"])
             p = self.init_paragraph(tf, text=zachet_text)
             r = p.add_run()
-            r.text = "Зачёт: "
+            r.text = f"{self.get_label(q, 'zachet')}: "
             r.font.bold = True
             self.pptx_format(zachet_text, p, tf, slide)
         if self.c["add_comment"] and "comment" in q:
             comment_text = self.pptx_process_text(q["comment"])
             p = self.init_paragraph(tf, text=comment_text)
             r = p.add_run()
-            r.text = "Комментарий: "
+            r.text = f"{self.get_label(q, 'comment')}: "
             r.font.bold = True
             self.pptx_format(comment_text, p, tf, slide)
         if image and image["big"]:
@@ -1753,11 +1708,9 @@ class PptxExporter(object):
         logger.info("Output: {}".format(outfilename))
 
 
-class LjExporter:
-    def __init__(self, structure, args, dir_kwargs):
-        self.structure = structure
-        self.args = args
-        self.dir_kwargs = dir_kwargs
+class LjExporter(BaseExporter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.lj = ServerProxy("http://www.livejournal.com/interface/xmlrpc").LJ.XMLRPC
 
     def get_chal(self):
@@ -1767,6 +1720,58 @@ class LjExporter:
             chal.encode("utf8") + md5(self.args.password.encode("utf8")).encode("utf8")
         )
         return (chal, response)
+    
+    def split_into_tours(self):
+        general_impression = self.args.general_impression
+        result = []
+        current = []
+        mode = "meta"
+        for _, element in enumerate(self.structure):
+            if element[0] != "Question":
+                if mode == "meta":
+                    current.append(element)
+                elif element[0] == "section":
+                    result.append(current)
+                    current = [element]
+                    mode = "meta"
+                else:
+                    current.append(element)
+            else:
+                if mode == "meta":
+                    current.append(element)
+                    mode = "questions"
+                else:
+                    current.append(element)
+        result.append(current)
+        globalheading = find_heading(result[0])[1][1]
+        globalsep = "." if not globalheading.endswith(".") else ""
+        currentheading = result[0][find_heading(result[0])[0]][1]
+        result[0][find_heading(result[0])[0]][1] += "{} {}".format(
+            "." if not currentheading.endswith(".") else "", find_tour(result[0])[1][1]
+        )
+        for tour in result[1:]:
+            if not find_heading(tour):
+                tour.insert(
+                    0,
+                    [
+                        "ljheading",
+                        "{}{} {}".format(globalheading, globalsep, find_tour(tour)[1][1]),
+                    ],
+                )
+        if general_impression:
+            result.append(
+                [
+                    [
+                        "ljheading",
+                        "{}{} {}".format(globalheading, globalsep, self.labels["general"]["general_impressions_caption"]),
+                    ],
+                    [
+                        "meta",
+                        self.labels["general"]["general_impressions_text"],
+                    ],
+                ]
+            )
+        return result
 
     def _lj_post(self, stru, edit=False, add_params=None):
 
@@ -1904,19 +1909,21 @@ class LjExporter:
             if element[0] == "Question":
                 final_structure.append(
                     {
-                        "header": "Вопрос {}".format(
-                            element[1]["number"]
+                        "header": "{question} {num}".format(
+                            question=self.get_label(element[1], "question"),
+                            num=element[1]["number"]
                             if "number" in element[1]
-                            else gui_compose.counter
+                            else self.counter
                         ),
                         "content": self.html_format_question(element[1]),
                     }
                 )
+                self.counter += 1
             if element[0] == "meta":
                 final_structure.append({"header": "", "content": yapper(element[1])})
 
         if not final_structure[0]["content"]:
-            final_structure[0]["content"] = "Вопросы в комментариях."
+            final_structure[0]["content"] = self.labels["general"]["general_impressions_text"]
         if self.args.debug:
             with codecs.open("lj.debug", "w", "utf8") as f:
                 f.write(log_wrap(final_structure))
@@ -1950,28 +1957,20 @@ class LjExporter:
             return self.htmlyapper(x)
 
         if "setcounter" in q:
-            gui_compose.counter = int(q["setcounter"])
-        res = "<strong>Вопрос {}.</strong> {}".format(
-            gui_compose.counter if "number" not in q else q["number"],
-            yapper(q["question"]) + ("\n<lj-spoiler>" if not args.nospoilers else ""),
+            self.counter = int(q["setcounter"])
+        res = "<strong>{question} {num}.</strong> {content}".format(
+            question=self.get_label(q, "question"),
+            num=self.counter if "number" not in q else q["number"],
+            content=yapper(q["question"]) + ("\n<lj-spoiler>" if not args.nospoilers else ""),
         )
         if "number" not in q:
-            gui_compose.counter += 1
-        res += "\n<strong>Ответ: </strong>{}".format(yapper(q["answer"]))
-        if "zachet" in q:
-            res += "\n<strong>Зачёт: </strong>{}".format(yapper(q["zachet"]))
-        if "nezachet" in q:
-            res += "\n<strong>Незачёт: </strong>{}".format(yapper(q["nezachet"]))
-        if "comment" in q:
-            res += "\n<strong>Комментарий: </strong>{}".format(yapper(q["comment"]))
-        if "source" in q:
-            res += "\n<strong>Источник{}: </strong>{}".format(
-                "и" if isinstance(q["source"], list) else "", yapper(q["source"])
-            )
-        if "author" in q:
-            res += "\n<strong>Автор{}: </strong>{}".format(
-                "ы" if isinstance(q["author"], list) else "", yapper(q["author"])
-            )
+            self.counter += 1
+        for field in ("answer", "zachet", "nezachet", "comment", "source", "author"):
+            if field in q:
+                res += "\n<strong>{field}: </strong>{content}".format(
+                    field=self.get_label(q, field),
+                    content=yapper(q[field])
+                )
         if not args.nospoilers:
             res += "</lj-spoiler>"
         return res
@@ -2061,7 +2060,7 @@ class LjExporter:
 
         self.counter = 1
         if args.splittours:
-            tours = split_into_tours(structure, general_impression=args.genimp)
+            tours = self.split_into_tours()
             strus = []
             for tour in tours:
                 stru = self.lj_process(tour)

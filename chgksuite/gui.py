@@ -424,6 +424,13 @@ def app():
         caption="Не добавлять временную отметку в имя файла",
         advanced=True,
     )
+    cmdcompose.add_argument(
+        "--labels_file",
+        help="i18n config",
+        caption="Конфиг для интернационализации",
+        advanced=True,
+        argtype="filename"
+    )
     cmdcompose_filetype = cmdcompose.add_subparsers(dest="filetype")
     cmdcompose_docx = cmdcompose_filetype.add_parser("docx")
     cmdcompose_docx.add_argument(
@@ -658,6 +665,8 @@ def app():
 
     args = parser.parse_args()
 
+    if not args.labels_file:
+        args.labels_file = os.path.join(resourcedir, "labels_ru.toml")
     if not args.regexes:
         args.regexes = os.path.join(resourcedir, "regexes.json")
     if not args.docx_template:
