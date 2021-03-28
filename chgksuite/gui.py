@@ -381,6 +381,18 @@ def app():
         caption="Стратегия обработки ссылок",
     )
     cmdparse.add_argument(
+        "--numbers_handling",
+        default="default",
+        choices=["default", "all", "none"],
+        help="question numbers handling strategy. "
+        "Default preserves zero questions and numbering "
+        "if the first question has number > 1, omits number otherwise. "
+        "All preserves all numbers, none omits all numbers "
+        "(was default behaviour pre-0.8.0.)",
+        advanced=True,
+        caption="Стратегия обработки номеров вопросов",
+    )
+    cmdparse.add_argument(
         "--fix_spans",
         action="store_true",
         help="try to unwrap all <span> tags. "

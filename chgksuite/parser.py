@@ -625,7 +625,7 @@ def remove_double_separators(s):
     return re.sub(r"({})+".format(SEP), SEP, s)
 
 
-def compose_4s(structure):
+def compose_4s(structure, args=None):
     types_mapping = {
         "meta": "# ",
         "tour": "## ",
@@ -677,14 +677,8 @@ def compose_4s(structure):
         return str(s).startswith("0") or not tryint(s)
 
     result = ""
+    first_number = True
     for element in structure:
-        if element[0] in ["tour", "tourrev"]:
-            checkNumber = True
-        # if element[0] == "number" and checkNumber and int(element[1]) != 0:
-        #     checkNumber = False
-        #     result += "№№ " + element[1] + SEP
-        # if element[0] == "number" and int(element[1]) == 0:
-        #     result += "№ " + element[1] + SEP
         if element[0] in types_mapping and types_mapping[element[0]]:
             result += (
                 types_mapping[element[0]]
@@ -694,8 +688,16 @@ def compose_4s(structure):
             )
         elif element[0] == "Question":
             tmp = ""
-            if "number" in element[1] and is_zero(element[1]["number"]):
-                tmp += "№ " + element[1]["number"] + SEP
+            if "number" in element[1]:
+                if args.numbers_handling == "default":
+                    if is_zero(element[1]["number"]):
+                        tmp += "№ " + element[1]["number"] + SEP
+                    elif first_number and tryint(element[1]["number"]) > 1:
+                        tmp += "№№ " + element[1]["number"] + SEP
+                elif args.numbers_handling == "all":
+                    tmp += "№ " + element[1]["number"] + SEP
+                if not is_zero(element[1]["number"]):
+                    first_number = False
             for label in QUESTION_LABELS:
                 if label in element[1] and label in types_mapping:
                     tmp += (
@@ -732,7 +734,7 @@ def chgk_parse_wrapper(path, args, regexes=None):
     outfilename = os.path.join(target_dir, make_filename(abspath))
     logger.info("Output: {}".format(os.path.abspath(outfilename)))
     with codecs.open(outfilename, "w", "utf8") as output_file:
-        output_file.write(compose_4s(final_structure))
+        output_file.write(compose_4s(final_structure, args=args))
     return outfilename
 
 
