@@ -211,7 +211,7 @@ def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
         "imgfile": imgfile.replace("\\", "/"),
         "width": width,
         "height": height,
-        "big": big
+        "big": big,
     }
 
 
@@ -491,6 +491,32 @@ def parse_4s(s, randomize=False):
     for element in final_structure:
         if element[0] == "Question":
             check_question(element[1], logger=logger)
+            for field in [
+                "handout",
+                "question",
+                "answer",
+                "zachet",
+                "nezachet",
+                "comment",
+                "source",
+                "author",
+            ]:
+                val = element[1].get(field)
+                if val is None:
+                    continue
+                is_list = False
+                if isinstance(val, list):
+                    is_list = True
+                    val = val[0]
+                sp1, sp2 = val.split(" ", 1)
+                if sp1.startswith("!!"):
+                    if "overrides" not in element[1]:
+                        element[1]["overrides"] = {}
+                    element[1]["overrides"][field] = sp1[1:]
+                    if is_list:
+                        element[1][field][0] = sp2
+                    else:
+                        element[1][field] = sp2
 
     return final_structure
 
@@ -1432,7 +1458,9 @@ class PptxExporter(object):
             s = s.strip()
             i += 1
         if i == 10:
-            sys.stderr.write(f"Error replacing square brackets on question: {s}, retries exceeded\n")
+            sys.stderr.write(
+                f"Error replacing square brackets on question: {s}, retries exceeded\n"
+            )
         s = re.sub("\\{Раздат(.+?)\\}", "[Раздат\\1]", s, flags=re.DOTALL)
         return s
 
@@ -1512,7 +1540,9 @@ class PptxExporter(object):
             base_top = PptxInches(self.c["textbox"]["top"])
             base_width = PptxInches(self.c["textbox"]["width"])
             base_height = PptxInches(self.c["textbox"]["height"])
-            big_mode = image["big"] and not self.c.get("text_is_duplicated") and allowbigimage
+            big_mode = (
+                image["big"] and not self.c.get("text_is_duplicated") and allowbigimage
+            )
             if ratio < 1:  # vertical image
                 max_width = base_width // 3
                 if big_mode:
@@ -1569,11 +1599,13 @@ class PptxExporter(object):
         base_height = PptxInches(self.c["textbox"]["height"])
         if image["big"] or img_width > base_width:
             img_width, img_height = (
-                base_width, int(img_height * (base_width / img_width))
+                base_width,
+                int(img_height * (base_width / img_width)),
             )
         if img_height > base_height:
             img_width, img_height = (
-                int(img_width * (base_height / img_height)), base_height
+                int(img_width * (base_height / img_height)),
+                base_height,
             )
         img_left = int(base_left + 0.5 * (base_width - img_width))
         img_top = int(base_top + 0.5 * (base_height - img_height))
@@ -1601,10 +1633,11 @@ class PptxExporter(object):
             self.add_slide_with_image(image, number=self.number)
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         text_is_duplicated = bool(self.c.get("text_is_duplicated"))
-        self.put_question_on_slide(image, slide, q, allowbigimage=not text_is_duplicated)
+        self.put_question_on_slide(
+            image, slide, q, allowbigimage=not text_is_duplicated
+        )
         if image and image["big"] and text_is_duplicated:
             self.add_slide_with_image(image, number=self.number)
-
 
     def process_question(self, q):
         if "number" not in q:
@@ -1616,7 +1649,7 @@ class PptxExporter(object):
         if isinstance(q["question"], list):
             for i in range(len(q["question"][1])):
                 qn = copy.deepcopy(q)
-                qn["question"][1] = q["question"][1][:i + 1]
+                qn["question"][1] = q["question"][1][: i + 1]
                 self.process_question_text(qn)
         else:
             self.process_question_text(q)
@@ -1730,7 +1763,9 @@ class LjExporter:
     def get_chal(self):
         chal = None
         chal = retry_wrapper(self.lj.getchallenge)["challenge"]
-        response = md5(chal.encode("utf8") + md5(self.args.password.encode("utf8")).encode("utf8"))
+        response = md5(
+            chal.encode("utf8") + md5(self.args.password.encode("utf8")).encode("utf8")
+        )
         return (chal, response)
 
     def _lj_post(self, stru, edit=False, add_params=None):
@@ -1763,15 +1798,18 @@ class LjExporter:
             params.update(add_params)
 
         try:
-            post = retry_wrapper(self.lj.editevent if edit else self.lj.postevent, [params])
+            post = retry_wrapper(
+                self.lj.editevent if edit else self.lj.postevent, [params]
+            )
             logger.info("Edited a post" if edit else "Created a post")
             logger.debug(log_wrap(post))
             time.sleep(5)
         except Exception as e:
-            sys.stderr.write("Error issued by LJ API: {}".format(traceback.format_exc(e)))
+            sys.stderr.write(
+                "Error issued by LJ API: {}".format(traceback.format_exc(e))
+            )
             sys.exit(1)
         return post
-
 
     def _lj_comment(self, stru):
         chal, response = self.get_chal()
@@ -1789,12 +1827,13 @@ class LjExporter:
         try:
             comment = retry_wrapper(self.lj.addcomment, [params])
         except Exception as e:
-            sys.stderr.write("Error issued by LJ API: {}".format(traceback.format_exc(e)))
+            sys.stderr.write(
+                "Error issued by LJ API: {}".format(traceback.format_exc(e))
+            )
             sys.exit(1)
         logger.info("Added a comment")
         logger.debug(log_wrap(comment))
         time.sleep(random.randint(5, 7))
-
 
     def lj_post(self, stru, edit=False):
 
@@ -1804,7 +1843,9 @@ class LjExporter:
             add_params["usejournal"] = community
         elif self.args.security:
             add_params["security"] = "usemask"
-            add_params["allowmask"] = "1" if self.args.security == "friends" else self.args.security
+            add_params["allowmask"] = (
+                "1" if self.args.security == "friends" else self.args.security
+            )
         else:
             add_params["security"] = "private"
 
@@ -1890,7 +1931,6 @@ class LjExporter:
             else:
                 return "\n".join([self.html_element_layout(x) for x in e])
 
-
     def html_element_layout(self, e):
         res = ""
         if isinstance(e, basestring):
@@ -1946,7 +1986,9 @@ class LjExporter:
             if zz.index("`") + 1 >= len(zz):
                 zz = zz.replace("`", "")
             else:
-                if zz.index("`") + 2 < len(zz) and re.search(r"\s", zz[zz.index("`") + 2]):
+                if zz.index("`") + 2 < len(zz) and re.search(
+                    r"\s", zz[zz.index("`") + 2]
+                ):
                     zz = zz[: zz.index("`") + 2] + "" + zz[zz.index("`") + 2 :]
                 if zz.index("`") + 1 < len(zz) and re_lowercase.search(
                     zz[zz.index("`") + 1]
@@ -1971,7 +2013,6 @@ class LjExporter:
                 zz = zz[: zz.index("`")] + zz[zz.index("`") + 1 :]
 
         return zz
-
 
     def htmlformat(self, s):
         res = ""
