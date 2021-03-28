@@ -187,7 +187,11 @@ def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
     imgfile = sp[-1]
     imgfile = search_for_imgfile(imgfile, tmp_dir, targetdir)
     size = imgsize(imgfile)
-    big = False
+    if "big" in sp:
+        big = True
+        sp = [x for x in sp if x != "big"]
+    else:
+        big = False
 
     if len(sp) == 1:
         width, height = convert_size(*size, dimensions=dimensions)
@@ -198,8 +202,6 @@ def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
                 width = parse_single_size(spspsp[1])
             if spspsp[0] == "h":
                 height = parse_single_size(spspsp[1])
-            if spspsp[0] == "big":
-                big = True
         if width != -1 and height == -1:
             height = size[1] * (width / size[0])
         elif width == -1 and height != -1:
@@ -1791,8 +1793,7 @@ class PptxExporter(object):
                     )
                     return parsed_image
 
-    def check_and_add_images(self, text, slide):
-        image = self._get_image_from_4s(text)
+    def make_slide_layout(self, image, slide, allowbigimage=True):
         if image:
             ratio = image["width"] / image["height"]
             img_base_width = PptxInches(image["width"])
@@ -1801,9 +1802,12 @@ class PptxExporter(object):
             base_top = PptxInches(self.c["textbox"]["top"])
             base_width = PptxInches(self.c["textbox"]["width"])
             base_height = PptxInches(self.c["textbox"]["height"])
+            big_mode = image["big"] and not self.c.get("text_is_duplicated") and allowbigimage
             if ratio < 1:  # vertical image
                 max_width = base_width // 3
-                if img_base_width > max_width:
+                if big_mode:
+                    max_height *= 2
+                if img_base_width > max_width or big_mode:
                     img_width = max_width
                     img_height = int(img_base_height * (max_width / img_base_width))
                 else:
@@ -1817,7 +1821,9 @@ class PptxExporter(object):
                 img_top = int(base_top + 0.5 * (base_height - img_height))
             else:  # horizontal/square image
                 max_height = base_height // 3
-                if img_base_height > max_height:
+                if big_mode:
+                    max_height *= 2
+                if img_base_height > max_height or big_mode:
                     img_height = max_height
                     img_width = int(img_base_width * (max_height / img_base_height))
                 else:
@@ -1837,11 +1843,11 @@ class PptxExporter(object):
                 height=img_height,
             )
             textbox = slide.shapes.add_textbox(left, top, width, height)
-            return image, textbox
+            return textbox
         else:
-            return None, self.get_textbox(slide)
+            return self.get_textbox(slide)
 
-    def add_slide_with_big_image(self, image, number=None):
+    def add_slide_with_image(self, image, number=None):
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         if number:
             self.set_question_number(slide, number)
@@ -1851,7 +1857,7 @@ class PptxExporter(object):
         base_top = PptxInches(self.c["textbox"]["top"])
         base_width = PptxInches(self.c["textbox"]["width"])
         base_height = PptxInches(self.c["textbox"]["height"])
-        if img_width > base_width:
+        if image["big"] or img_width > base_width:
             img_width, img_height = (
                 base_width, int(img_height * (base_width / img_width))
             )
@@ -1869,18 +1875,25 @@ class PptxExporter(object):
             height=img_height,
         )
 
-    def process_question_text(self, q):
-        slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
-        image, textbox = self.check_and_add_images(q["question"], slide)
+    def put_question_on_slide(self, image, slide, q, allowbigimage=True):
+        textbox = self.make_slide_layout(image, slide, allowbigimage=allowbigimage)
         tf = textbox.text_frame
         tf.word_wrap = True
         self.set_question_number(slide, self.number)
         p = self.init_paragraph(tf)
         question_text = self.pptx_process_text(q["question"], image=image)
-        p.font.size = PptxPt(self.determine_size(question_text))
+        p.font.size = PptxPt(self.determine_size(question_text, has_images=True))
         self.pptx_format(question_text, p, tf, slide)
-        if image and image["big"]:
-            self.add_slide_with_big_image(image, number=self.number)
+
+    def process_question_text(self, q):
+        image = self._get_image_from_4s(q["question"])
+        if image:
+            self.add_slide_with_image(image, number=self.number)
+        slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+        text_is_duplicated = bool(self.c.get("text_is_duplicated"))
+        self.put_question_on_slide(image, slide, q, allowbigimage=not text_is_duplicated)
+        if image and image["big"] and text_is_duplicated:
+            self.add_slide_with_image(image, number=self.number)
 
 
     def process_question(self, q):
@@ -1908,10 +1921,14 @@ class PptxExporter(object):
             fields.append("zachet")
         if self.c["add_comment"] and "comment" in q:
             fields.append("comment")
+        textbox = None
         for field in fields:
-            image, textbox = self.check_and_add_images(q[field], slide)
+            image = self._get_image_from_4s(q[field])
             if image:
+                textbox = self.make_slide_layout(image, slide)
                 break
+        if not textbox:
+            textbox = self.get_textbox(slide)
         tf = textbox.text_frame
         tf.word_wrap = True
 
@@ -1935,10 +1952,10 @@ class PptxExporter(object):
             r.font.bold = True
             self.pptx_format(comment_text, p, tf, slide)
         if image and image["big"]:
-            self.add_slide_with_big_image(image, number=self.number)
+            self.add_slide_with_image(image, number=self.number)
 
-    def determine_size(self, text):
-        len_for_size = len(text) + 50 * text.count("\n")
+    def determine_size(self, text, has_images=False):
+        len_for_size = len(text) + 50 * text.count("\n") + 200 * int(has_images)
         for element in self.c["text_size_grid"]["elements"]:
             if len_for_size <= element["length"]:
                 return element["size"]
