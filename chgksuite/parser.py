@@ -222,7 +222,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
         elements = {x[0] for x in fragment}
         if "answer" in elements and not fragment[0][0]:
             fragment[0][0] = "question"
-    structure = list(itertools.chain(*fragments))
+    structure = list(itertools.chain(*fragments))   
     i = 0
 
     if debug:
@@ -325,9 +325,13 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                     structure.insert(_id, ["number", num])
                 except:
                     pass
+            # TODO: переделать корявую обработку авторки на нормальную
+            before_replacement = element[1]
             element[1] = regexes[element[0]].sub("", element[1])
             if element[1].startswith(SEP):
                 element[1] = element[1][len(SEP) :]
+            if element[0] == "author" and "авторка:" in before_replacement.lower():
+                element[1] = "!!Авторка" + element[1]
 
     if debug:
         with codecs.open("debug_4.json", "w", "utf8") as f:
@@ -688,6 +692,7 @@ def compose_4s(structure, args=None):
             )
         elif element[0] == "Question":
             tmp = ""
+            overrides = element[1].get("overrides") or {}
             if "number" in element[1]:
                 if args.numbers_handling == "default":
                     if is_zero(element[1]["number"]):
@@ -699,9 +704,13 @@ def compose_4s(structure, args=None):
                 if not is_zero(element[1]["number"]):
                     first_number = False
             for label in QUESTION_LABELS:
+                override_label = "" if label not in overrides else (
+                    "!!{} ".format(overrides[label])
+                )
                 if label in element[1] and label in types_mapping:
                     tmp += (
                         types_mapping[label]
+                        + override_label
                         + format_element(element[1][label])
                         + SEP
                     )

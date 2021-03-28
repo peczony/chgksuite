@@ -30,6 +30,7 @@ from chgksuite.composer import parse_4s
 class DefaultArgs(object):
     links = "unwrap"
     fix_spans = False
+    numbers_handling = "default"
 
     def __getattr__(self, attribute):
         try:
@@ -88,7 +89,7 @@ def test_canonical_equality():
                     os.path.join(temp_dir, filename), "r", "utf8"
                 ) as f:
                     canonical = f.read()
-                assert normalize(canonical) == normalize(compose_4s(parsed))
+                assert normalize(canonical) == normalize(compose_4s(parsed, args=DefaultArgs()))
 
 
 def test_docx_composition():
@@ -106,7 +107,7 @@ def test_docx_composition():
                 composed_abspath = os.path.join(temp_dir, file4s)
                 print(composed_abspath)
                 with codecs.open(composed_abspath, "w", "utf8") as f:
-                    f.write(compose_4s(parsed))
+                    f.write(compose_4s(parsed, args=DefaultArgs()))
                 code = subprocess.call(
                     [
                         "python",
@@ -136,7 +137,7 @@ def test_tex_composition():
                 composed_abspath = os.path.join(temp_dir, file4s)
                 print(composed_abspath)
                 with codecs.open(composed_abspath, "w", "utf8") as f:
-                    f.write(compose_4s(parsed))
+                    f.write(compose_4s(parsed, args=DefaultArgs()))
                 code = subprocess.call(
                     [
                         "python",
