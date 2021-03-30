@@ -1,0 +1,19 @@
+[question_labels]
+question = "Запитання"
+answer = "Відповідь"
+zachet = "Залік"
+nezachet = "Незалік"
+comment = "Коментар"
+source = "Джерело"
+sources = "Джерела"
+author = "Автор"
+authors = "Автори"
+handout = "Роздатковий матеріал"
+handout_short = "Роздат"
+
+[general]
+tour = "Тур"
+editor = "Редактор"
+questions_in_comments = "Запитання в коментарях."
+general_impressions_caption = "Загальні враження"
+general_impressions_text = "У коментарях до цього посту можна поділитися загальними враженнями від запитань турніру."
