@@ -508,7 +508,9 @@ def parse_4s(s, randomize=False):
                 if sp1.startswith(OVERRIDE_PREFIX):
                     if "overrides" not in element[1]:
                         element[1]["overrides"] = {}
-                    element[1]["overrides"][field] = sp1[len(OVERRIDE_PREFIX):].replace("~", " ")
+                    element[1]["overrides"][field] = sp1[
+                        len(OVERRIDE_PREFIX) :
+                    ].replace("~", " ")
                     if is_list:
                         element[1][field][0] = sp2
                     else:
@@ -1129,7 +1131,7 @@ def generate_navigation(strus):
     return result
 
 
-def find_min_context_index(structure):
+def find_min_content_index(structure):
     types_ = [x[0] for x in structure]
     try:
         min_section = types_.index("section")
@@ -1176,6 +1178,7 @@ def backtick_replace(el):
                 )
             el = el[: el.index("`")] + el[el.index("`") + 1 :]
     return el
+
 
 class BaseExporter:
     def __init__(self, *args, **kwargs):
@@ -1261,7 +1264,7 @@ class DocxExporter(BaseExporter):
         p.add_run(
             "{question} {num}. ".format(
                 question=self.get_label(q, "question"),
-                num=self.qcount if "number" not in q else q["number"]
+                num=self.qcount if "number" not in q else q["number"],
             )
         ).bold = True
 
@@ -1334,16 +1337,6 @@ class PptxExporter(BaseExporter):
             self.c = toml.load(f)
         self.qcount = 0
 
-    def add_editor_info(self, tb, editor, meta, slide):
-        tf = tb.text_frame
-        tf.word_wrap = True
-        p = tf.add_paragraph()
-        r = p.add_run()
-        r.text = self.pptx_process_text(editor)
-        for elem in meta:
-            p = tf.add_paragraph()
-            self.pptx_format(self.pptx_process_text(elem[1]), p, tf, slide)
-
     def get_textbox_qnumber(self, slide):
         kwargs = {}
         for param in ("left", "top", "width", "height"):
@@ -1373,18 +1366,16 @@ class PptxExporter(BaseExporter):
                 licount = 0
                 for li in el[1]:
                     licount += 1
-                    p = self.init_paragraph(tf)
-                    r = p.add_run()
-                    r.text = "{}. ".format(licount)
-                    self.pptx_format(li, p, tf, slide)
+                    r = para.add_run()
+                    r.text = "\n{}. ".format(licount)
+                    self.pptx_format(li, para, tf, slide)
             else:
                 licount = 0
                 for li in el:
                     licount += 1
-                    p = self.init_paragraph(tf)
-                    r = p.add_run()
-                    r.text = "{}. ".format(licount)
-                    self.pptx_format(li, p, tf, slide)
+                    r = para.add_run()
+                    r.text = "\n{}. ".format(licount)
+                    self.pptx_format(li, para, tf, slide)
 
         if isinstance(el, basestring):
             logger.debug("parsing element {}:".format(log_wrap(el)))
@@ -1416,6 +1407,7 @@ class PptxExporter(BaseExporter):
                 f"Error replacing square brackets on question: {s}, retries exceeded\n"
             )
         s = re.sub("\\{" + hs + "(.+?)\\}", "[" + hs + "\\1]", s, flags=re.DOTALL)
+        s = s.replace("]\n", "]\n\n")
         return s
 
     def pptx_process_text(self, s, image=None):
@@ -1427,38 +1419,88 @@ class PptxExporter(BaseExporter):
         s = s.replace("\u0301", "")
         s = self.remove_square_brackets(s)
         if image:
-            s = re.sub("\\[" + hs +  "(.+?)\\]", "", s, flags=re.DOTALL)
+            s = re.sub("\\[" + hs + "(.+?)\\]", "", s, flags=re.DOTALL)
             s = s.strip()
+        elif hs in s:
+            re_hs = re.search("\\[" + hs + ".+?: ?(.+)\\]", s, flags=re.DOTALL)
+            if re_hs:
+                s = s.replace(re_hs.group(0), re_hs.group(1))
         s = re.sub(" +", " ", s)
         for punct in (".", ",", "!", "?", ":"):
             s = s.replace(" " + punct, punct)
         s = replace_no_break_spaces(s)
+        s = s.strip()
         return s
 
-    def process_header(self, header):
-        if "editor" in header:
-            index_ = [x[0] for x in header].index("editor")
-            editor_info = header[index_:]
-            header = header[:index_]
-        else:
-            editor_info = []
-        heading = [x for x in header if x[0] == "heading"]
-        ljheading = [x for x in header if x[0] == "ljheading"]
-        title_text = heading or ljheading
-        date_text = [x for x in header if x[0] == "date"]
+    def _process_block(self, block):
+        section = [x for x in block if x[0] == "section"]
+        editor = [x for x in block if x[0] == "editor"]
+        meta = [x for x in block if x[0] == "meta"]
+        if not section and not editor and not meta:
+            return
+        slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+        textbox = self.get_textbox(slide)
+        tf = textbox.text_frame
+        tf.word_wrap = True
+        text_for_size = (
+            (self.recursive_join([x[1] for x in section]) or "")
+            + "\n"
+            + (self.recursive_join([x[1] for x in editor]) or "")
+            + "\n"
+            + (self.recursive_join([x[1] for x in meta]) or "")
+        )
+        p = self.init_paragraph(tf, text=text_for_size)
+        add_line_break = False
+        if section:
+            r = p.add_run()
+            r.text = self.pptx_process_text(section[0][1])
+            r.font.size = PptxPt(self.c["text_size_grid"]["section"])
+            add_line_break = True
+        if editor:
+            r = p.add_run()
+            r.text = (
+                ("\n" if add_line_break else "")
+                + self.pptx_process_text(editor[0][1])
+                + "\n"
+            )
+            add_line_break = True
+        if meta:
+            for element in meta:
+                r = p.add_run()
+                r.text = (
+                    ("\n" if add_line_break else "")
+                    + self.pptx_process_text(element[1])
+                    + "\n"
+                )
+                add_line_break = True
+
+    def process_buffer(self, buffer):
+        heading_block = []
+        editor_block = []
+        section_block = []
+        block = heading_block
+        for element in buffer:
+            if element[0] == "section":
+                block = section_block
+            if element[0] == "editor" and not section_block:
+                block = editor_block
+            block.append(element)
+        heading = [x for x in heading_block if x[0] == "heading"]
+        ljheading = [x for x in heading_block if x[0] == "ljheading"]
+        title_text = ljheading or heading
+        date_text = [x for x in heading_block if x[0] == "date"]
         if title_text:
-            slide = self.prs.slides.add_slide(self.TITLE_SLIDE)
+            if len(self.prs.slides) == 1:
+                slide = self.prs.slides[0]
+            else:
+                slide = self.prs.slides.add_slide(self.TITLE_SLIDE)
             title = slide.shapes.title
             title.text = title_text[0][1]
             if date_text:
                 subtitle = slide.placeholders[1]
                 subtitle.text = date_text[0][1]
-        if editor_info:
-            slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
-            textbox = self.get_textbox(slide)
-            editor = [x[1] for x in editor_info if x[0] == "editor"][0]
-            meta = [x for x in editor_info if x[0] == "meta"]
-            self.add_editor_info(textbox, editor, meta, slide)
+        for block in (editor_block, section_block):
+            self._process_block(block)
 
     def set_question_number(self, slide, number):
         qntextbox = self.get_textbox_qnumber(slide)
@@ -1501,7 +1543,7 @@ class PptxExporter(BaseExporter):
             if ratio < 1:  # vertical image
                 max_width = base_width // 3
                 if big_mode:
-                    max_height *= 2
+                    max_width *= 2
                 if img_base_width > max_width or big_mode:
                     img_width = max_width
                     img_height = int(img_base_height * (max_width / img_base_width))
@@ -1538,9 +1580,9 @@ class PptxExporter(BaseExporter):
                 height=img_height,
             )
             textbox = slide.shapes.add_textbox(left, top, width, height)
-            return textbox
+            return textbox, (width * height) / (base_width * base_height)
         else:
-            return self.get_textbox(slide)
+            return self.get_textbox(slide), 1
 
     def add_slide_with_image(self, image, number=None):
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
@@ -1573,14 +1615,21 @@ class PptxExporter(BaseExporter):
         )
 
     def put_question_on_slide(self, image, slide, q, allowbigimage=True):
-        textbox = self.make_slide_layout(image, slide, allowbigimage=allowbigimage)
+        textbox, coeff = self.make_slide_layout(
+            image, slide, allowbigimage=allowbigimage
+        )
         tf = textbox.text_frame
         tf.word_wrap = True
         self.set_question_number(slide, self.number)
-        p = self.init_paragraph(tf)
         question_text = self.pptx_process_text(q["question"], image=image)
-        p.font.size = PptxPt(self.determine_size(question_text, has_images=True))
+        p = self.init_paragraph(tf, text=question_text, coeff=coeff)
         self.pptx_format(question_text, p, tf, slide)
+
+    def recursive_join(self, s):
+        if isinstance(s, str):
+            return s
+        if isinstance(s, list):
+            return "\n".join(self.recursive_join(x) for x in s)
 
     def process_question_text(self, q):
         image = self._get_image_from_4s(q["question"])
@@ -1620,51 +1669,58 @@ class PptxExporter(BaseExporter):
         if self.c["add_comment"] and "comment" in q:
             fields.append("comment")
         textbox = None
+        coeff = 1
         for field in fields:
             image = self._get_image_from_4s(q[field])
             if image:
-                textbox = self.make_slide_layout(image, slide)
+                textbox, coeff = self.make_slide_layout(image, slide)
                 break
         if not textbox:
             textbox = self.get_textbox(slide)
         tf = textbox.text_frame
         tf.word_wrap = True
 
-        p = self.init_paragraph(tf)
+        text_for_size = self.recursive_join(self.pptx_process_text(q["answer"]))
+        if q.get("zachet") and self.c.get("add_zachet"):
+            text_for_size += "\n" + self.recursive_join(
+                self.pptx_process_text(q["zachet"])
+            )
+        if q.get("comment") and self.c.get("add_comment"):
+            text_for_size += "\n" + self.recursive_join(
+                self.pptx_process_text(q["comment"])
+            )
+        p = self.init_paragraph(tf, text=text_for_size, coeff=coeff)
         r = p.add_run()
         r.text = f"{self.get_label(q, 'answer')}: "
         r.font.bold = True
         self.pptx_format(self.pptx_process_text(q["answer"]), p, tf, slide)
         if q.get("zachet") and self.c.get("add_zachet"):
             zachet_text = self.pptx_process_text(q["zachet"])
-            p = self.init_paragraph(tf, text=zachet_text)
             r = p.add_run()
-            r.text = f"{self.get_label(q, 'zachet')}: "
+            r.text = f"\n{self.get_label(q, 'zachet')}: "
             r.font.bold = True
             self.pptx_format(zachet_text, p, tf, slide)
         if self.c["add_comment"] and "comment" in q:
             comment_text = self.pptx_process_text(q["comment"])
-            p = self.init_paragraph(tf, text=comment_text)
             r = p.add_run()
-            r.text = f"{self.get_label(q, 'comment')}: "
+            r.text = f"\n{self.get_label(q, 'comment')}: "
             r.font.bold = True
             self.pptx_format(comment_text, p, tf, slide)
-        if image and image["big"]:
-            self.add_slide_with_image(image, number=self.number)
 
-    def determine_size(self, text, has_images=False):
-        len_for_size = len(text) + 50 * text.count("\n") + 200 * int(has_images)
+    def determine_size(self, text, coeff=1):
+        text = self.recursive_join(text)
+        len_for_size = round((len(text) + 50 * text.count("\n")) / coeff)
         for element in self.c["text_size_grid"]["elements"]:
             if len_for_size <= element["length"]:
                 return element["size"]
         return self.c["text_size_grid"]["smallest"]
 
-    def init_paragraph(self, text_frame, text=None):
-        p = text_frame.add_paragraph()
+    def init_paragraph(self, text_frame, text=None, coeff=1):
+        p = text_frame.paragraphs[0]
         p.font.name = self.c["font"]["name"]
         size = self.c["text_size_grid"]["default"]
         if text:
-            size = self.determine_size(text)
+            size = self.determine_size(text, coeff=coeff)
         p.font.size = PptxPt(size)
         return p
 
@@ -1677,32 +1733,15 @@ class PptxExporter(BaseExporter):
         self.prs = Presentation(template)
         self.TITLE_SLIDE = self.prs.slide_layouts[0]
         self.BLANK_SLIDE = self.prs.slide_layouts[6]
-        min_content_index = find_min_context_index(self.structure)
-        header = self.structure[:min_content_index]
-        content = self.structure[min_content_index:]
-        self.process_header(header)
-        slide = None
-        for element in content:
-            if element[0] == "section":
-                slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
-                textbox = self.get_textbox(slide)
-                tf = textbox.text_frame
-                tf.word_wrap = True
-                p = self.init_paragraph(tf)
-                p.text = self.pptx_process_text(element[1])
-                p.font.size = PptxPt(self.c["text_size_grid"]["section"])
-            if element[0] == "editor":
-                if slide is None:
-                    slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
-                    textbox = self.get_textbox(slide)
-                    tf = textbox.text_frame
-                    tf.word_wrap = True
-                p = self.init_paragraph(tf)
-                p.text = self.pptx_process_text(element[1])
-            if element[0] == "meta":
-                p = self.init_paragraph(tf, text=element[1])
-                self.pptx_format(self.pptx_process_text(element[1]), p, tf, slide)
+        buffer = []
+        for element in self.structure:
+            if element[0] != "Question":
+                buffer.append(element)
+                continue
             if element[0] == "Question":
+                if buffer:
+                    self.process_buffer(buffer)
+                    buffer = []
                 self.process_question(element[1])
         self.prs.save(outfilename)
         logger.info("Output: {}".format(outfilename))
@@ -1720,7 +1759,7 @@ class LjExporter(BaseExporter):
             chal.encode("utf8") + md5(self.args.password.encode("utf8")).encode("utf8")
         )
         return (chal, response)
-    
+
     def split_into_tours(self):
         general_impression = self.args.general_impression
         result = []
@@ -1755,7 +1794,9 @@ class LjExporter(BaseExporter):
                     0,
                     [
                         "ljheading",
-                        "{}{} {}".format(globalheading, globalsep, find_tour(tour)[1][1]),
+                        "{}{} {}".format(
+                            globalheading, globalsep, find_tour(tour)[1][1]
+                        ),
                     ],
                 )
         if general_impression:
@@ -1763,12 +1804,13 @@ class LjExporter(BaseExporter):
                 [
                     [
                         "ljheading",
-                        "{}{} {}".format(globalheading, globalsep, self.labels["general"]["general_impressions_caption"]),
+                        "{}{} {}".format(
+                            globalheading,
+                            globalsep,
+                            self.labels["general"]["general_impressions_caption"],
+                        ),
                     ],
-                    [
-                        "meta",
-                        self.labels["general"]["general_impressions_text"],
-                    ],
+                    ["meta", self.labels["general"]["general_impressions_text"]],
                 ]
             )
         return result
@@ -1913,7 +1955,7 @@ class LjExporter(BaseExporter):
                             question=self.get_label(element[1], "question"),
                             num=element[1]["number"]
                             if "number" in element[1]
-                            else self.counter
+                            else self.counter,
                         ),
                         "content": self.html_format_question(element[1]),
                     }
@@ -1923,7 +1965,9 @@ class LjExporter(BaseExporter):
                 final_structure.append({"header": "", "content": yapper(element[1])})
 
         if not final_structure[0]["content"]:
-            final_structure[0]["content"] = self.labels["general"]["general_impressions_text"]
+            final_structure[0]["content"] = self.labels["general"][
+                "general_impressions_text"
+            ]
         if self.args.debug:
             with codecs.open("lj.debug", "w", "utf8") as f:
                 f.write(log_wrap(final_structure))
@@ -1961,15 +2005,15 @@ class LjExporter(BaseExporter):
         res = "<strong>{question} {num}.</strong> {content}".format(
             question=self.get_label(q, "question"),
             num=self.counter if "number" not in q else q["number"],
-            content=yapper(q["question"]) + ("\n<lj-spoiler>" if not args.nospoilers else ""),
+            content=yapper(q["question"])
+            + ("\n<lj-spoiler>" if not args.nospoilers else ""),
         )
         if "number" not in q:
             self.counter += 1
         for field in ("answer", "zachet", "nezachet", "comment", "source", "author"):
             if field in q:
                 res += "\n<strong>{field}: </strong>{content}".format(
-                    field=self.get_label(q, field),
-                    content=yapper(q[field])
+                    field=self.get_label(q, field), content=yapper(q[field])
                 )
         if not args.nospoilers:
             res += "</lj-spoiler>"
