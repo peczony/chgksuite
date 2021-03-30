@@ -222,7 +222,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
         elements = {x[0] for x in fragment}
         if "answer" in elements and not fragment[0][0]:
             fragment[0][0] = "question"
-    structure = list(itertools.chain(*fragments))   
+    structure = list(itertools.chain(*fragments))
     i = 0
 
     if debug:
