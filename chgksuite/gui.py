@@ -361,6 +361,7 @@ def app():
         help="A file containing regexes " "(the default is regexes.json).",
         advanced=True,
         caption="Файл с регулярными выражениями",
+        argtype="filename"
     )
     cmdparse.add_argument(
         "--parsedir",
