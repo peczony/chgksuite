@@ -2088,6 +2088,7 @@ class LjExporter(BaseExporter):
                     "" if h == -1 else " height={}".format(h),
                     imgfile,
                 )
+        res = replace_no_break_spaces(res)
         return res
 
     def export(self):
