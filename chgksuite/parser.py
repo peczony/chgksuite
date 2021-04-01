@@ -327,7 +327,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                     pass
             # TODO: переделать корявую обработку авторки на нормальную
             before_replacement = element[1]
-            element[1] = regexes[element[0]].sub("", element[1])
+            element[1] = regexes[element[0]].sub("", element[1], 1)
             if element[1].startswith(SEP):
                 element[1] = element[1][len(SEP) :]
             if element[0] == "author" and "авторка:" in before_replacement.lower():
