@@ -1761,7 +1761,7 @@ class LjExporter(BaseExporter):
         return (chal, response)
 
     def split_into_tours(self):
-        general_impression = self.args.general_impression
+        general_impression = self.args.genimp
         result = []
         current = []
         mode = "meta"
@@ -1888,6 +1888,8 @@ class LjExporter(BaseExporter):
         community = self.args.community
         if community:
             add_params["usejournal"] = community
+        elif self.args.security == "public":
+            pass
         elif self.args.security:
             add_params["security"] = "usemask"
             add_params["allowmask"] = (
@@ -2119,10 +2121,10 @@ class LjExporter(BaseExporter):
                         "content": stru[0]["content"] + "\n\n" + navigation[i],
                         "itemid": post["itemid"],
                     }
-                    lj_post([newstru], args, edit=True)
+                    self.lj_post([newstru], edit=True)
         else:
-            stru = lj_process(structure, args, **dir_kwargs)
-            post = lj_post(stru, args)
+            stru = self.lj_process(structure)
+            post = self.lj_post(stru)
 
 
 def process_file(filename, tmp_dir, sourcedir, targetdir):
