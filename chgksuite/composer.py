@@ -1185,7 +1185,7 @@ class BaseExporter:
         self.structure = args[0]
         self.args = args[1]
         self.dir_kwargs = args[2]
-        with open(self.args.labels_file) as f:
+        with open(self.args.labels_file, encoding="utf8") as f:
             self.labels = toml.load(f)
 
     def get_label(self, question, field):
@@ -1333,7 +1333,7 @@ class PptxExporter(BaseExporter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.config_path = os.path.abspath(self.args.pptx_config)
-        with open(self.config_path) as f:
+        with open(self.config_path, encoding="utf8") as f:
             self.c = toml.load(f)
         self.qcount = 0
 
