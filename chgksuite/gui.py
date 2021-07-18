@@ -26,7 +26,7 @@ from chgksuite.common import (
     bring_to_front,
     get_lastdir,
     ensure_utf8,
-    get_source_dirs
+    get_source_dirs,
 )
 
 from collections import defaultdict
@@ -56,9 +56,7 @@ class OpenFileDialog(object):
 
     def __call__(self):
         function = (
-            filedialog.askdirectory
-            if self.folder
-            else filedialog.askopenfilename
+            filedialog.askdirectory if self.folder else filedialog.askopenfilename
         )
         kwargs = {}
         if self.lastdir:
@@ -207,19 +205,13 @@ class ParserWrapper(object):
             innerframe = tk.Frame(frame)
             innerframe.pack(side="top")
             checkbutton = tk.Checkbutton(
-                innerframe,
-                text=caption,
-                variable=var,
-                onvalue="true",
-                offvalue="false",
+                innerframe, text=caption, variable=var, onvalue="true", offvalue="false"
             )
             checkbutton.pack(side="left")
             self.vars.append(VarWrapper(name=args[0], var=var))
         elif argtype in {"filename", "folder"}:
             text = "(имя файла)" if argtype == "filename" else "(имя папки)"
-            button_text = (
-                "Открыть файл" if argtype == "filename" else "Открыть папку"
-            )
+            button_text = "Открыть файл" if argtype == "filename" else "Открыть папку"
             var = tk.StringVar()
             innerframe = tk.Frame(frame)
             innerframe.pack(side="top")
@@ -267,9 +259,7 @@ class ParserWrapper(object):
         if not argv:
             self.tk.mainloop()
             if self.cmdline_call:
-                return DefaultNamespace(
-                    self.parser.parse_args(self.cmdline_call)
-                )
+                return DefaultNamespace(self.parser.parse_args(self.cmdline_call))
             else:
                 sys.exit(0)
         return DefaultNamespace(self.parser.parse_args(*args, **kwargs))
@@ -329,7 +319,7 @@ def app():
         "--version",
         action="version",
         version="%(prog)s " + __version__,
-        hide=True
+        hide=True,
     )
     subparsers = parser.add_subparsers(dest="action")
 
@@ -361,7 +351,7 @@ def app():
         help="A file containing regexes " "(the default is regexes.json).",
         advanced=True,
         caption="Файл с регулярными выражениями",
-        argtype="filename"
+        argtype="filename",
     )
     cmdparse.add_argument(
         "--parsedir",
@@ -396,8 +386,7 @@ def app():
     cmdparse.add_argument(
         "--fix_spans",
         action="store_true",
-        help="try to unwrap all <span> tags. "
-        "Can help fix weird Word formatting.",
+        help="try to unwrap all <span> tags. " "Can help fix weird Word formatting.",
         advanced=True,
         caption="Fix <span> tags",
     )
@@ -430,13 +419,13 @@ def app():
         help="i18n config",
         caption="Конфиг для интернационализации",
         advanced=True,
-        argtype="filename"
+        argtype="filename",
     )
     cmdcompose.add_argument(
         "--imgur_client_id",
         help="imgur client id",
         caption="Client ID для API Imgur",
-        advanced=True
+        advanced=True,
     )
     cmdcompose_filetype = cmdcompose.add_subparsers(dest="filetype")
     cmdcompose_docx = cmdcompose_filetype.add_parser("docx")
@@ -574,7 +563,18 @@ def app():
         caption="Имя 4s-файла",
         filetypes=[("chgksuite markup files", "*.4s")],
     )
-    cmdcompose_base.add_argument("--clipboard", action="store_true")
+    cmdcompose_base.add_argument(
+        "--remove_accents",
+        action="store_true",
+        caption="Убрать знаки ударения",
+        help="remove combining acute accents to prevent db.chgk.info search breaking",
+    )
+    cmdcompose_base.add_argument(
+        "--clipboard",
+        caption="Скопировать результат в буфер",
+        help="copy result to clipboard",
+        action="store_true",
+    )
     cmdcompose_redditmd = cmdcompose_filetype.add_parser("redditmd")
     cmdcompose_redditmd.add_argument(
         "filename",
@@ -637,10 +637,7 @@ def app():
         caption="Склеить всё в один файл",
     )
     cmdtrello_download.add_argument(
-        "--qb",
-        action="store_true",
-        help="Quizbowl format",
-        caption="Формат квизбола",
+        "--qb", action="store_true", help="Quizbowl format", caption="Формат квизбола"
     )
     cmdtrello_download.add_argument(
         "--labels",
@@ -691,9 +688,7 @@ def app():
             elif os.path.isfile(config[key]):
                 val = os.path.abspath(config[key])
             elif os.path.isfile(
-                os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), config[key]
-                )
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), config[key])
             ):
                 val = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)), config[key]

@@ -776,6 +776,10 @@ class DbExporter(BaseExporter):
     def base_element_layout(self, e):
         res = ""
         if isinstance(e, str):
+            if self.args.remove_accents:
+                for match in re.finditer("(.)\u0301", e):
+                    replacement = match.group(1).upper()
+                    e = e.replace(match.group(0), replacement)
             res = self.baseformat(e)
             return res
         if isinstance(e, list):
