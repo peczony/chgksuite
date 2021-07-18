@@ -1,13 +1,7 @@
 #!usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from __future__ import division
-
-try:
-    from xmlrpclib import ServerProxy
-except ImportError:
-    from xmlrpc.client import ServerProxy
 import codecs
+import base64
 import copy
 import contextlib
 import logging
@@ -25,32 +19,16 @@ import time
 import tempfile
 import traceback
 import urllib
+from xmlrpc.client import ServerProxy
 import dateparser
+import requests
 import pyperclip
 import toml
-from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
-
-try:
-    basestring
-except NameError:
-    basestring = str
-try:
-    input = raw_input
-except NameError:
-    pass
-try:
-    unquote = urllib.unquote
-except AttributeError:
-
-    def unquote(bytestring):
-        return urllib.parse.unquote(bytestring.decode("utf8")).encode("utf8")
-
 
 from docx import Document
 from docx.shared import Inches, Pt as DocxPt
 from PIL import Image
-import pyimgur
 
 from pptx import Presentation
 from pptx.util import Inches as PptxInches, Pt as PptxPt
@@ -90,9 +68,8 @@ re_uppercase = re.compile(r"[А-ЯЁ]")
 re_editors = re.compile(r"^[рР]едакторы? *(пакета|тура)? *[—\-–−:] ?")
 
 REQUIRED_LABELS = set(["question", "answer"])
-IMGUR_CLIENT_ID = "8da1bd97da30ac1"
+IMGUR_CLIENT_ID = "e86275b3316c6d6"
 OVERRIDE_PREFIX = "!!"
-im = pyimgur.Imgur(IMGUR_CLIENT_ID)
 
 ENC = sys.stdout.encoding or "utf8"
 CONSOLE_ENC = ENC
@@ -109,6 +86,10 @@ WHITEN = {
 
 logger = DummyLogger()
 retry_wrapper = None
+
+
+def unquote(bytestring):
+    return urllib.parse.unquote(bytestring.decode("utf8")).encode("utf8")
 
 
 def make_filename(s, ext, nots=False):
@@ -393,19 +374,19 @@ def parse_4s(s, randomize=False):
         if element[0] in QUESTION_LABELS:
             if element[0] in current_question:
 
-                if isinstance(current_question[element[0]], basestring) and isinstance(
-                    element[1], basestring
+                if isinstance(current_question[element[0]], str) and isinstance(
+                    element[1], str
                 ):
                     current_question[element[0]] += "\n" + element[1]
 
                 elif isinstance(current_question[element[0]], list) and isinstance(
-                    element[1], basestring
+                    element[1], str
                 ):
                     current_question[element[0]][0] += "\n" + element[1]
 
-                elif isinstance(
-                    current_question[element[0]], basestring
-                ) and isinstance(element[1], list):
+                elif isinstance(current_question[element[0]], str) and isinstance(
+                    element[1], list
+                ):
                     current_question[element[0]] = [
                         element[1][0] + "\n" + current_question[element[0]],
                         element[1][1],
@@ -542,116 +523,6 @@ def find_tour(structure):
     return None
 
 
-def baseyapper(e, **kwargs):
-    if isinstance(e, basestring):
-        return base_element_layout(e, **kwargs)
-    elif isinstance(e, list):
-        if not any(isinstance(x, list) for x in e):
-            return base_element_layout(e, **kwargs)
-        else:
-            return "\n".join([base_element_layout(x, **kwargs) for x in e])
-
-
-def baseformat(s, **kwargs):
-    res = ""
-    for run in parse_4s_elem(s):
-        if run[0] == "":
-            res += run[1].replace("\n", "\n   ")
-        if run[0] == "em":
-            res += run[1]
-        if run[0] == "img":
-            parsed_image = parseimg(
-                run[1],
-                dimensions="pixels",
-                targetdir=kwargs.get("targetdir"),
-                tmp_dir=kwargs.get("tmp_dir"),
-            )
-            imgfile = parsed_image["imgfile"]
-            w = parsed_image["width"]
-            h = parsed_image["height"]
-            if os.path.isfile(imgfile):
-                pil_image = Image.open(imgfile)
-                w_orig, h_orig = pil_image.size
-                if w_orig != w or h_orig != h:
-                    print("resizing image {}".format(imgfile))
-                    pil_image = pil_image.resize(
-                        (int(w), int(h)), resample=Image.LANCZOS
-                    )
-                    bn, ext = os.path.splitext(imgfile)
-                    resized_fn = "{}_resized.png".format(bn)
-                    pil_image.save(resized_fn, "PNG")
-                    to_upload = resized_fn
-                else:
-                    to_upload = imgfile
-                print("uploading {}...".format(to_upload))
-                uploaded_image = im.upload_image(to_upload, title=to_upload)
-                imglink = uploaded_image.link
-                print("the link for {} is {}...".format(to_upload, imglink))
-            else:
-                imglink = imgfile
-            res += "(pic: {})".format(imglink)
-    while res.endswith("\n"):
-        res = res[:-1]
-    return res
-
-
-def base_element_layout(e, **kwargs):
-    res = ""
-    if isinstance(e, basestring):
-        res = baseformat(e, **kwargs)
-        return res
-    if isinstance(e, list):
-        res = "\n".join(
-            [
-                "   {}. {}".format(i + 1, base_element_layout(x, **kwargs))
-                for i, x in enumerate(e)
-            ]
-        )
-    return res
-
-
-BASE_MAPPING = {
-    "section": "Тур",
-    "heading": "Чемпионат",
-    "editor": "Редактор",
-    "meta": "Инфо",
-}
-re_date_sep = re.compile(" [—–-] ")
-
-
-def wrap_date(s):
-    s = s.strip()
-    parsed = dateparser.parse(s)
-    if isinstance(parsed, datetime.datetime):
-        parsed = parsed.date()
-    if not parsed:
-        print("unable to parse date {}, setting to default 2010-01-01".format(s))
-        return datetime.date(2010, 1, 1).strftime("%d-%b-%Y")
-    if parsed > datetime.date.today():
-        parsed = parsed.replace(year=parsed.year - 1)
-    formatted = parsed.strftime("%d-%b-%Y")
-    return formatted
-
-
-def base_format_element(pair, **kwargs):
-    if pair[0] == "Question":
-        return base_format_question(pair[1], **kwargs)
-    if pair[0] in BASE_MAPPING:
-        return "{}:\n{}\n\n".format(
-            BASE_MAPPING[pair[0]], baseyapper(pair[1], **kwargs)
-        )
-    elif pair[0] == "date":
-        re_search = re_date_sep.search(pair[1])
-        if re_search:
-            gr0 = re_search.group(0)
-            dates = pair[1].split(gr0)
-            return "Дата:\n{} - {}\n\n".format(
-                wrap_date(dates[0]), wrap_date(dates[-1])
-            )
-        else:
-            return "Дата:\n{}\n\n".format(wrap_date(pair[1]))
-
-
 def check_if_zero(Question):
     number = Question.get("number")
     if number is None:
@@ -661,367 +532,6 @@ def check_if_zero(Question):
     if isinstance(number, str) and number.startswith(("0", "Размин")):
         return True
     return False
-
-
-def output_base(structure, outfile, args, **kwargs):
-    def _baseyapper(x):
-        return baseyapper(x, **kwargs)
-
-    def _get_last_value(dct, key):
-        if isinstance(dct[key], list):
-            return dct[key][-1]
-        return dct[key]
-
-    def _add_to_dct(dct, key, to_add):
-        if isinstance(dct[key], list):
-            dct[key][-1] += to_add
-        else:
-            dct[key] += to_add
-
-    result = []
-    lasttour = 0
-    zeroq = 1
-    for i, pair in enumerate(structure):
-        if pair[0] == "section":
-            lasttour = i
-        while (
-            pair[0] == "meta"
-            and (i + 1) < len(structure)
-            and structure[i + 1][0] == "meta"
-        ):
-            pair[1] += "\n{}".format(structure[i + 1][1])
-            structure.pop(i + 1)
-        if pair[0] == "Question" and check_if_zero(pair[1]):
-            tourheader = "Нулевой вопрос {}".format(zeroq)
-            zeroq += 1
-            pair[1]["number"] = 1
-            structure.insert(lasttour, structure.pop(i))
-            structure.insert(lasttour, ["section", tourheader])
-    for pair in structure:
-        if pair[0] == "Question" and "nezachet" in pair[1]:
-            field = "zachet" if "zachet" in pair[1] else "answer"
-            last_val = _get_last_value(pair[1], field)
-            nezachet = _baseyapper(pair[1].pop("nezachet"))
-            to_add = "{}\n   Незачёт: {}".format(
-                "." if not last_val.endswith(".") else "", nezachet
-            )
-            _add_to_dct(pair[1], field, to_add)
-        if pair[0] == "editor":
-            pair[1] = re.sub(re_editors, "", pair[1])
-            logger.info('Поле "Редактор" было автоматически изменено.')
-        res = base_format_element(pair, **kwargs)
-        if res:
-            result.append(res)
-    text = "".join(result)
-    with codecs.open(outfile, "w", "utf8") as f:
-        f.write(text)
-    logger.info("Output: {}".format(outfile))
-    if args.clipboard:
-        pyperclip.copy(text)
-
-
-def base_format_question(q, **kwargs):
-    def _baseyapper(x):
-        return baseyapper(x, **kwargs)
-
-    if "setcounter" in q:
-        gui_compose.counter = int(q["setcounter"])
-    res = "Вопрос {}:\n{}\n\n".format(
-        gui_compose.counter if "number" not in q else q["number"],
-        _baseyapper(q["question"]),
-    )
-    if "number" not in q:
-        gui_compose.counter += 1
-    res += "Ответ:\n{}\n\n".format(_baseyapper(q["answer"]))
-    if "zachet" in q:
-        res += "Зачет:\n{}\n\n".format(_baseyapper(q["zachet"]))
-    if "nezachet" in q:
-        res += "Незачет:\n{}\n\n".format(_baseyapper(q["zachet"]))
-    if "comment" in q:
-        res += "Комментарий:\n{}\n\n".format(_baseyapper(q["comment"]))
-    if "source" in q:
-        res += "Источник:\n{}\n\n".format(_baseyapper(q["source"]))
-    if "author" in q:
-        res += "Автор:\n{}\n\n".format(_baseyapper(q["author"]))
-    return res
-
-
-def reddityapper(e, **kwargs):
-    if isinstance(e, basestring):
-        return reddit_element_layout(e, **kwargs)
-    elif isinstance(e, list):
-        if not any(isinstance(x, list) for x in e):
-            return reddit_element_layout(e, **kwargs)
-        else:
-            return "  \n".join([reddit_element_layout(x, **kwargs) for x in e])
-
-
-def redditformat(s, **kwargs):
-    res = ""
-    for run in parse_4s_elem(s):
-        if run[0] == "":
-            res += run[1]
-        if run[0] == "em":
-            res += "_{}_".format(run[1])
-        if run[0] == "img":
-            parsed_image = parseimg(
-                run[1],
-                dimensions="ems",
-                targetdir=kwargs.get("targetdir"),
-                tmp_dir=kwargs.get("tmp_dir"),
-            )
-            imgfile = parsed_image["imgfile"]
-            w = parsed_image["width"]
-            h = parsed_image["height"]
-            if os.path.isfile(imgfile):
-                uploaded_image = im.upload_image(imgfile, title=imgfile)
-                imgfile = uploaded_image.link
-            else:
-                raise Exception("Image not found: {}".format(imgfile))
-            res += "[картинка]({})".format(imgfile)
-    while res.endswith("\n"):
-        res = res[:-1]
-    res = res.replace("\n", "  \n")
-    return res
-
-
-def reddit_element_layout(e, **kwargs):
-    res = ""
-    if isinstance(e, basestring):
-        res = redditformat(e, **kwargs)
-        return res
-    if isinstance(e, list):
-        res = "  \n".join(
-            [
-                "{}\\. {}".format(i + 1, reddit_element_layout(x, **kwargs))
-                for i, x in enumerate(e)
-            ]
-        )
-    return res
-
-
-def reddit_format_element(pair, **kwargs):
-    if pair[0] == "Question":
-        return reddit_format_question(pair[1], **kwargs)
-
-
-def reddit_format_question(q, **kwargs):
-    if "setcounter" in q:
-        gui_compose.counter = int(q["setcounter"])
-    res = "__Вопрос {}__: {}  \n".format(
-        gui_compose.counter if "number" not in q else q["number"],
-        reddityapper(q["question"], **kwargs),
-    )
-    if "number" not in q:
-        gui_compose.counter += 1
-    res += "__Ответ:__ >!{}  \n".format(reddityapper(q["answer"], **kwargs))
-    if "zachet" in q:
-        res += "__Зачёт:__ {}  \n".format(reddityapper(q["zachet"], **kwargs))
-    if "nezachet" in q:
-        res += "__Незачёт:__ {}  \n".format(reddityapper(q["nezachet"], **kwargs))
-    if "comment" in q:
-        res += "__Комментарий:__ {}  \n".format(reddityapper(q["comment"], **kwargs))
-    if "source" in q:
-        res += "__Источник:__ {}  \n".format(reddityapper(q["source"], **kwargs))
-    if "author" in q:
-        res += "!<\n__Автор:__ {}  \n".format(reddityapper(q["author"], **kwargs))
-    else:
-        res += "!<\n"
-    return res
-
-
-def output_reddit(structure, outfile, args, **kwargs):
-    result = []
-    for pair in structure:
-        res = reddit_format_element(pair, **kwargs)
-        if res:
-            result.append(res)
-    text = "\n\n".join(result)
-    with codecs.open(outfile, "w", "utf8") as f:
-        f.write(text)
-    logger.info("Output: {}".format(outfile))
-
-
-def tex_format_question(q, **kwargs):
-    yapper = texyapper
-    if "setcounter" in q:
-        gui_compose.counter = int(q["setcounter"])
-    res = (
-        "\n\n\\begin{{minipage}}{{\\textwidth}}\\raggedright\n"
-        "\\textbf{{Вопрос {}.}} {} \\newline".format(
-            gui_compose.counter if "number" not in q else q["number"],
-            yapper(q["question"], **kwargs),
-        )
-    )
-    if "number" not in q:
-        gui_compose.counter += 1
-    res += "\n\\textbf{{Ответ: }}{} \\newline".format(yapper(q["answer"], **kwargs))
-    if "zachet" in q:
-        res += "\n\\textbf{{Зачёт: }}{} \\newline".format(yapper(q["zachet"], **kwargs))
-    if "nezachet" in q:
-        res += "\n\\textbf{{Незачёт: }}{} \\newline".format(
-            yapper(q["nezachet"], **kwargs)
-        )
-    if "comment" in q:
-        res += "\n\\textbf{{Комментарий: }}{} \\newline".format(
-            yapper(q["comment"], **kwargs)
-        )
-    if "source" in q:
-        res += "\n\\textbf{{Источник{}: }}{} \\newline".format(
-            "и" if isinstance(q["source"], list) else "", yapper(q["source"], **kwargs)
-        )
-    if "author" in q:
-        res += "\n\\textbf{{Автор: }}{} \\newline".format(yapper(q["author"], **kwargs))
-    res += "\n\\end{minipage}\n"
-    return res
-
-
-def texrepl(zz):
-    zz = re.sub(r"{", r"\{", zz)
-    zz = re.sub(r"}", r"\}", zz)
-    zz = re.sub(r"\\(?![\}\{])", r"{\\textbackslash}", zz)
-    zz = re.sub("%", "\%", zz)
-    zz = re.sub(r"\$", "\$", zz)
-    zz = re.sub("#", "\#", zz)
-    zz = re.sub("&", "\&", zz)
-    zz = re.sub("_", r"\_", zz)
-    zz = re.sub(r"\^", r"{\\textasciicircum}", zz)
-    zz = re.sub(r"\~", r"{\\textasciitilde}", zz)
-    zz = re.sub(r'((\"(?=[ \.\,;\:\?!\)\]]))|("(?=\Z)))', "»", zz)
-    zz = re.sub(r'(((?<=[ \.\,;\:\?!\(\[)])")|((?<=\A)"))', "«", zz)
-    zz = re.sub('"', "''", zz)
-
-    for match in sorted(
-        [x for x in re_scaps.finditer(zz)], key=lambda x: len(x.group(2)), reverse=True
-    ):
-        zz = zz.replace(match.group(2), "\\tsc{" + match.group(2).lower() + "}")
-
-    # while re_scaps.search(zz):
-    #     zz = zz.replace(re_scaps.search(zz).group(2),
-    #         '\\tsc{'+re_scaps.search(zz).group(2).lower()+'}')
-
-    torepl = [x.group(0) for x in re.finditer(re_url, zz)]
-    for s in range(len(torepl)):
-        item = torepl[s]
-        while item[-1] in typotools.PUNCTUATION:
-            item = item[:-1]
-        while (
-            item[-1] in typotools.CLOSING_BRACKETS
-            and typotools.find_matching_opening_bracket(item, -1) is None
-        ):
-            item = item[:-1]
-        while item[-1] in typotools.PUNCTUATION:
-            item = item[:-1]
-        torepl[s] = item
-    torepl = sorted(set(torepl), key=len, reverse=True)
-    hashurls = {}
-    for s in torepl:
-        hashurls[s] = hashlib.md5(s.encode("utf8")).hexdigest()
-    for s in sorted(hashurls, key=len, reverse=True):
-        zz = zz.replace(s, hashurls[s])
-    hashurls = {v: k for k, v in hashurls.items()}
-    for s in sorted(hashurls):
-        zz = zz.replace(s, "\\url{{{}}}".format(hashurls[s].replace("\\\\", "\\")))
-
-    # debug_print('URLS FOR REPLACING: ' +
-    #             pprint.pformat(torepl).decode('unicode_escape'))
-    # while len(torepl)>0:
-    #     s = torepl[0]
-    #     debug_print('STRING BEFORE REPLACEMENT: {}'.format(zz))
-    #     zz = zz.replace(s, '\\url{'+s+'}')
-    #     debug_print('STRING AFTER REPLACEMENT: {}'.format(zz))
-    #     torepl.pop(0)
-
-    zz = zz.replace(" — ", "{\\Hair}—{\\hair}")
-
-    while "`" in zz:
-        if zz.index("`") + 1 >= len(zz):
-            zz = zz.replace("`", "")
-        else:
-            if zz.index("`") + 2 < len(zz) and re.search(r"\s", zz[zz.index("`") + 2]):
-                zz = zz[: zz.index("`") + 2] + "" + zz[zz.index("`") + 2 :]
-            if zz.index("`") + 1 < len(zz) and re_lowercase.search(
-                zz[zz.index("`") + 1]
-            ):
-                zz = (
-                    zz[: zz.index("`") + 1]
-                    + ""
-                    + zz[zz.index("`") + 1]
-                    + "\u0301"
-                    + zz[zz.index("`") + 2 :]
-                )
-            elif zz.index("`") + 1 < len(zz) and re_uppercase.search(
-                zz[zz.index("`") + 1]
-            ):
-                zz = (
-                    zz[: zz.index("`") + 1]
-                    + ""
-                    + zz[zz.index("`") + 1]
-                    + "\u0301"
-                    + zz[zz.index("`") + 2 :]
-                )
-            zz = zz[: zz.index("`")] + zz[zz.index("`") + 1 :]
-
-    return zz
-
-
-def texformat(s, **kwargs):
-    res = ""
-    for run in parse_4s_elem(s):
-        if run[0] == "":
-            res += texrepl(run[1])
-        if run[0] == "em":
-            res += "\\emph{" + texrepl(run[1]) + "}"
-        if run[0] == "img":
-            parsed_image = parseimg(
-                run[1],
-                dimensions="ems",
-                tmp_dir=kwargs.get("tmp_dir"),
-                targetdir=kwargs.get("targetdir"),
-            )
-            imgfile = parsed_image["imgfile"]
-            w = parsed_image["width"]
-            h = parsed_image["height"]
-            res += (
-                "\\includegraphics"
-                + "[width={}{}]".format(
-                    "10em" if w == -1 else "{}em".format(w),
-                    ", height={}em".format(h) if h != -1 else "",
-                )
-                + "{"
-                + imgfile
-                + "}"
-            )
-    while res.endswith("\n"):
-        res = res[:-1]
-    res = res.replace("\n", "  \\newline \n")
-    return res
-
-
-def texyapper(e, **kwargs):
-    if isinstance(e, basestring):
-        return tex_element_layout(e, **kwargs)
-    elif isinstance(e, list):
-        if not any(isinstance(x, list) for x in e):
-            return tex_element_layout(e, **kwargs)
-        else:
-            return "  \n".join([tex_element_layout(x, **kwargs) for x in e])
-
-
-def tex_element_layout(e, **kwargs):
-    res = ""
-    if isinstance(e, basestring):
-        res = texformat(e, **kwargs)
-        return res
-    if isinstance(e, list):
-        res = """
-\\begin{{compactenum}}
-{}
-\\end{{compactenum}}
-""".format(
-            "\n".join(["\\item {}".format(tex_element_layout(x, **kwargs)) for x in e])
-        )
-    return res
 
 
 def gui_compose(largs, sourcedir=None):
@@ -1196,6 +706,532 @@ class BaseExporter:
         return self.labels["question_labels"][field]
 
 
+class DbExporter(BaseExporter):
+    BASE_MAPPING = {
+        "section": "Тур",
+        "heading": "Чемпионат",
+        "editor": "Редактор",
+        "meta": "Инфо",
+    }
+    re_date_sep = re.compile(" [—–-] ")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.qcount = 0
+        self.im = Imgur(self.args.imgur_client_id or IMGUR_CLIENT_ID)
+
+    def baseyapper(self, e):
+        if isinstance(e, str):
+            return self.base_element_layout(e)
+        elif isinstance(e, list):
+            if not any(isinstance(x, list) for x in e):
+                return self.base_element_layout(e)
+            else:
+                return "\n".join([self.base_element_layout(x) for x in e])
+
+    def parse_and_upload_image(self, path):
+        parsed_image = parseimg(
+            path,
+            dimensions="pixels",
+            targetdir=self.dir_kwargs.get("targetdir"),
+            tmp_dir=self.dir_kwargs.get("tmp_dir"),
+        )
+        imgfile = parsed_image["imgfile"]
+        w = parsed_image["width"]
+        h = parsed_image["height"]
+        pil_image = Image.open(imgfile)
+        w_orig, h_orig = pil_image.size
+        if w_orig != w or h_orig != h:
+            print("resizing image {}".format(imgfile))
+            pil_image = pil_image.resize((int(w), int(h)), resample=Image.LANCZOS)
+            bn, ext = os.path.splitext(imgfile)
+            resized_fn = "{}_resized.png".format(bn)
+            pil_image.save(resized_fn, "PNG")
+            to_upload = resized_fn
+        else:
+            to_upload = imgfile
+        print("uploading {}...".format(to_upload))
+        uploaded_image = self.im.upload_image(to_upload, title=to_upload)
+        imglink = uploaded_image["data"]["link"]
+        print("the link for {} is {}...".format(to_upload, imglink))
+        return imglink
+
+    def baseformat(self, s):
+        res = ""
+        for run in parse_4s_elem(s):
+            if run[0] == "":
+                res += run[1].replace("\n", "\n   ")
+            if run[0] == "em":
+                res += run[1]
+            if run[0] == "img":
+                if run[1].startswith(("http://", "https://")):
+                    imglink = run[1]
+                else:
+                    imglink = self.parse_and_upload_image(run[1])
+                res += "(pic: {})".format(imglink)
+        while res.endswith("\n"):
+            res = res[:-1]
+        return res
+
+    def base_element_layout(self, e):
+        res = ""
+        if isinstance(e, str):
+            res = self.baseformat(e)
+            return res
+        if isinstance(e, list):
+            res = "\n".join(
+                [
+                    "   {}. {}".format(i + 1, self.base_element_layout(x))
+                    for i, x in enumerate(e)
+                ]
+            )
+        return res
+
+    @staticmethod
+    def wrap_date(s):
+        s = s.strip()
+        parsed = dateparser.parse(s)
+        if isinstance(parsed, datetime.datetime):
+            parsed = parsed.date()
+        if not parsed:
+            print("unable to parse date {}, setting to default 2010-01-01".format(s))
+            return datetime.date(2010, 1, 1).strftime("%d-%b-%Y")
+        if parsed > datetime.date.today():
+            parsed = parsed.replace(year=parsed.year - 1)
+        formatted = parsed.strftime("%d-%b-%Y")
+        return formatted
+
+    def base_format_element(self, pair):
+        if pair[0] == "Question":
+            return self.base_format_question(pair[1])
+        if pair[0] in self.BASE_MAPPING:
+            return "{}:\n{}\n\n".format(
+                self.BASE_MAPPING[pair[0]], self.baseyapper(pair[1])
+            )
+        elif pair[0] == "date":
+            re_search = self.re_date_sep.search(pair[1])
+            if re_search:
+                gr0 = re_search.group(0)
+                dates = pair[1].split(gr0)
+                return "Дата:\n{} - {}\n\n".format(
+                    self.wrap_date(dates[0]), self.wrap_date(dates[-1])
+                )
+            else:
+                return "Дата:\n{}\n\n".format(self.wrap_date(pair[1]))
+
+    @staticmethod
+    def _get_last_value(dct, key):
+        if isinstance(dct[key], list):
+            return dct[key][-1]
+        return dct[key]
+
+    @staticmethod
+    def _add_to_dct(dct, key, to_add):
+        if isinstance(dct[key], list):
+            dct[key][-1] += to_add
+        else:
+            dct[key] += to_add
+
+    def base_format_question(self, q):
+
+        if "setcounter" in q:
+            self.qcount = int(q["setcounter"])
+        res = "Вопрос {}:\n{}\n\n".format(
+            self.qcount if "number" not in q else q["number"],
+            self.baseyapper(q["question"]),
+        )
+        if "number" not in q:
+            self.qcount += 1
+        res += "Ответ:\n{}\n\n".format(self.baseyapper(q["answer"]))
+        if "zachet" in q:
+            res += "Зачет:\n{}\n\n".format(self.baseyapper(q["zachet"]))
+        if "nezachet" in q:
+            res += "Незачет:\n{}\n\n".format(self.baseyapper(q["zachet"]))
+        if "comment" in q:
+            res += "Комментарий:\n{}\n\n".format(self.baseyapper(q["comment"]))
+        if "source" in q:
+            res += "Источник:\n{}\n\n".format(self.baseyapper(q["source"]))
+        if "author" in q:
+            res += "Автор:\n{}\n\n".format(self.baseyapper(q["author"]))
+        return res
+
+    def export(self, outfilename):
+
+        result = []
+        lasttour = 0
+        zeroq = 1
+        for i, pair in enumerate(self.structure):
+            if pair[0] == "section":
+                lasttour = i
+            while (
+                pair[0] == "meta"
+                and (i + 1) < len(self.structure)
+                and self.structure[i + 1][0] == "meta"
+            ):
+                pair[1] += "\n{}".format(self.structure[i + 1][1])
+                self.structure.pop(i + 1)
+            if pair[0] == "Question" and check_if_zero(pair[1]):
+                tourheader = "Нулевой вопрос {}".format(zeroq)
+                zeroq += 1
+                pair[1]["number"] = 1
+                self.structure.insert(lasttour, self.structure.pop(i))
+                self.structure.insert(lasttour, ["section", tourheader])
+        for pair in self.structure:
+            if pair[0] == "Question" and "nezachet" in pair[1]:
+                field = "zachet" if "zachet" in pair[1] else "answer"
+                last_val = self._get_last_value(pair[1], field)
+                nezachet = self.baseyapper(pair[1].pop("nezachet"))
+                to_add = "{}\n   Незачёт: {}".format(
+                    "." if not last_val.endswith(".") else "", nezachet
+                )
+                self._add_to_dct(pair[1], field, to_add)
+            if pair[0] == "editor":
+                pair[1] = re.sub(re_editors, "", pair[1])
+                logger.info('Поле "Редактор" было автоматически изменено.')
+            res = self.base_format_element(pair)
+            if res:
+                result.append(res)
+        text = "".join(result)
+        with codecs.open(outfilename, "w", "utf8") as f:
+            f.write(text)
+        logger.info("Output: {}".format(outfilename))
+        if self.args.clipboard:
+            pyperclip.copy(text)
+
+
+class RedditExporter(BaseExporter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.im = Imgur(self.args.imgur_client_id or IMGUR_CLIENT_ID)
+        self.qcount = 1
+
+    def reddityapper(self, e):
+        if isinstance(e, str):
+            return self.reddit_element_layout(e)
+        elif isinstance(e, list):
+            if not any(isinstance(x, list) for x in e):
+                return self.reddit_element_layout(e)
+            else:
+                return "  \n".join([self.reddit_element_layout(x) for x in e])
+
+    def parse_and_upload_image(self, path):
+        parsed_image = parseimg(
+            path,
+            dimensions="ems",
+            targetdir=self.dir_kwargs.get("targetdir"),
+            tmp_dir=self.dir_kwargs.get("tmp_dir"),
+        )
+        imgfile = parsed_image["imgfile"]
+        w = parsed_image["width"]
+        h = parsed_image["height"]
+        if os.path.isfile(imgfile):
+            uploaded_image = self.im.upload_image(imgfile, title=imgfile)
+            imglink = uploaded_image["data"]["link"]
+            return imglink
+
+    def redditformat(self, s):
+        res = ""
+        for run in parse_4s_elem(s):
+            if run[0] == "":
+                res += run[1]
+            if run[0] == "em":
+                res += "_{}_".format(run[1])
+            if run[0] == "img":
+                if run[1].startswith(("http://", "https://")):
+                    imglink = run[1]
+                else:
+                    imglink = self.parse_and_upload_image(run[1])
+                res += "[картинка]({})".format(imglink)
+        while res.endswith("\n"):
+            res = res[:-1]
+        res = res.replace("\n", "  \n")
+        return res
+
+    def reddit_element_layout(self, e):
+        res = ""
+        if isinstance(e, str):
+            res = self.redditformat(e)
+            return res
+        if isinstance(e, list):
+            res = "  \n".join(
+                [
+                    "{}\\. {}".format(i + 1, self.reddit_element_layout(x))
+                    for i, x in enumerate(e)
+                ]
+            )
+        return res
+
+    def reddit_format_element(self, pair):
+        if pair[0] == "Question":
+            return self.reddit_format_question(pair[1])
+
+    def reddit_format_question(self, q):
+        if "setcounter" in q:
+            self.qcount = int(q["setcounter"])
+        res = "__Вопрос {}__: {}  \n".format(
+            self.qcount if "number" not in q else q["number"],
+            self.reddityapper(q["question"]),
+        )
+        if "number" not in q:
+            self.qcount += 1
+        res += "__Ответ:__ >!{}  \n".format(self.reddityapper(q["answer"]))
+        if "zachet" in q:
+            res += "__Зачёт:__ {}  \n".format(self.reddityapper(q["zachet"]))
+        if "nezachet" in q:
+            res += "__Незачёт:__ {}  \n".format(self.reddityapper(q["nezachet"]))
+        if "comment" in q:
+            res += "__Комментарий:__ {}  \n".format(self.reddityapper(q["comment"]))
+        if "source" in q:
+            res += "__Источник:__ {}  \n".format(self.reddityapper(q["source"]))
+        if "author" in q:
+            res += "!<\n__Автор:__ {}  \n".format(self.reddityapper(q["author"]))
+        else:
+            res += "!<\n"
+        return res
+
+    def export(self, outfile):
+        result = []
+        for pair in self.structure:
+            res = self.reddit_format_element(pair)
+            if res:
+                result.append(res)
+        text = "\n\n".join(result)
+        with codecs.open(outfile, "w", "utf8") as f:
+            f.write(text)
+        logger.info("Output: {}".format(outfile))
+
+
+class LatexExporter(BaseExporter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.qcount = 0
+
+    def tex_format_question(self, q):
+        if "setcounter" in q:
+            self.qcount = int(q["setcounter"])
+        res = (
+            "\n\n\\begin{{minipage}}{{\\textwidth}}\\raggedright\n"
+            "\\textbf{{Вопрос {}.}} {} \\newline".format(
+                self.qcount if "number" not in q else q["number"],
+                self.texyapper(q["question"]),
+            )
+        )
+        if "number" not in q:
+            self.qcount += 1
+        res += "\n\\textbf{{Ответ: }}{} \\newline".format(self.texyapper(q["answer"]))
+        if "zachet" in q:
+            res += "\n\\textbf{{Зачёт: }}{} \\newline".format(
+                self.texyapper(q["zachet"])
+            )
+        if "nezachet" in q:
+            res += "\n\\textbf{{Незачёт: }}{} \\newline".format(
+                self.texyapper(q["nezachet"])
+            )
+        if "comment" in q:
+            res += "\n\\textbf{{Комментарий: }}{} \\newline".format(
+                self.texyapper(q["comment"])
+            )
+        if "source" in q:
+            res += "\n\\textbf{{Источник{}: }}{} \\newline".format(
+                "и" if isinstance(q["source"], list) else "",
+                self.texyapper(q["source"]),
+            )
+        if "author" in q:
+            res += "\n\\textbf{{Автор: }}{} \\newline".format(
+                self.texyapper(q["author"])
+            )
+        res += "\n\\end{minipage}\n"
+        return res
+
+    @staticmethod
+    def texrepl(zz):
+        zz = re.sub(r"{", r"\{", zz)
+        zz = re.sub(r"}", r"\}", zz)
+        zz = re.sub(r"\\(?![\}\{])", r"{\\textbackslash}", zz)
+        zz = re.sub("%", "\%", zz)
+        zz = re.sub(r"\$", "\$", zz)
+        zz = re.sub("#", "\#", zz)
+        zz = re.sub("&", "\&", zz)
+        zz = re.sub("_", r"\_", zz)
+        zz = re.sub(r"\^", r"{\\textasciicircum}", zz)
+        zz = re.sub(r"\~", r"{\\textasciitilde}", zz)
+        zz = re.sub(r'((\"(?=[ \.\,;\:\?!\)\]]))|("(?=\Z)))', "»", zz)
+        zz = re.sub(r'(((?<=[ \.\,;\:\?!\(\[)])")|((?<=\A)"))', "«", zz)
+        zz = re.sub('"', "''", zz)
+
+        for match in sorted(
+            [x for x in re_scaps.finditer(zz)],
+            key=lambda x: len(x.group(2)),
+            reverse=True,
+        ):
+            zz = zz.replace(match.group(2), "\\tsc{" + match.group(2).lower() + "}")
+
+        torepl = [x.group(0) for x in re.finditer(re_url, zz)]
+        for s in range(len(torepl)):
+            item = torepl[s]
+            while item[-1] in typotools.PUNCTUATION:
+                item = item[:-1]
+            while (
+                item[-1] in typotools.CLOSING_BRACKETS
+                and typotools.find_matching_opening_bracket(item, -1) is None
+            ):
+                item = item[:-1]
+            while item[-1] in typotools.PUNCTUATION:
+                item = item[:-1]
+            torepl[s] = item
+        torepl = sorted(set(torepl), key=len, reverse=True)
+        hashurls = {}
+        for s in torepl:
+            hashurls[s] = hashlib.md5(s.encode("utf8")).hexdigest()
+        for s in sorted(hashurls, key=len, reverse=True):
+            zz = zz.replace(s, hashurls[s])
+        hashurls = {v: k for k, v in hashurls.items()}
+        for s in sorted(hashurls):
+            zz = zz.replace(s, "\\url{{{}}}".format(hashurls[s].replace("\\\\", "\\")))
+
+        zz = zz.replace(" — ", "{\\Hair}—{\\hair}")
+
+        while "`" in zz:
+            if zz.index("`") + 1 >= len(zz):
+                zz = zz.replace("`", "")
+            else:
+                if zz.index("`") + 2 < len(zz) and re.search(
+                    r"\s", zz[zz.index("`") + 2]
+                ):
+                    zz = zz[: zz.index("`") + 2] + "" + zz[zz.index("`") + 2 :]
+                if zz.index("`") + 1 < len(zz) and re_lowercase.search(
+                    zz[zz.index("`") + 1]
+                ):
+                    zz = (
+                        zz[: zz.index("`") + 1]
+                        + ""
+                        + zz[zz.index("`") + 1]
+                        + "\u0301"
+                        + zz[zz.index("`") + 2 :]
+                    )
+                elif zz.index("`") + 1 < len(zz) and re_uppercase.search(
+                    zz[zz.index("`") + 1]
+                ):
+                    zz = (
+                        zz[: zz.index("`") + 1]
+                        + ""
+                        + zz[zz.index("`") + 1]
+                        + "\u0301"
+                        + zz[zz.index("`") + 2 :]
+                    )
+                zz = zz[: zz.index("`")] + zz[zz.index("`") + 1 :]
+
+        return zz
+
+    def texformat(self, s):
+        res = ""
+        for run in parse_4s_elem(s):
+            if run[0] == "":
+                res += self.texrepl(run[1])
+            if run[0] == "em":
+                res += "\\emph{" + self.texrepl(run[1]) + "}"
+            if run[0] == "img":
+                parsed_image = parseimg(
+                    run[1],
+                    dimensions="ems",
+                    tmp_dir=self.dir_kwargs.get("tmp_dir"),
+                    targetdir=self.dir_kwargs.get("targetdir"),
+                )
+                imgfile = parsed_image["imgfile"]
+                w = parsed_image["width"]
+                h = parsed_image["height"]
+                res += (
+                    "\\includegraphics"
+                    + "[width={}{}]".format(
+                        "10em" if w == -1 else "{}em".format(w),
+                        ", height={}em".format(h) if h != -1 else "",
+                    )
+                    + "{"
+                    + imgfile
+                    + "}"
+                )
+        while res.endswith("\n"):
+            res = res[:-1]
+        res = res.replace("\n", "  \\newline \n")
+        return res
+
+    def texyapper(self, e):
+        if isinstance(e, str):
+            return self.tex_element_layout(e)
+        elif isinstance(e, list):
+            if not any(isinstance(x, list) for x in e):
+                return self.tex_element_layout(e)
+            else:
+                return "  \n".join([self.tex_element_layout(x) for x in e])
+
+    def tex_element_layout(self, e):
+        res = ""
+        if isinstance(e, str):
+            res = self.texformat(e)
+            return res
+        if isinstance(e, list):
+            res = """
+    \\begin{{compactenum}}
+    {}
+    \\end{{compactenum}}
+    """.format(
+                "\n".join(["\\item {}".format(self.tex_element_layout(x)) for x in e])
+            )
+        return res
+
+    def export(self, outfilename):
+        self.qcount = 1
+        tex = """\\input{@header}\n\\begin{document}""".replace(
+            "@header", os.path.basename(self.args.tex_header)
+        )
+        firsttour = True
+        for element in self.structure:
+            if element[0] == "heading":
+                tex += "\n{{\\huge {}}}\n" "\\vspace{{0.8em}}\n".format(
+                    self.tex_element_layout(element[1])
+                )
+            if element[0] == "date":
+                tex += "\n{{\\large {}}}\n" "\\vspace{{0.8em}}\n".format(
+                    self.tex_element_layout(element[1])
+                )
+            if element[0] in {"meta", "editor"}:
+                tex += "\n{}\n\\vspace{{0.8em}}\n".format(
+                    self.tex_element_layout(element[1])
+                )
+            elif element[0] == "section":
+                tex += "\n{}\\section*{{{}}}\n\n".format(
+                    "\\clearpage" if not firsttour else "",
+                    self.tex_element_layout(element[1]),
+                )
+                firsttour = False
+            elif element[0] == "Question":
+                tex += self.tex_format_question(element[1])
+
+        tex += "\\end{document}"
+
+        with codecs.open(outfilename, "w", "utf8") as outfile:
+            outfile.write(tex)
+        cwd = os.getcwd()
+        os.chdir(self.dir_kwargs["tmp_dir"])
+        subprocess.call(
+            shlex.split(
+                'xelatex -synctex=1 -interaction=nonstopmode "{}"'.format(outfilename)
+            )
+        )
+        targetdir = os.path.dirname(outfilename)
+        os.chdir(cwd)
+        pdf_filename = os.path.splitext(os.path.basename(outfilename))[0] + ".pdf"
+        logger.info("Output: {}".format(os.path.join(targetdir, pdf_filename)))
+        shutil.copy(os.path.join(self.dir_kwargs["tmp_dir"], pdf_filename), targetdir)
+        if self.args.rawtex:
+            shutil.copy(outfilename, targetdir)
+            shutil.copy(self.args.tex_header, targetdir)
+            shutil.copy(
+                os.path.join(self.dir_kwargs["tmp_dir"], "fix-unnumbered-sections.sty"),
+                targetdir,
+            )
+
+
 class DocxExporter(BaseExporter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1223,7 +1259,7 @@ class DocxExporter(BaseExporter):
                     para.add_run("\n{}. ".format(licount))
                     self.docx_format(li, para, whiten, **kwargs)
 
-        if isinstance(el, basestring):
+        if isinstance(el, str):
             logger.debug("parsing element {}:".format(log_wrap(el)))
 
             el = backtick_replace(el)
@@ -1377,7 +1413,7 @@ class PptxExporter(BaseExporter):
                     r.text = "\n{}. ".format(licount)
                     self.pptx_format(li, para, tf, slide)
 
-        if isinstance(el, basestring):
+        if isinstance(el, str):
             logger.debug("parsing element {}:".format(log_wrap(el)))
             el = backtick_replace(el)
 
@@ -1747,10 +1783,65 @@ class PptxExporter(BaseExporter):
         logger.info("Output: {}".format(outfilename))
 
 
+class Imgur:
+    def __init__(self, client_id):
+        self.client_id = client_id
+        self.cache_file_path = os.path.join(get_chgksuite_dir(), "image_cache.json")
+        if os.path.isfile(self.cache_file_path):
+            try:
+                with open(self.cache_file_path) as f:
+                    self.cache = json.load(f)
+            except json.decoder.JSONDecodeError:
+                self.cache = {}
+        else:
+            self.cache = {}
+
+    def upload_image(self, path, title=None):
+        with open(path, "rb") as image_file:
+            binary_data = image_file.read()
+        image_bytes = base64.b64encode(binary_data)
+        image = image_bytes.decode("utf8", errors="replace")
+        sha256 = hashlib.sha256(image_bytes).hexdigest()
+        if sha256 in self.cache:
+            return {"data": {"link": self.cache[sha256]}}
+        payload = {
+            "album_id": None,
+            "image": image,
+            "title": title,
+            "description": None,
+        }
+        retries = 0
+        req = None
+        while (not req or req.status_code != 200) and retries < 10:
+            req = requests.post(
+                "https://api.imgur.com/3/image",
+                json=payload,
+                headers={"Authorization": f"Client-ID {self.client_id}"},
+            )
+            if req.status_code != 200:
+                sys.stderr.write(f"got 403 from imgur, retry {retries + 1}...")
+                retries += 1
+                time.sleep(5)
+        try:
+            assert req.status_code == 200
+            json_ = req.json()
+            self.cache[sha256] = json_["data"]["link"]
+            with open(self.cache_file_path, "w", encoding="utf8") as f:
+                json.dump(self.cache, f, indent=2, sort_keys=True)
+            return json_
+        except:
+            raise Exception(
+                "Imgur API error code {}: {}".format(
+                    req.status_code, req.content.decode("utf8", errors="replace")
+                )
+            )
+
+
 class LjExporter(BaseExporter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.lj = ServerProxy("http://www.livejournal.com/interface/xmlrpc").LJ.XMLRPC
+        self.im = Imgur(self.args.imgur_client_id or IMGUR_CLIENT_ID)
 
     def get_chal(self):
         chal = None
@@ -1976,7 +2067,7 @@ class LjExporter(BaseExporter):
         return final_structure
 
     def htmlyapper(self, e):
-        if isinstance(e, basestring):
+        if isinstance(e, str):
             return self.html_element_layout(e)
         elif isinstance(e, list):
             if not any(isinstance(x, list) for x in e):
@@ -1986,7 +2077,7 @@ class LjExporter(BaseExporter):
 
     def html_element_layout(self, e):
         res = ""
-        if isinstance(e, basestring):
+        if isinstance(e, str):
             res = self.htmlformat(e)
             return res
         if isinstance(e, list):
@@ -2077,13 +2168,8 @@ class LjExporter(BaseExporter):
                 w = parsed_image["width"]
                 h = parsed_image["height"]
                 if os.path.isfile(imgfile):
-                    # with open(imgfile, 'rb') as f:
-                    #     imgdata = f.read()
-                    # imgfile = 'data:image/{ext};base64,{b64}'.format(
-                    #     ext=os.path.splitext(imgfile)[-1][1:],
-                    #     b64=base64.b64encode(imgdata))
-                    uploaded_image = im.upload_image(imgfile, title=imgfile)
-                    imgfile = uploaded_image.link
+                    uploaded_image = self.im.upload_image(imgfile, title=imgfile)
+                    imgfile = uploaded_image["data"]["link"]
 
                 res += '<img{}{} src="{}"/>'.format(
                     "" if w == -1 else " width={}".format(w),
@@ -2164,80 +2250,29 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
         exporter.export(outfilename)
 
     if args.filetype == "tex":
-
         outfilename = os.path.join(
             tmp_dir, make_filename(filename, "tex", nots=args.nots)
         )
-
-        gui_compose.counter = 1
-
-        title = ""
-        date = ""
-        gui_compose.tex = """\\input{@header}
-\\begin{document}
-""".replace(
-            "@header", os.path.basename(args.tex_header)
-        )
-        firsttour = True
-        for element in structure:
-            if element[0] == "heading":
-                gui_compose.tex += "\n{{\\huge {}}}\n" "\\vspace{{0.8em}}\n".format(
-                    tex_element_layout(element[1])
-                )
-            if element[0] == "date":
-                gui_compose.tex += "\n{{\\large {}}}\n" "\\vspace{{0.8em}}\n".format(
-                    tex_element_layout(element[1])
-                )
-            if element[0] in {"meta", "editor"}:
-                gui_compose.tex += "\n{}\n\\vspace{{0.8em}}\n".format(
-                    tex_element_layout(element[1])
-                )
-            elif element[0] == "section":
-                gui_compose.tex += "\n{}\\section*{{{}}}\n\n".format(
-                    "\\clearpage" if not firsttour else "",
-                    tex_element_layout(element[1]),
-                )
-                firsttour = False
-            elif element[0] == "Question":
-                gui_compose.tex += tex_format_question(element[1], **dir_kwargs)
-
-        gui_compose.tex += "\\end{document}"
-
-        with codecs.open(outfilename, "w", "utf8") as outfile:
-            outfile.write(gui_compose.tex)
-        cwd = os.getcwd()
-        os.chdir(tmp_dir)
-        subprocess.call(
-            shlex.split(
-                'xelatex -synctex=1 -interaction=nonstopmode "{}"'.format(outfilename)
-            )
-        )
-        os.chdir(cwd)
-        pdf_filename = os.path.splitext(os.path.basename(outfilename))[0] + ".pdf"
-        logger.info("Output: {}".format(os.path.join(targetdir, pdf_filename)))
-        shutil.copy(os.path.join(tmp_dir, pdf_filename), targetdir)
-        if args.rawtex:
-            shutil.copy(outfilename, targetdir)
-            shutil.copy(args.tex_header, targetdir)
-            shutil.copy(os.path.join(tmp_dir, "fix-unnumbered-sections.sty"), targetdir)
+        exporter = LatexExporter(structure, args, dir_kwargs)
+        exporter.export(outfilename)
 
     if args.filetype == "lj":
         exporter = LjExporter(structure, args, dir_kwargs)
         exporter.export()
 
     if args.filetype == "base":
-        gui_compose.counter = 1
+        exporter = DbExporter(structure, args, dir_kwargs)
         outfilename = os.path.join(
             targetdir, make_filename(filename, "txt", nots=args.nots)
         )
-        output_base(structure, outfilename, args, **dir_kwargs)
+        exporter.export(outfilename)
 
     if args.filetype == "redditmd":
-        gui_compose.counter = 1
+        exporter = RedditExporter(structure, args, dir_kwargs)
         outfilename = os.path.join(
             targetdir, make_filename(filename, "md", nots=args.nots)
         )
-        output_reddit(structure, outfilename, args, **dir_kwargs)
+        exporter.export(outfilename)
 
     if args.filetype == "pptx":
         outfilename = os.path.join(

@@ -1,19 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import os
 import re
 import codecs
 import json
-try:
-    from urlparse import urljoin
-except ImportError:
-    from urllib.parse import urljoin
-try:
-    from urllib import urlretrieve
-except ImportError:
-    from urllib.request import urlretrieve
+from urllib.parse import urljoin
+from urllib.request import urlretrieve
 import logging
 
 from ply import lex

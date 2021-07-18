@@ -9,7 +9,6 @@ parse==1.14.0
 Pillow==7.0.0
 ply==3.11
 PyDocX==0.9.10
-pyimgur==0.6.0
 pyperclip==1.7.0
 python-dateutil==2.8.1
 python-docx==0.8.10

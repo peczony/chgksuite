@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from __future__ import division
 import sys
 import os
 import re
@@ -15,15 +13,6 @@ from chgksuite.common import (
     get_lastdir, set_lastdir, on_close, log_wrap, bring_to_front,
     get_chgksuite_dir
 )
-try:
-    basestring
-except NameError:
-    basestring = str
-try:
-    input = raw_input
-except NameError:
-    pass
-
 
 API = 'https://trello.com/1'
 re_bi = re.compile(r'trello\.com/b/(.+?)(/|$)')
@@ -91,7 +80,7 @@ def gui_trello_upload(args, sourcedir):
             for filename in args.filename:
                 upload_file(filename, trelloconfig)
                 set_lastdir(filename)
-    elif isinstance(args.filename, basestring):
+    elif isinstance(args.filename, str):
         if os.path.isdir(args.filename):
             for filename in os.listdir(args.filename):
                 if filename.endswith('.4s'):

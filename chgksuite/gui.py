@@ -432,6 +432,12 @@ def app():
         advanced=True,
         argtype="filename"
     )
+    cmdcompose.add_argument(
+        "--imgur_client_id",
+        help="imgur client id",
+        caption="Client ID для API Imgur",
+        advanced=True
+    )
     cmdcompose_filetype = cmdcompose.add_subparsers(dest="filetype")
     cmdcompose_docx = cmdcompose_filetype.add_parser("docx")
     cmdcompose_docx.add_argument(

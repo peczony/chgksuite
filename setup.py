@@ -50,7 +50,6 @@ setup(
         "html2text",
         "parse",
         "PyDocX",
-        "pyimgur",
         "python-docx",
         "python-pptx",
         "requests",

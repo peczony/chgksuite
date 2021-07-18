@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 import pprint
 import re
 import os
@@ -13,16 +12,6 @@ import shlex
 import logging
 import base64
 import itertools
-
-try:
-    basestring
-except NameError:
-    basestring = str
-try:
-    input = raw_input
-except NameError:
-    pass
-
 import chardet
 from pydocx import PyDocX
 from bs4 import BeautifulSoup
@@ -115,7 +104,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
         _, resourcedir = get_source_dirs()
         regexes_file = os.path.join(resourcedir, "regexes.json")
         regexes = load_regexes(regexes_file)
-    elif isinstance(regexes, basestring):
+    elif isinstance(regexes, str):
         regexes = load_regexes(regexes)
 
     def merge_to_previous(index):
@@ -394,7 +383,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
 
         if (
             element[0] == "source"
-            and isinstance(element[1], basestring)
+            and isinstance(element[1], str)
             and len(re.split(r"\r?\n", element[1])) > 1
         ):
             element[1] = [
@@ -435,12 +424,12 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                     )
                 )
                 if isinstance(element[1], list) and isinstance(
-                    current_question[element[0]], basestring
+                    current_question[element[0]], str
                 ):
                     current_question[element[0]] = [
                         current_question[element[0]]
                     ] + element[1]
-                elif isinstance(element[1], basestring) and isinstance(
+                elif isinstance(element[1], str) and isinstance(
                     current_question[element[0]], list
                 ):
                     current_question[element[0]].append(element[1])
@@ -448,8 +437,8 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                     current_question[element[0]], list
                 ):
                     current_question[element[0]].extend(element[1])
-                elif isinstance(element[0], basestring) and isinstance(
-                    element[1], basestring
+                elif isinstance(element[0], str) and isinstance(
+                    element[1], str
                 ):
                     current_question[element[0]] += SEP + element[1]
             else:
@@ -650,7 +639,7 @@ def compose_4s(structure, args=None):
     }
 
     def format_element(z):
-        if isinstance(z, basestring):
+        if isinstance(z, str):
             return remove_double_separators(z)
         elif isinstance(z, list):
             if isinstance(z[1], list):
