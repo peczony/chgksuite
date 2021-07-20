@@ -158,7 +158,8 @@ def get_style(doc_, name):
     try:
         return [x for x in doc_.styles if x.name == name][0]
     except IndexError:
-        raise Exception(f"Style {name} not found in doc template")
+        sys.stderr.write(f"Style {name} not found in doc template\n")
+        return
 
 
 def init_doc(doc_, id_):
