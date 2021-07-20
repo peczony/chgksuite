@@ -619,6 +619,13 @@ def app():
         caption="Формат Своей игры",
     )
     cmdtrello_download.add_argument(
+        "--replace_double_line_breaks",
+        "-rd",
+        action="store_true",
+        help="This flag replaces double line breaks with single ones.",
+        caption="Убрать двойные переносы строк",
+    )
+    cmdtrello_download.add_argument(
         "--onlyanswers",
         action="store_true",
         help="This flag forces SI download to only include answers.",
