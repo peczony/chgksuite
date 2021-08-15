@@ -6,13 +6,12 @@ import os
 import sys
 
 try:
-    import Tkinter as tk
-    import Tkinter.filedialog as filedialog
-    import Tkinter.ttk as ttk
-except ImportError:
     import tkinter as tk
     import tkinter.filedialog as filedialog
-    import tkinter.ttk as ttk
+
+    TKINTER = True
+except ImportError:
+    TKINTER = False
 
 from chgksuite.parser import gui_parse
 from chgksuite.composer import gui_compose
@@ -259,10 +258,10 @@ class ParserWrapper(object):
         if not argv:
             self.tk.mainloop()
             if self.cmdline_call:
-                return DefaultNamespace(self.parser.parse_args(self.cmdline_call))
+                return self.parser.parse_args(self.cmdline_call)
             else:
                 sys.exit(0)
-        return DefaultNamespace(self.parser.parse_args(*args, **kwargs))
+        return self.parser.parse_args(*args, **kwargs)
 
 
 class SubparsersWrapper(object):
@@ -289,392 +288,477 @@ class SubparsersWrapper(object):
         return pw
 
 
+class ArgparseBuilder:
+    def __init__(self, parser, use_wrapper):
+        self.parser = parser
+        self.use_wrapper = use_wrapper
+
+    def apply_func(self, parser, func, *args, **kwargs):
+        if self.use_wrapper:
+            return getattr(parser, func)(*args, **kwargs)
+        else:
+            for k in ("caption", "advanced", "argtype", "hide", "filetypes"):
+                try:
+                    kwargs.pop(k)
+                except KeyError:
+                    pass
+            return getattr(parser, func)(*args, **kwargs)
+
+    def add_argument(self, parser, *args, **kwargs):
+        return self.apply_func(parser, "add_argument", *args, **kwargs)
+
+    def add_parser(self, parser, *args, **kwargs):
+        return self.apply_func(parser, "add_parser", *args, **kwargs)
+
+    def build(self):
+        parser = self.parser
+        self.add_argument(
+            parser,
+            "--debug",
+            "-d",
+            action="store_true",
+            help="Print and save some debug info.",
+            caption="Отладочная информация",
+            advanced=True,
+        )
+        self.add_argument(
+            parser,
+            "--config",
+            "-c",
+            help="a config file to store default args values.",
+            caption="Файл конфигурации",
+            advanced=True,
+            argtype="filename",
+        )
+        self.add_argument(
+            parser,
+            "-v",
+            "--version",
+            action="version",
+            version="%(prog)s " + __version__,
+            hide=True,
+        )
+        subparsers = parser.add_subparsers(dest="action")
+
+        cmdparse = subparsers.add_parser("parse")
+        self.add_argument(
+            cmdparse,
+            "filename",
+            help="file to parse.",
+            nargs="?",
+            caption="Имя файла",
+            filetypes=[("chgksuite parsable files", ("*.docx", "*.txt"))],
+        )
+        self.add_argument(
+            cmdparse,
+            "--defaultauthor",
+            action="store_true",
+            help="pick default author from filename " "where author is missing.",
+            advanced=True,
+            caption="Дописать отсутствующего автора из имени файла",
+        )
+        self.add_argument(
+            cmdparse,
+            "--encoding",
+            default=None,
+            help="Encoding of text file " "(use if auto-detect fails).",
+            advanced=True,
+            caption="Кодировка",
+        )
+        self.add_argument(
+            cmdparse,
+            "--regexes",
+            default=None,
+            help="A file containing regexes " "(the default is regexes.json).",
+            advanced=True,
+            caption="Файл с регулярными выражениями",
+            argtype="filename",
+        )
+        self.add_argument(
+            cmdparse,
+            "--parsedir",
+            action="store_true",
+            help="parse directory instead of file.",
+            advanced=True,
+            hide=True,
+        )
+        self.add_argument(
+            cmdparse,
+            "--links",
+            default="unwrap",
+            choices=["unwrap", "old"],
+            help="hyperlinks handling strategy. "
+            "Unwrap just leaves links as presented in the text, unchanged. "
+            "Old is behaviour from versions up to v0.5.3: "
+            "replace link with its href value.",
+            advanced=True,
+            caption="Стратегия обработки ссылок",
+        )
+        self.add_argument(
+            cmdparse,
+            "--numbers_handling",
+            default="default",
+            choices=["default", "all", "none"],
+            help="question numbers handling strategy. "
+            "Default preserves zero questions and numbering "
+            "if the first question has number > 1, omits number otherwise. "
+            "All preserves all numbers, none omits all numbers "
+            "(was default behaviour pre-0.8.0.)",
+            advanced=True,
+            caption="Стратегия обработки номеров вопросов",
+        )
+        self.add_argument(
+            cmdparse,
+            "--fix_spans",
+            action="store_true",
+            help="try to unwrap all <span> tags. "
+            "Can help fix weird Word formatting.",
+            advanced=True,
+            caption="Fix <span> tags",
+        )
+        self.add_argument(
+            cmdparse,
+            "--bs_prettify",
+            action="store_true",
+            help="old html processing behaviour (before v0.5.5). "
+            "Sometimes it will yield better results than the new default.",
+            advanced=True,
+            caption="BeautifulSoup prettify",
+        )
+
+        cmdcompose = subparsers.add_parser("compose")
+        self.add_argument(
+            cmdcompose,
+            "--merge",
+            action="store_true",
+            help="merge several source files before output.",
+            advanced=True,
+            hide=True,
+        )
+        self.add_argument(
+            cmdcompose,
+            "--nots",
+            action="store_true",
+            help="don't append timestamp to filenames",
+            caption="Не добавлять временную отметку в имя файла",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdcompose,
+            "--labels_file",
+            help="i18n config",
+            caption="Конфиг для интернационализации",
+            advanced=True,
+            argtype="filename",
+        )
+        self.add_argument(
+            cmdcompose,
+            "--imgur_client_id",
+            help="imgur client id",
+            caption="Client ID для API Imgur",
+            advanced=True,
+        )
+        cmdcompose_filetype = cmdcompose.add_subparsers(dest="filetype")
+        cmdcompose_docx = cmdcompose_filetype.add_parser("docx")
+        self.add_argument(
+            cmdcompose_docx,
+            "--docx_template",
+            help="a DocX template file.",
+            advanced=True,
+            caption="Файл-образец",
+            argtype="filename",
+        )
+        self.add_argument(
+            cmdcompose_docx,
+            "filename",
+            nargs="*",
+            help="file(s) to compose from.",
+            caption="Имя 4s-файла",
+            filetypes=[("chgksuite markup files", "*.4s")],
+        )
+        self.add_argument(
+            cmdcompose_docx,
+            "--nospoilers",
+            "-n",
+            action="store_true",
+            help="do not whiten (spoiler) answers.",
+            caption="Не забелять ответы",
+        )
+        self.add_argument(
+            cmdcompose_docx,
+            "--noanswers",
+            action="store_true",
+            help="do not print answers " "(not even spoilered).",
+            caption="Без ответов",
+        )
+        self.add_argument(
+            cmdcompose_docx,
+            "--noparagraph",
+            action="store_true",
+            help="disable paragraph break " "after 'Question N.'",
+            advanced=True,
+            caption='Без переноса строки после "Вопрос N."',
+        )
+        self.add_argument(
+            cmdcompose_docx,
+            "--randomize",
+            action="store_true",
+            help="randomize order of questions.",
+            advanced=True,
+            caption="Перемешать вопросы",
+        )
+        self.add_argument(
+            cmdcompose_docx,
+            "--no_line_break",
+            action="store_true",
+            help="no line break between question and answer.",
+            caption="Один перенос строки перед ответом вместо двух",
+        )
+        self.add_argument(
+            cmdcompose_docx,
+            "--one_line_break",
+            action="store_true",
+            help="one line break after question instead of two.",
+            caption="Один перенос строки после вопроса вместо двух",
+        )
+
+        cmdcompose_tex = cmdcompose_filetype.add_parser("tex")
+        self.add_argument(
+            cmdcompose_tex,
+            "--tex_header",
+            help="a LaTeX header file.",
+            caption="Файл с заголовками",
+            advanced=True,
+            argtype="filename",
+        )
+        self.add_argument(
+            cmdcompose_tex,
+            "filename",
+            nargs="*",
+            help="file(s) to compose from.",
+            caption="Имя 4s-файла",
+            filetypes=[("chgksuite markup files", "*.4s")],
+        )
+        self.add_argument(
+            cmdcompose_tex,
+            "--rawtex",
+            action="store_true",
+            advanced=True,
+            caption="Не удалять исходный tex",
+        )
+
+        cmdcompose_lj = cmdcompose_filetype.add_parser("lj")
+        self.add_argument(
+            cmdcompose_lj,
+            "filename",
+            nargs="*",
+            help="file(s) to compose from.",
+            caption="Имя 4s-файла",
+            filetypes=[("chgksuite markup files", "*.4s")],
+        )
+        self.add_argument(
+            cmdcompose_lj,
+            "--nospoilers",
+            "-n",
+            action="store_true",
+            help="disable spoilers.",
+            caption="Отключить спойлер-теги",
+        )
+        self.add_argument(
+            cmdcompose_lj,
+            "--splittours",
+            action="store_true",
+            help="make a separate post for each tour.",
+            caption="Разбить на туры",
+        )
+        self.add_argument(
+            cmdcompose_lj,
+            "--genimp",
+            action="store_true",
+            help="make a 'general impressions' post.",
+            caption="Пост с общими впечатлениями",
+        )
+        self.add_argument(
+            cmdcompose_lj,
+            "--navigation",
+            action="store_true",
+            help="add navigation to posts.",
+            caption="Добавить навигацию к постам",
+        )
+        self.add_argument(
+            cmdcompose_lj, "--login", "-l", help="livejournal login", caption="ЖЖ-логин"
+        )
+        self.add_argument(
+            cmdcompose_lj,
+            "--password",
+            "-p",
+            help="livejournal password",
+            caption="Пароль от ЖЖ",
+        )
+        self.add_argument(
+            cmdcompose_lj,
+            "--community",
+            "-c",
+            help="livejournal community to post to.",
+            caption="ЖЖ-сообщество",
+        )
+        self.add_argument(
+            cmdcompose_lj,
+            "--security",
+            help="set to 'friends' to make post friends-only, else specify allowmask.",
+            caption="Указание группы друзей (или 'friends' для всех друзей)",
+        )
+        cmdcompose_base = cmdcompose_filetype.add_parser("base")
+        self.add_argument(
+            cmdcompose_base,
+            "filename",
+            nargs="*",
+            help="file(s) to compose from.",
+            caption="Имя 4s-файла",
+            filetypes=[("chgksuite markup files", "*.4s")],
+        )
+        self.add_argument(
+            cmdcompose_base,
+            "--remove_accents",
+            action="store_true",
+            caption="Убрать знаки ударения",
+            help="remove combining acute accents to prevent db.chgk.info search breaking",
+        )
+        self.add_argument(
+            cmdcompose_base,
+            "--clipboard",
+            caption="Скопировать результат в буфер",
+            help="copy result to clipboard",
+            action="store_true",
+        )
+        cmdcompose_redditmd = cmdcompose_filetype.add_parser("redditmd")
+        self.add_argument(
+            cmdcompose_redditmd,
+            "filename",
+            nargs="*",
+            help="file(s) to compose from.",
+            caption="Имя 4s-файла",
+            filetypes=[("chgksuite markup files", "*.4s")],
+        )
+        cmdcompose_pptx = cmdcompose_filetype.add_parser("pptx")
+        self.add_argument(
+            cmdcompose_pptx,
+            "filename",
+            nargs="*",
+            help="file(s) to compose from.",
+            caption="Имя 4s-файла",
+            filetypes=[("chgksuite markup files", "*.4s")],
+        )
+        self.add_argument(
+            cmdcompose_pptx,
+            "--pptx_config",
+            help="a pptx config file.",
+            advanced=True,
+            caption="Файл конфигурации",
+            argtype="filename",
+        )
+
+        cmdtrello = subparsers.add_parser("trello")
+        cmdtrello_subcommands = cmdtrello.add_subparsers(dest="trellosubcommand")
+        cmdtrello_download = self.add_parser(
+            cmdtrello_subcommands, "download", caption="Скачать из Трелло"
+        )
+        self.add_argument(
+            cmdtrello_download,
+            "folder",
+            help="path to the folder" "to synchronize with a trello board.",
+            caption="Папка",
+        )
+        self.add_argument(
+            cmdtrello_download,
+            "--si",
+            action="store_true",
+            help="This flag includes card captions "
+            "in .4s files. "
+            "Useful for editing SI "
+            "files (rather than CHGK)",
+            caption="Формат Своей игры",
+        )
+        self.add_argument(
+            cmdtrello_download,
+            "--replace_double_line_breaks",
+            "-rd",
+            action="store_true",
+            help="This flag replaces double line breaks with single ones.",
+            caption="Убрать двойные переносы строк",
+        )
+        self.add_argument(
+            cmdtrello_download,
+            "--onlyanswers",
+            action="store_true",
+            help="This flag forces SI download to only include answers.",
+            caption="Только ответы",
+        )
+        self.add_argument(
+            cmdtrello_download,
+            "--noanswers",
+            action="store_true",
+            help="This flag forces SI download to not include answers.",
+            caption="Без ответов",
+        )
+        self.add_argument(
+            cmdtrello_download,
+            "--singlefile",
+            action="store_true",
+            help="This flag forces SI download all themes to single file.",
+            caption="Склеить всё в один файл",
+        )
+        self.add_argument(
+            cmdtrello_download,
+            "--qb",
+            action="store_true",
+            help="Quizbowl format",
+            caption="Формат квизбола",
+        )
+        self.add_argument(
+            cmdtrello_download,
+            "--labels",
+            action="store_true",
+            help="Use this if you also want " "to have lists based on labels.",
+            caption="Создать файлы из лейблов Трелло",
+        )
+
+        cmdtrello_upload = self.add_parser(
+            cmdtrello_subcommands, "upload", caption="Загрузить в Трелло"
+        )
+        self.add_argument(
+            cmdtrello_upload, "board_id", help="trello board id.", caption="ID доски"
+        )
+        self.add_argument(
+            cmdtrello_upload,
+            "filename",
+            nargs="*",
+            help="file(s) to upload to trello.",
+            caption="Имя 4s-файла",
+        )
+        self.add_argument(
+            cmdtrello_upload,
+            "--author",
+            action="store_true",
+            help="Display authors in cards' captions",
+            caption="Дописать авторов в заголовок карточки",
+        )
+
+        cmdtrello_subcommands.add_parser("token")
+
+
 def app():
     sourcedir, resourcedir = get_source_dirs()
 
     if isinstance(sourcedir, bytes):
         sourcedir = sourcedir.decode("utf8")
     ld = get_lastdir()
-    parser = ParserWrapper(
-        argparse.ArgumentParser(prog="chgksuite".format(__version__)), lastdir=ld
-    )
-    parser.add_argument(
-        "--debug",
-        "-d",
-        action="store_true",
-        help="Print and save some debug info.",
-        caption="Отладочная информация",
-        advanced=True,
-    )
-    parser.add_argument(
-        "--config",
-        "-c",
-        help="a config file to store default args values.",
-        caption="Файл конфигурации",
-        advanced=True,
-        argtype="filename",
-    )
-    parser.add_argument(
-        "-v",
-        "--version",
-        action="version",
-        version="%(prog)s " + __version__,
-        hide=True,
-    )
-    subparsers = parser.add_subparsers(dest="action")
-
-    cmdparse = subparsers.add_parser("parse")
-    cmdparse.add_argument(
-        "filename",
-        help="file to parse.",
-        nargs="?",
-        caption="Имя файла",
-        filetypes=[("chgksuite parsable files", ("*.docx", "*.txt"))],
-    )
-    cmdparse.add_argument(
-        "--defaultauthor",
-        action="store_true",
-        help="pick default author from filename " "where author is missing.",
-        advanced=True,
-        caption="Дописать отсутствующего автора из имени файла",
-    )
-    cmdparse.add_argument(
-        "--encoding",
-        default=None,
-        help="Encoding of text file " "(use if auto-detect fails).",
-        advanced=True,
-        caption="Кодировка",
-    )
-    cmdparse.add_argument(
-        "--regexes",
-        default=None,
-        help="A file containing regexes " "(the default is regexes.json).",
-        advanced=True,
-        caption="Файл с регулярными выражениями",
-        argtype="filename",
-    )
-    cmdparse.add_argument(
-        "--parsedir",
-        action="store_true",
-        help="parse directory instead of file.",
-        advanced=True,
-        hide=True,
-    )
-    cmdparse.add_argument(
-        "--links",
-        default="unwrap",
-        choices=["unwrap", "old"],
-        help="hyperlinks handling strategy. "
-        "Unwrap just leaves links as presented in the text, unchanged. "
-        "Old is behaviour from versions up to v0.5.3: "
-        "replace link with its href value.",
-        advanced=True,
-        caption="Стратегия обработки ссылок",
-    )
-    cmdparse.add_argument(
-        "--numbers_handling",
-        default="default",
-        choices=["default", "all", "none"],
-        help="question numbers handling strategy. "
-        "Default preserves zero questions and numbering "
-        "if the first question has number > 1, omits number otherwise. "
-        "All preserves all numbers, none omits all numbers "
-        "(was default behaviour pre-0.8.0.)",
-        advanced=True,
-        caption="Стратегия обработки номеров вопросов",
-    )
-    cmdparse.add_argument(
-        "--fix_spans",
-        action="store_true",
-        help="try to unwrap all <span> tags. " "Can help fix weird Word formatting.",
-        advanced=True,
-        caption="Fix <span> tags",
-    )
-    cmdparse.add_argument(
-        "--bs_prettify",
-        action="store_true",
-        help="old html processing behaviour (before v0.5.5). "
-        "Sometimes it will yield better results than the new default.",
-        advanced=True,
-        caption="BeautifulSoup prettify",
-    )
-
-    cmdcompose = subparsers.add_parser("compose")
-    cmdcompose.add_argument(
-        "--merge",
-        action="store_true",
-        help="merge several source files before output.",
-        advanced=True,
-        hide=True,
-    )
-    cmdcompose.add_argument(
-        "--nots",
-        action="store_true",
-        help="don't append timestamp to filenames",
-        caption="Не добавлять временную отметку в имя файла",
-        advanced=True,
-    )
-    cmdcompose.add_argument(
-        "--labels_file",
-        help="i18n config",
-        caption="Конфиг для интернационализации",
-        advanced=True,
-        argtype="filename",
-    )
-    cmdcompose.add_argument(
-        "--imgur_client_id",
-        help="imgur client id",
-        caption="Client ID для API Imgur",
-        advanced=True,
-    )
-    cmdcompose_filetype = cmdcompose.add_subparsers(dest="filetype")
-    cmdcompose_docx = cmdcompose_filetype.add_parser("docx")
-    cmdcompose_docx.add_argument(
-        "--docx_template",
-        help="a DocX template file.",
-        advanced=True,
-        caption="Файл-образец",
-        argtype="filename",
-    )
-    cmdcompose_docx.add_argument(
-        "filename",
-        nargs="*",
-        help="file(s) to compose from.",
-        caption="Имя 4s-файла",
-        filetypes=[("chgksuite markup files", "*.4s")],
-    )
-    cmdcompose_docx.add_argument(
-        "--nospoilers",
-        "-n",
-        action="store_true",
-        help="do not whiten (spoiler) answers.",
-        caption="Не забелять ответы",
-    )
-    cmdcompose_docx.add_argument(
-        "--noanswers",
-        action="store_true",
-        help="do not print answers " "(not even spoilered).",
-        caption="Без ответов",
-    )
-    cmdcompose_docx.add_argument(
-        "--noparagraph",
-        action="store_true",
-        help="disable paragraph break " "after 'Question N.'",
-        advanced=True,
-        caption='Без переноса строки после "Вопрос N."',
-    )
-    cmdcompose_docx.add_argument(
-        "--randomize",
-        action="store_true",
-        help="randomize order of questions.",
-        advanced=True,
-        caption="Перемешать вопросы",
-    )
-    cmdcompose_docx.add_argument(
-        "--no_line_break",
-        action="store_true",
-        help="no line break between question and answer.",
-        caption="Один перенос строки перед ответом вместо двух",
-    )
-    cmdcompose_docx.add_argument(
-        "--one_line_break",
-        action="store_true",
-        help="one line break after question instead of two.",
-        caption="Один перенос строки после вопроса вместо двух",
-    )
-
-    cmdcompose_tex = cmdcompose_filetype.add_parser("tex")
-    cmdcompose_tex.add_argument(
-        "--tex_header",
-        help="a LaTeX header file.",
-        caption="Файл с заголовками",
-        advanced=True,
-        argtype="filename",
-    )
-    cmdcompose_tex.add_argument(
-        "filename",
-        nargs="*",
-        help="file(s) to compose from.",
-        caption="Имя 4s-файла",
-        filetypes=[("chgksuite markup files", "*.4s")],
-    )
-    cmdcompose_tex.add_argument(
-        "--rawtex",
-        action="store_true",
-        advanced=True,
-        caption="Не удалять исходный tex",
-    )
-
-    cmdcompose_lj = cmdcompose_filetype.add_parser("lj")
-    cmdcompose_lj.add_argument(
-        "filename",
-        nargs="*",
-        help="file(s) to compose from.",
-        caption="Имя 4s-файла",
-        filetypes=[("chgksuite markup files", "*.4s")],
-    )
-    cmdcompose_lj.add_argument(
-        "--nospoilers",
-        "-n",
-        action="store_true",
-        help="disable spoilers.",
-        caption="Отключить спойлер-теги",
-    )
-    cmdcompose_lj.add_argument(
-        "--splittours",
-        action="store_true",
-        help="make a separate post for each tour.",
-        caption="Разбить на туры",
-    )
-    cmdcompose_lj.add_argument(
-        "--genimp",
-        action="store_true",
-        help="make a 'general impressions' post.",
-        caption="Пост с общими впечатлениями",
-    )
-    cmdcompose_lj.add_argument(
-        "--navigation",
-        action="store_true",
-        help="add navigation to posts.",
-        caption="Добавить навигацию к постам",
-    )
-    cmdcompose_lj.add_argument(
-        "--login", "-l", help="livejournal login", caption="ЖЖ-логин"
-    )
-    cmdcompose_lj.add_argument(
-        "--password", "-p", help="livejournal password", caption="Пароль от ЖЖ"
-    )
-    cmdcompose_lj.add_argument(
-        "--community",
-        "-c",
-        help="livejournal community to post to.",
-        caption="ЖЖ-сообщество",
-    )
-    cmdcompose_lj.add_argument(
-        "--security",
-        help="set to 'friends' to make post friends-only, else specify allowmask.",
-        caption="Указание группы друзей (или 'friends' для всех друзей)",
-    )
-    cmdcompose_base = cmdcompose_filetype.add_parser("base")
-    cmdcompose_base.add_argument(
-        "filename",
-        nargs="*",
-        help="file(s) to compose from.",
-        caption="Имя 4s-файла",
-        filetypes=[("chgksuite markup files", "*.4s")],
-    )
-    cmdcompose_base.add_argument(
-        "--remove_accents",
-        action="store_true",
-        caption="Убрать знаки ударения",
-        help="remove combining acute accents to prevent db.chgk.info search breaking",
-    )
-    cmdcompose_base.add_argument(
-        "--clipboard",
-        caption="Скопировать результат в буфер",
-        help="copy result to clipboard",
-        action="store_true",
-    )
-    cmdcompose_redditmd = cmdcompose_filetype.add_parser("redditmd")
-    cmdcompose_redditmd.add_argument(
-        "filename",
-        nargs="*",
-        help="file(s) to compose from.",
-        caption="Имя 4s-файла",
-        filetypes=[("chgksuite markup files", "*.4s")],
-    )
-    cmdcompose_pptx = cmdcompose_filetype.add_parser("pptx")
-    cmdcompose_pptx.add_argument(
-        "filename",
-        nargs="*",
-        help="file(s) to compose from.",
-        caption="Имя 4s-файла",
-        filetypes=[("chgksuite markup files", "*.4s")],
-    )
-    cmdcompose_pptx.add_argument(
-        "--pptx_config",
-        help="a pptx config file.",
-        advanced=True,
-        caption="Файл конфигурации",
-        argtype="filename",
-    )
-
-    cmdtrello = subparsers.add_parser("trello")
-    cmdtrello_subcommands = cmdtrello.add_subparsers(dest="trellosubcommand")
-    cmdtrello_download = cmdtrello_subcommands.add_parser(
-        "download", caption="Скачать из Трелло"
-    )
-    cmdtrello_download.add_argument(
-        "folder",
-        help="path to the folder" "to synchronize with a trello board.",
-        caption="Папка",
-    )
-    cmdtrello_download.add_argument(
-        "--si",
-        action="store_true",
-        help="This flag includes card captions "
-        "in .4s files. "
-        "Useful for editing SI "
-        "files (rather than CHGK)",
-        caption="Формат Своей игры",
-    )
-    cmdtrello_download.add_argument(
-        "--replace_double_line_breaks",
-        "-rd",
-        action="store_true",
-        help="This flag replaces double line breaks with single ones.",
-        caption="Убрать двойные переносы строк",
-    )
-    cmdtrello_download.add_argument(
-        "--onlyanswers",
-        action="store_true",
-        help="This flag forces SI download to only include answers.",
-        caption="Только ответы",
-    )
-    cmdtrello_download.add_argument(
-        "--noanswers",
-        action="store_true",
-        help="This flag forces SI download to not include answers.",
-        caption="Без ответов",
-    )
-    cmdtrello_download.add_argument(
-        "--singlefile",
-        action="store_true",
-        help="This flag forces SI download all themes to single file.",
-        caption="Склеить всё в один файл",
-    )
-    cmdtrello_download.add_argument(
-        "--qb", action="store_true", help="Quizbowl format", caption="Формат квизбола"
-    )
-    cmdtrello_download.add_argument(
-        "--labels",
-        action="store_true",
-        help="Use this if you also want " "to have lists based on labels.",
-        caption="Создать файлы из лейблов Трелло",
-    )
-
-    cmdtrello_upload = cmdtrello_subcommands.add_parser(
-        "upload", caption="Загрузить в Трелло"
-    )
-    cmdtrello_upload.add_argument(
-        "board_id", help="trello board id.", caption="ID доски"
-    )
-    cmdtrello_upload.add_argument(
-        "filename",
-        nargs="*",
-        help="file(s) to upload to trello.",
-        caption="Имя 4s-файла",
-    )
-    cmdtrello_upload.add_argument(
-        "--author",
-        action="store_true",
-        help="Display authors in cards' captions",
-        caption="Дописать авторов в заголовок карточки",
-    )
-
-    cmdtrello_subcommands.add_parser("token")
-
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(prog="chgksuite".format(__version__))
+    use_wrapper = len(sys.argv) == 1 and TKINTER
+    if use_wrapper:
+        parser = ParserWrapper(parser, lastdir=ld)
+    ArgparseBuilder(parser, use_wrapper).build()
+    args = DefaultNamespace(parser.parse_args())
 
     if not args.labels_file:
         args.labels_file = os.path.join(resourcedir, "labels_ru.toml")
@@ -705,36 +789,6 @@ def app():
             setattr(args, key, val)
 
     args.passthrough = False
-    if not args.action:
-        try:
-            ret = gui_choose_action(args)
-            action = ret["action"]
-            defaultauthor = ret["defaultauthor"]
-            merge = ret["merge"]
-            passthrough = ret["passthrough"]
-        except ValueError:
-            sys.exit(1)
-        if passthrough:
-            args.passthrough = True
-        if action == "parse":
-            args.action = "parse"
-            args.defaultauthor = defaultauthor
-        if action == "parsedir":
-            args.action = "parse"
-            args.defaultauthor = defaultauthor
-            args.parsedir = True
-        if action == "compose":
-            args.action = "compose"
-            args.merge = merge
-        if action == "trellodown":
-            args.action = "trello"
-            args.trellosubcommand = "download"
-        if action == "trelloup":
-            args.action = "trello"
-            args.trellosubcommand = "upload"
-        if action == "trellotoken":
-            args.action = "trello"
-            args.trellosubcommand = "token"
     if args.action == "parse":
         gui_parse(args, sourcedir=sourcedir)
     if args.action == "compose":
