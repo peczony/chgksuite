@@ -123,7 +123,6 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     def find_next_fieldname(index):
         target = index + 1
         if target < len(structure):
-            logger.debug(log_wrap(structure[target]))
             while target < len(structure) - 1 and structure[target][0] == "":
                 target += 1
             return structure[target][0]
