@@ -1,7 +1,7 @@
 beautifulsoup4==4.8.2
 certifi==2019.11.28
 chardet==3.0.4
-dateparser==0.7.2
+dateparser==1.0.0
 html2text==2020.1.16
 idna==2.8
 lxml==4.4.2
