@@ -1450,14 +1450,15 @@ class PptxExporter(BaseExporter):
         s = s.replace("]\n", "]\n\n")
         return s
 
-    def pptx_process_text(self, s, image=None):
+    def pptx_process_text(self, s, image=None, strip_brackets=True):
         hs = self.labels["question_labels"]["handout_short"]
         if isinstance(s, list):
             for i in range(len(s)):
                 s[i] = self.pptx_process_text(s[i], image=image)
             return s
         s = s.replace("\u0301", "")
-        s = self.remove_square_brackets(s)
+        if strip_brackets:
+            s = self.remove_square_brackets(s)
         if image:
             s = re.sub("\\[" + hs + "(.+?)\\]", "", s, flags=re.DOTALL)
             s = s.strip()
@@ -1720,10 +1721,12 @@ class PptxExporter(BaseExporter):
         tf = textbox.text_frame
         tf.word_wrap = True
 
-        text_for_size = self.recursive_join(self.pptx_process_text(q["answer"]))
+        text_for_size = self.recursive_join(
+            self.pptx_process_text(q["answer"], strip_brackets=False)
+        )
         if q.get("zachet") and self.c.get("add_zachet"):
             text_for_size += "\n" + self.recursive_join(
-                self.pptx_process_text(q["zachet"])
+                self.pptx_process_text(q["zachet"], strip_brackets=False)
             )
         if q.get("comment") and self.c.get("add_comment"):
             text_for_size += "\n" + self.recursive_join(
@@ -1733,9 +1736,11 @@ class PptxExporter(BaseExporter):
         r = p.add_run()
         r.text = f"{self.get_label(q, 'answer')}: "
         r.font.bold = True
-        self.pptx_format(self.pptx_process_text(q["answer"]), p, tf, slide)
+        self.pptx_format(
+            self.pptx_process_text(q["answer"], strip_brackets=False), p, tf, slide
+        )
         if q.get("zachet") and self.c.get("add_zachet"):
-            zachet_text = self.pptx_process_text(q["zachet"])
+            zachet_text = self.pptx_process_text(q["zachet"], strip_brackets=False)
             r = p.add_run()
             r.text = f"\n{self.get_label(q, 'zachet')}: "
             r.font.bold = True
