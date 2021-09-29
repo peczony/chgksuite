@@ -486,6 +486,14 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose_docx,
+            "--pagebreakspoilers",
+            "-pbs",
+            action="store_true",
+            help="use page break spoilers instead of whiten spoilers.",
+            caption="Использовать новую страницу, а не забеление в качестве защиты от спойлеров",
+        )
+        self.add_argument(
+            cmdcompose_docx,
             "--noanswers",
             action="store_true",
             help="do not print answers " "(not even spoilered).",

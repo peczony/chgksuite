@@ -1289,7 +1289,7 @@ class DocxExporter(BaseExporter):
                     r.italic = True
                 elif run[0] == "sc":
                     r.small_caps = True
-                if whiten and not args.nospoilers:
+                if whiten and not args.nospoilers and not args.pagebreakspoilers:
                     r.style = "Whitened"
 
     def add_question(self, element):
@@ -1318,7 +1318,10 @@ class DocxExporter(BaseExporter):
         self._docx_format(q["question"], p, False)
 
         if not args.noanswers:
-            p = self.doc.add_paragraph()
+            if args.pagebreakspoilers:
+                p = self.doc.add_page_break()
+            else:
+                p = self.doc.add_paragraph()
             p.paragraph_format.keep_together = True
             p.paragraph_format.space_before = DocxPt(6)
             p.add_run(f"{self.get_label(q, 'answer')}: ").bold = True
