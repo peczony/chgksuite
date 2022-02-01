@@ -28,6 +28,7 @@ from pptx.dml.color import RGBColor
 
 from docx import Document
 from docx.shared import Inches, Pt as DocxPt
+from docx.image.exceptions import UnrecognizedImageError
 from PIL import Image
 
 from pptx import Presentation
@@ -138,7 +139,7 @@ def search_for_imgfile(imgfile, tmp_dir, targetdir):
         imgfile2 = os.path.join(dirname, os.path.basename(imgfile))
         if os.path.isfile(imgfile2):
             return imgfile2
-    raise Exception("Image file {} not found".format(imgfile))
+    raise Exception("Image file {} not found\n".format(imgfile))
 
 
 def parse_single_size(ssize, dpi=120, emsize=25):
@@ -1270,6 +1271,9 @@ class DocxExporter(BaseExporter):
 
             for run in parse_4s_elem(el):
                 if run[0] == "img":
+                    if run[1].endswith(".shtml"):
+                        r = para.add_run("(ТУТ БЫЛА ССЫЛКА НА ПРОТУХШУЮ КАРТИНКУ)\n")  # TODO: добавить возможность пропускать кривые картинки опцией
+                        continue
                     parsed_image = parseimg(
                         run[1],
                         dimensions="inches",
@@ -1280,7 +1284,10 @@ class DocxExporter(BaseExporter):
                     width = parsed_image["width"]
                     height = parsed_image["height"]
                     r = para.add_run("\n")
-                    r.add_picture(imgfile, width=Inches(width), height=Inches(height))
+                    try:
+                        r.add_picture(imgfile, width=Inches(width), height=Inches(height))
+                    except UnrecognizedImageError:
+                        sys.stderr.write(f"python-docx can't recognize header for {imgfile}.\n")
                     r.add_text("\n")
                     continue
 
