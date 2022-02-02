@@ -13,7 +13,7 @@ import logging
 import base64
 import itertools
 import chardet
-from pydocx import PyDocX
+import mammoth
 from bs4 import BeautifulSoup
 from parse import parse
 import html2text
@@ -510,8 +510,10 @@ def generate_imgname(target_dir, ext):
 
 def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
     target_dir = os.path.dirname(os.path.abspath(docxfile))
+    with open(docxfile, "rb") as docx_file:
+        html = mammoth.convert_to_html(docx_file).value
     input_docx = (
-        PyDocX.to_html(docxfile)
+        html
         .replace("</strong><strong>", "")
         .replace("</em><em>", "")
         .replace("_", "$$$UNDERSCORE$$$")

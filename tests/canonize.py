@@ -41,7 +41,7 @@ def main():
             with codecs.open(
                 os.path.join(currentdir, filename) + ".canon", "w", "utf8"
             ) as f:
-                f.write(compose_4s(parsed))
+                f.write(compose_4s(parsed, args=DefaultArgs()))
 
 
 if __name__ == "__main__":
