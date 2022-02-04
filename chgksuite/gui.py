@@ -665,6 +665,32 @@ class ArgparseBuilder:
             caption="Файл конфигурации",
             argtype="filename",
         )
+        cmdcompose_add_stats = cmdcompose_filetype.add_parser("add_stats")
+        self.add_argument(
+            cmdcompose_add_stats,
+            "filename",
+            nargs="*",
+            help="file(s) to compose from.",
+            caption="Имя 4s-файла",
+            filetypes=[("chgksuite markup files", "*.4s")],
+        )
+        self.add_argument(
+            cmdcompose_add_stats,
+            "--rating_ids",
+            "-r",
+            help="tournament id (comma-separated in case of sync+async parts).",
+            caption="id турнира (через запятую для синхрона+асинхрона)",
+        )
+        self.add_argument(
+            cmdcompose_add_stats,
+            "--team_naming_threshold",
+            "-tnt",
+            type=int,
+            default=2,
+            help="threshold for naming teams who scored at the question.",
+            caption="Граница вывода названий команд",
+        )
+
 
         cmdtrello = subparsers.add_parser("trello")
         cmdtrello_subcommands = cmdtrello.add_subparsers(dest="trellosubcommand")

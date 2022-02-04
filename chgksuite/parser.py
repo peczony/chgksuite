@@ -29,7 +29,8 @@ from chgksuite.common import (
     DefaultNamespace,
     check_question,
     QUESTION_LABELS,
-    get_source_dirs
+    get_source_dirs,
+    compose_4s
 )
 from chgksuite.composer import gui_compose
 
@@ -613,101 +614,6 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
         txt, defaultauthor=defaultauthor, regexes=regexes
     )
     return final_structure
-
-
-def remove_double_separators(s):
-    return re.sub(r"({})+".format(SEP), SEP, s)
-
-
-def compose_4s(structure, args=None):
-    types_mapping = {
-        "meta": "# ",
-        "tour": "## ",
-        "tourrev": "## ",
-        "editor": "#EDITOR ",
-        "heading": "### ",
-        "ljheading": "###LJ ",
-        "date": "#DATE ",
-        "question": "? ",
-        "answer": "! ",
-        "zachet": "= ",
-        "nezachet": "!= ",
-        "source": "^ ",
-        "comment": "/ ",
-        "author": "@ ",
-        "handout": "> ",
-        "Question": None,
-    }
-
-    def format_element(z):
-        if isinstance(z, str):
-            return remove_double_separators(z)
-        elif isinstance(z, list):
-            if isinstance(z[1], list):
-                return (
-                    remove_double_separators(z[0])
-                    + SEP
-                    + "- "
-                    + ("{}- ".format(SEP)).join(
-                        ([remove_double_separators(x) for x in z[1]])
-                    )
-                )
-            else:
-                return (
-                    SEP
-                    + "- "
-                    + ("{}- ".format(SEP)).join(
-                        [remove_double_separators(x) for x in z]
-                    )
-                )
-
-    def tryint(s):
-        try:
-            return int(s)
-        except (TypeError, ValueError):
-            return
-
-    def is_zero(s):
-        return str(s).startswith("0") or not tryint(s)
-
-    result = ""
-    first_number = True
-    for element in structure:
-        if element[0] in types_mapping and types_mapping[element[0]]:
-            result += (
-                types_mapping[element[0]]
-                + format_element(element[1])
-                + SEP
-                + SEP
-            )
-        elif element[0] == "Question":
-            tmp = ""
-            overrides = element[1].get("overrides") or {}
-            if "number" in element[1]:
-                if args.numbers_handling == "default":
-                    if is_zero(element[1]["number"]):
-                        tmp += "№ " + element[1]["number"] + SEP
-                    elif first_number and tryint(element[1]["number"]) > 1:
-                        tmp += "№№ " + element[1]["number"] + SEP
-                elif args.numbers_handling == "all":
-                    tmp += "№ " + element[1]["number"] + SEP
-                if not is_zero(element[1]["number"]):
-                    first_number = False
-            for label in QUESTION_LABELS:
-                override_label = "" if label not in overrides else (
-                    "!!{} ".format(overrides[label])
-                )
-                if label in element[1] and label in types_mapping:
-                    tmp += (
-                        types_mapping[label]
-                        + override_label
-                        + format_element(element[1][label])
-                        + SEP
-                    )
-            tmp = re.sub(r"{}+".format(SEP), SEP, tmp)
-            tmp = tmp.replace("\r\r", "\r")
-            result += tmp + SEP
-    return result
 
 
 def chgk_parse_wrapper(path, args, regexes=None):
