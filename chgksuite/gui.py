@@ -683,6 +683,12 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose_add_stats,
+            "--question_range",
+            help="range of question numbers to include.",
+            caption="Диапазон вопросов (например, \"25-36\"), по умолчанию берутся все)",
+        )
+        self.add_argument(
+            cmdcompose_add_stats,
             "--team_naming_threshold",
             "-tnt",
             type=int,

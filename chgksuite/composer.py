@@ -1836,7 +1836,16 @@ class StatsAdder(BaseExporter):
             self.total_teams += 1
             name = res["current"]["name"]
             mask = list(res["mask"])
+            if self.args.question_range:
+                start, end = self.args.question_range.split("-")
+                start = int(start)
+                end = int(end)
+            else:
+                start = 0
+                end = 9999
             for i, q in enumerate(mask):
+                if not start <= (i + 1) <= end:
+                    continue
                 if q == '1':
                     self.q_counter[i + 1] += 1
                     self.q_to_teams[i + 1].add(name)
