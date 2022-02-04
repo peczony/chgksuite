@@ -1852,7 +1852,7 @@ class StatsAdder(BaseExporter):
 
 
     def export(self, outfilename):
-        ids = self.args.rating_ids.split(",")
+        ids = [x.strip() for x in self.args.rating_ids.split(",") if x.strip()]
         self.q_to_teams = defaultdict(set)
         self.total_teams = 0
         self.q_counter = Counter()
