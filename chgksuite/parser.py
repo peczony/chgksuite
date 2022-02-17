@@ -14,6 +14,7 @@ import base64
 import itertools
 import chardet
 import mammoth
+import bs4
 from bs4 import BeautifulSoup
 from parse import parse
 import html2text
@@ -587,9 +588,16 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
 
     if args.bs_prettify:
         html2text_input = bsoup.prettify()
+        txt = h.handle(html2text_input)
+    elif args.hard_unwrap:
+        for tag in bsoup:
+            if isinstance(tag, bs4.element.Tag):
+                tag.unwrap()
+        txt = bsoup.prettify()
     else:
         html2text_input = str(bsoup)
-    txt = h.handle(html2text_input)
+        txt = h.handle(html2text_input)
+
     txt = (
         txt.replace("\\-", "")
         .replace("\\.", ".")
