@@ -14,6 +14,7 @@ import base64
 import itertools
 import chardet
 import mammoth
+import pypandoc
 import bs4
 from bs4 import BeautifulSoup
 from parse import parse
@@ -512,91 +513,94 @@ def generate_imgname(target_dir, ext):
 
 def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
     target_dir = os.path.dirname(os.path.abspath(docxfile))
-    with open(docxfile, "rb") as docx_file:
-        html = mammoth.convert_to_html(docx_file).value
-    input_docx = (
-        html
-        .replace("</strong><strong>", "")
-        .replace("</em><em>", "")
-        .replace("_", "$$$UNDERSCORE$$$")
-    )
-    bsoup = BeautifulSoup(input_docx, "html.parser")
-
-    if debug:
-        with codecs.open(
-            os.path.join(target_dir, "debug.pydocx"), "w", "utf8"
-        ) as dbg:
-            dbg.write(input_docx)
-
-    for tag in bsoup.find_all("style"):
-        tag.extract()
-    for tag in bsoup.find_all("p"):
-        if tag.string:
-            tag.string = tag.string + SEP
-    for tag in bsoup.find_all("b"):
-        tag.unwrap()
-    for tag in bsoup.find_all("strong"):
-        tag.unwrap()
-    for tag in bsoup.find_all("i"):
-        tag.string = "_" + tag.get_text() + "_"
-        tag.unwrap()
-    for tag in bsoup.find_all("em"):
-        tag.string = "_" + tag.get_text() + "_"
-        tag.unwrap()
-    if args.fix_spans:
-        for tag in bsoup.find_all("span"):
-            tag.unwrap()
-    for h in ["h1", "h2", "h3", "h4"]:
-        for tag in bsoup.find_all(h):
-            tag.unwrap()
-    for tag in bsoup.find_all("li"):
-        if tag.string:
-            tag.string = "- " + tag.string
-    for tag in bsoup.find_all("img"):
-        imgparse = parse("data:image/{ext};base64,{b64}", tag["src"])
-        imgname = generate_imgname(target_dir, imgparse["ext"])
-        with open(os.path.join(target_dir, imgname), "wb") as f:
-            f.write(base64.b64decode(imgparse["b64"]))
-        imgpath = os.path.basename(imgname)
-        tag.insert_before("(img {})".format(imgpath))
-        tag.extract()
-    for tag in bsoup.find_all("hr"):
-        tag.extract()
-    if args.links == "unwrap":
-        for tag in bsoup.find_all("a"):
-            tag.unwrap()
-    elif args.links == "old":
-        for tag in bsoup.find_all("a"):
-            if not tag.string or rew(tag.string) == "":
-                tag.extract()
-            else:
-                tag.string = tag["href"]
-                tag.unwrap()
-
-    if debug:
-        with codecs.open(
-            os.path.join(target_dir, "debug_raw.html"), "w", "utf8"
-        ) as dbg:
-            dbg.write(str(bsoup))
-        with codecs.open(
-            os.path.join(target_dir, "debug.html"), "w", "utf8"
-        ) as dbg:
-            dbg.write(bsoup.prettify())
-
-    h = html2text.HTML2Text()
-    h.body_width = 0
-
-    if args.bs_prettify:
-        html2text_input = bsoup.prettify()
-        txt = h.handle(html2text_input)
-    elif args.hard_unwrap:
-        for tag in bsoup:
-            if isinstance(tag, bs4.element.Tag):
-                tag.unwrap()
-        txt = bsoup.prettify()
+    if args.parsing_engine == "pypandoc":
+        txt = pypandoc.convert_file(docxfile, "plain", extra_args=["--wrap=none"])
     else:
-        html2text_input = str(bsoup)
-        txt = h.handle(html2text_input)
+        with open(docxfile, "rb") as docx_file:
+            html = mammoth.convert_to_html(docx_file).value
+        input_docx = (
+            html
+            .replace("</strong><strong>", "")
+            .replace("</em><em>", "")
+            .replace("_", "$$$UNDERSCORE$$$")
+        )
+        bsoup = BeautifulSoup(input_docx, "html.parser")
+
+        if debug:
+            with codecs.open(
+                os.path.join(target_dir, "debug.pydocx"), "w", "utf8"
+            ) as dbg:
+                dbg.write(input_docx)
+
+        for tag in bsoup.find_all("style"):
+            tag.extract()
+        for tag in bsoup.find_all("p"):
+            if tag.string:
+                tag.string = tag.string + SEP
+        for tag in bsoup.find_all("b"):
+            tag.unwrap()
+        for tag in bsoup.find_all("strong"):
+            tag.unwrap()
+        for tag in bsoup.find_all("i"):
+            tag.string = "_" + tag.get_text() + "_"
+            tag.unwrap()
+        for tag in bsoup.find_all("em"):
+            tag.string = "_" + tag.get_text() + "_"
+            tag.unwrap()
+        if args.fix_spans:
+            for tag in bsoup.find_all("span"):
+                tag.unwrap()
+        for h in ["h1", "h2", "h3", "h4"]:
+            for tag in bsoup.find_all(h):
+                tag.unwrap()
+        for tag in bsoup.find_all("li"):
+            if tag.string:
+                tag.string = "- " + tag.string
+        for tag in bsoup.find_all("img"):
+            imgparse = parse("data:image/{ext};base64,{b64}", tag["src"])
+            imgname = generate_imgname(target_dir, imgparse["ext"])
+            with open(os.path.join(target_dir, imgname), "wb") as f:
+                f.write(base64.b64decode(imgparse["b64"]))
+            imgpath = os.path.basename(imgname)
+            tag.insert_before("(img {})".format(imgpath))
+            tag.extract()
+        for tag in bsoup.find_all("hr"):
+            tag.extract()
+        if args.links == "unwrap":
+            for tag in bsoup.find_all("a"):
+                tag.unwrap()
+        elif args.links == "old":
+            for tag in bsoup.find_all("a"):
+                if not tag.string or rew(tag.string) == "":
+                    tag.extract()
+                else:
+                    tag.string = tag["href"]
+                    tag.unwrap()
+
+        if debug:
+            with codecs.open(
+                os.path.join(target_dir, "debug_raw.html"), "w", "utf8"
+            ) as dbg:
+                dbg.write(str(bsoup))
+            with codecs.open(
+                os.path.join(target_dir, "debug.html"), "w", "utf8"
+            ) as dbg:
+                dbg.write(bsoup.prettify())
+
+        h = html2text.HTML2Text()
+        h.body_width = 0
+
+        if args.parsing_engine == "bs_prettify":
+            html2text_input = bsoup.prettify()
+            txt = h.handle(html2text_input)
+        elif args.parsing_engine == "hard_unwrap":
+            for tag in bsoup:
+                if isinstance(tag, bs4.element.Tag):
+                    tag.unwrap()
+            txt = bsoup.prettify()
+        else:
+            html2text_input = str(bsoup)
+            txt = h.handle(html2text_input)
 
     txt = (
         txt.replace("\\-", "")

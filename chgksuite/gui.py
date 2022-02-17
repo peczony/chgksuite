@@ -418,20 +418,13 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdparse,
-            "--bs_prettify",
-            action="store_true",
+            "--parsing_engine",
+            choices=["pypandoc", "bs_prettify", "bs_hard_unwrap", "bs"],
+            default="pypandoc",
             help="old html processing behaviour (before v0.5.5). "
             "Sometimes it will yield better results than the new default.",
             advanced=True,
             caption="BeautifulSoup prettify",
-        )
-        self.add_argument(
-            cmdparse,
-            "--hard_unwrap",
-            action="store_true",
-            help="thing that sometimes helps.",
-            advanced=True,
-            caption="BeautifulSoup hard unwrap",
         )
 
         cmdcompose = subparsers.add_parser("compose")
