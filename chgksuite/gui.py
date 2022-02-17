@@ -425,6 +425,14 @@ class ArgparseBuilder:
             advanced=True,
             caption="BeautifulSoup prettify",
         )
+        self.add_argument(
+            cmdparse,
+            "--hard_unwrap",
+            action="store_true",
+            help="thing that sometimes helps.",
+            advanced=True,
+            caption="BeautifulSoup hard unwrap",
+        )
 
         cmdcompose = subparsers.add_parser("compose")
         self.add_argument(
