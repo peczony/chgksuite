@@ -57,6 +57,8 @@ setup(
         "ply",
         "dateparser",
         "pyperclip",
-        "toml"
+        "toml",
+        "mammoth",
+        "pypandoc"
     ]
 )
