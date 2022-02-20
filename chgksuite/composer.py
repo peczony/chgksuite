@@ -1099,65 +1099,68 @@ class TelegramExporter(BaseExporter):
             res = "\n".join(result)
         return res, images
 
+    def _post(self, chat_id, text, photo):
+        if photo:
+            if not text:
+                caption = ""
+            elif text == "---":
+                caption = "--"
+            else:
+                caption = "---"
+            msg = self.app.send_photo(
+                chat_id,
+                photo,
+                caption=caption,
+                parse_mode="md",
+            )
+            if text:
+                time.sleep(2)
+                self.app.edit_message_text(
+                    chat_id,
+                    msg.message_id,
+                    text=text,
+                    parse_mode="md",
+                    disable_web_page_preview=True
+                )
+        else:
+            msg = self.app.send_message(
+                chat_id, text, parse_mode="md", disable_web_page_preview=True
+            )
+        return msg
+
+
     def post(self, posts):
         if self.args.dry_run:
             print("skipping posting due to dry run")
             return
         messages = []
         text, im = posts[0]
-        if im:
-            root_msg = self.app.send_photo(
+        root_msg = self._post(
+            self.channel_id,
+            text,
+            im
+        )
+        if len(posts) >= 2 and not text and im and posts[1][0]:  # crutch for case when the question doesn't fit without image
+            prev_root_msg = root_msg
+            root_msg = self._post(
                 self.channel_id,
-                im,
-                caption="---",
-                parse_mode="md",
+                posts[1][0],
+                posts[1][1]
             )
-            time.sleep(2)
-            self.app.edit_message_text(
-                self.channel_id,
-                root_msg.message_id,
-                text=text,
-                parse_mode="md",
-                disable_web_page_preview=True
-            )
-        else:
-            root_msg = self.app.send_message(
-                self.channel_id, text, parse_mode="md", disable_web_page_preview=True
-            )
+            posts = posts[1:]
+            messages.append(root_msg)
+            messages.append(prev_root_msg)
         time.sleep(2.1)
         root_msg_in_chat = self.app.get_discussion_message(
             self.channel_id, root_msg.message_id
         )
         print(f"Posted message {root_msg.link} ({root_msg_in_chat.link} in chat)")
         time.sleep(random.randint(5, 7))
-        messages.append(root_msg)
+        if root_msg not in messages:
+            messages.append(root_msg)
         messages.append(root_msg_in_chat)
         for post in posts[1:]:
-            text, im = post
-            if im:
-                reply_msg = self.app.send_photo(
-                    self.chat_id,
-                    im,
-                    caption="---",
-                    parse_mode="md",
-                    reply_to_message_id=root_msg_in_chat.message_id,
-                )
-                time.sleep(2)
-                self.app.edit_message_text(
-                    self.chat_id,
-                    reply_msg.message_id,
-                    text=text,
-                    parse_mode="md",
-                    disable_web_page_preview=True
-                )
-            else:
-                reply_msg = self.app.send_message(
-                    self.chat_id,
-                    text,
-                    parse_mode="md",
-                    reply_to_message_id=root_msg_in_chat.message_id,
-                    disable_web_page_preview=True,
-                )
+            reply_msg = self._post(self.chat_id, text, im)
             print(f"Replied to message {root_msg_in_chat.link} with {reply_msg.link}")
             time.sleep(random.randint(5, 7))
             messages.append(reply_msg)
@@ -1274,7 +1277,7 @@ class TelegramExporter(BaseExporter):
         txt_nz = None
         txt_comm = None
         txt_s = None
-        txt_a = None
+        txt_au = None
         if "zachet" in q:
             txt_z, images_ = self.tgyapper(q["zachet"])
             images_a.extend(images_)
@@ -1301,6 +1304,11 @@ class TelegramExporter(BaseExporter):
         )
         if len(full_question) <= q_threshold:
             res = [(full_question, images_q[0] if images_q else None)]
+            for i in images_a:
+                res.append(("", i))
+            return res
+        elif images_q and len(full_question) <= 2048:
+            res = [("", images_q[0]), (full_question, None)]
             for i in images_a:
                 res.append(("", i))
             return res
@@ -1371,7 +1379,6 @@ class TelegramExporter(BaseExporter):
                 navigation_text.append(
                     f"{self.labels['general']['section']} {i + 1}: {link}"
                 )
-            navigation_text.append("")
             navigation_text.append(self.labels["general"]["general_impressions_text"])
             navigation_text = "\n".join(navigation_text)
             messages = self.post([(navigation_text.strip(), None)])
