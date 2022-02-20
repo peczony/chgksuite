@@ -2780,7 +2780,7 @@ class LjExporter(BaseExporter):
                     }
                     self.lj_post([newstru], edit=True)
         else:
-            stru = self.lj_process(structure)
+            stru = self.lj_process(self.structure)
             post = self.lj_post(stru)
 
 
