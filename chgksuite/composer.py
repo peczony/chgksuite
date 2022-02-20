@@ -1200,14 +1200,19 @@ class TelegramExporter(BaseExporter):
             self.buffer_texts.append(text)
             self.buffer_images.extend(images)
 
-    def assemble(self, list_):
-        list_ = [x.strip() for x in list_ if x]
+    def assemble(self, list_, lb_after_first=False):
+        list_ = [x for x in list_ if x]
+        list_ = [x.strip() for x in list_ if not x.startswith("\n||")]
+        if lb_after_first:
+            list_[0] = list_[0] + "\n"
         res = "\n".join(list_)
         res = res.replace("\n||\n", "\n||")
         while res.endswith("\n"):
             res = res[:-1]
         if res.endswith("\n||"):
             res = res[:-3] + "||"
+        if self.args.nospoilers:
+            res = res.replace("||", "")
         return res
 
     def make_chunk(self, texts, images):
@@ -1248,15 +1253,25 @@ class TelegramExporter(BaseExporter):
             result.append((chunk, im))
         return result
 
-    @staticmethod
-    def swrap(s_):
+    def swrap(self, s_, t="both"):
         if not s_:
-            return s_
-        return "||" + s_ + "||"
+            res = s_
+        if self.args.nospoilers:
+            res = s_
+        elif t == "both":
+            res  = "||" + s_ + "||"
+        elif t == "left":
+            res  = "||" + s_
+        elif t == "right":
+            res  = s_ + "||"
+        return res
 
     @staticmethod
-    def lwrap(l_):
-        return [x.strip() for x in l_ if x]
+    def lwrap(l_, lb_after_first=False):
+        l_ = [x.strip() for x in l_ if x]
+        if lb_after_first:
+            return l_[0] + "\n" + "\n".join([x for x in l_[1:]])
+        return "\n".join(l_)
 
     def tg_format_question(self, q):
         if "setcounter" in q:
@@ -1300,7 +1315,8 @@ class TelegramExporter(BaseExporter):
             txt_au = f"**{self.get_label(q, 'author')}:** {txt_au}"
         q_threshold = 2048 if not images_q else 1024
         full_question = self.assemble(
-            [txt_q, "||", txt_a, txt_z, txt_nz, txt_comm, txt_s, "||", txt_au]
+            [txt_q, self.swrap(txt_a, t="left"), txt_z, txt_nz, txt_comm, self.swrap(txt_s, t="right"), txt_au],
+            lb_after_first=True
         )
         if len(full_question) <= q_threshold:
             res = [(full_question, images_q[0] if images_q else None)]
@@ -1312,12 +1328,12 @@ class TelegramExporter(BaseExporter):
             for i in images_a:
                 res.append(("", i))
             return res
-        q_without_s = self.assemble([txt_q, "||", txt_a, txt_z, txt_nz, txt_comm, "||"])
+        q_without_s = self.assemble([txt_q, self.swrap(txt_a, t="left"), txt_z, txt_nz, self.swrap(txt_comm, t="right")], lb_after_first=True)
         if len(q_without_s) <= q_threshold:
             res = [(q_without_s, images_q[0] if images_q else None)]
             res.extend(self.split_to_messages(self.lwrap([self.swrap(txt_s), txt_au]), images_a))
             return res
-        q_a_only = self.assemble([txt_q, "||", txt_a, "||"])
+        q_a_only = self.assemble([txt_q, self.swrap(txt_a)], lb_after_first=True)
         if len(q_a_only) <= q_threshold:
             res = [(q_a_only, images_q[0] if images_q else None)]
             res.extend(
@@ -1342,7 +1358,7 @@ class TelegramExporter(BaseExporter):
                 self.swrap(txt_comm),
                 self.swrap(txt_s),
                 txt_au,
-            ]),
+            ], lb_after_first=True),
             (images_q or []) + (images_a or []),
         )
 
