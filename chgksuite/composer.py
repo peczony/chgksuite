@@ -1462,14 +1462,11 @@ class TelegramExporter(BaseExporter):
                 self.buffer_texts = []
                 self.buffer_images = []
             if not self.args.skip_until:
-                navigation_text = []
+                navigation_text = [self.labels["general"]["general_impressions_text"]]
                 for i, link in enumerate(self.section_links):
                     navigation_text.append(
                         f"{self.labels['general']['section']} {i + 1}: {link}"
                     )
-                navigation_text.append(
-                    self.labels["general"]["general_impressions_text"]
-                )
                 navigation_text = "\n".join(navigation_text)
                 messages = self.post([(navigation_text.strip(), None)])
                 if not self.args.dry_run:
