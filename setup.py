@@ -49,7 +49,6 @@ setup(
         "chardet",
         "html2text",
         "parse",
-        "PyDocX",
         "python-docx",
         "python-pptx",
         "requests",
