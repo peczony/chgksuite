@@ -666,6 +666,44 @@ class ArgparseBuilder:
             caption="Файл конфигурации",
             argtype="filename",
         )
+        cmdcompose_telegram = cmdcompose_filetype.add_parser("telegram")
+        self.add_argument(
+            cmdcompose_telegram,
+            "filename",
+            nargs="*",
+            help="file(s) to compose from.",
+            caption="Имя 4s-файла",
+            filetypes=[("chgksuite markup files", "*.4s")],
+        )
+        self.add_argument(
+            cmdcompose_telegram,
+            "--tgaccount",
+            default="my_account",
+            help="a made-up string designating account to use.",
+            caption="Аккаунт для постинга",
+        )
+        self.add_argument(
+            cmdcompose_telegram,
+            "--tgchannel",
+            required=True,
+            help="a channel to post questions to.",
+            caption="Название канала, в который постим"
+        )
+        self.add_argument(
+            cmdcompose_telegram,
+            "--tgchat",
+            required=True,
+            help="a chat connected to the channel.",
+            caption="Название чата, привязанного к каналу"
+        )
+        self.add_argument(
+            cmdcompose_telegram,
+            "--dry_run",
+            advanced=True,
+            action="store_true",
+            help="don't try to post.",
+            caption="Тестовый прогон (не постить в телеграм, только подключиться)"
+        )
         cmdcompose_add_stats = cmdcompose_filetype.add_parser("add_stats")
         self.add_argument(
             cmdcompose_add_stats,

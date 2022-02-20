@@ -25,6 +25,7 @@ import dateparser
 import requests
 import pyperclip
 import toml
+import pyrogram
 from pptx.dml.color import RGBColor
 
 from docx import Document
@@ -46,7 +47,7 @@ from chgksuite.common import (
     check_question,
     retry_wrapper_factory,
     bring_to_front,
-    compose_4s
+    compose_4s,
 )
 import chgksuite.typotools as typotools
 from chgksuite.typotools import (
@@ -1010,6 +1011,373 @@ class RedditExporter(BaseExporter):
         logger.info("Output: {}".format(outfile))
 
 
+class TelegramExporter(BaseExporter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.chgksuite_dir = get_chgksuite_dir()
+        api_id, api_hash = self.get_api_credentials()
+        self.app = pyrogram.Client(
+            self.args.tgaccount, api_id, api_hash, workdir=self.chgksuite_dir
+        )
+        with self.app:
+            print(self.app.get_me())
+        self.qcount = 1
+
+    def get_api_credentials(self):
+        pyrogram_toml_file_path = os.path.join(self.chgksuite_dir, "pyrogram.toml")
+        if os.path.exists(pyrogram_toml_file_path):
+            with open(pyrogram_toml_file_path, "r", encoding="utf8") as f:
+                pyr = toml.load(f)
+            return pyr["api_id"], pyr["api_hash"]
+        else:
+            print("Please enter you api_id and api_hash.")
+            print(
+                "Go to https://my.telegram.org/apps, register an app and paste the credentials here."
+            )
+            api_id = input("Enter your api_id: ").strip()
+            api_hash = input("Enter your api_hash: ").strip()
+            with open(pyrogram_toml_file_path, "w", encoding="utf8") as f:
+                toml.dump({"api_id": api_id, "api_hash": api_hash}, f)
+            return api_id, api_hash
+
+    def tgyapper(self, e):
+        if isinstance(e, str):
+            return self.tg_element_layout(e)
+        elif isinstance(e, list):
+            if not any(isinstance(x, list) for x in e):
+                return self.tg_element_layout(e)
+            else:
+                res = []
+                images = []
+                for x in e:
+                    res_, images_ = self.tg_element_layout(x)
+                    images.extend(images_)
+                    res.append(res_)
+                return "\n".join(res), images
+
+    def tgformat(self, s):
+        res = ""
+        image = None
+        for run in parse_4s_elem(s):
+            if run[0] == "":
+                res += run[1]
+            if run[0] == "em":
+                res += "_{}_".format(run[1])
+            if run[0] == "img":
+                if run[1].startswith(("http://", "https://")):
+                    res += run[1]
+                else:
+                    parsed_image = parseimg(
+                        run[1],
+                        dimensions="ems",
+                        targetdir=self.dir_kwargs.get("targetdir"),
+                        tmp_dir=self.dir_kwargs.get("tmp_dir"),
+                    )
+                    imgfile = parsed_image["imgfile"]
+                    if os.path.isfile(imgfile):
+                        image = imgfile
+                    else:
+                        raise Exception(f"image {run[1]} doesn't exist")
+        while res.endswith("\n"):
+            res = res[:-1]
+        return res, image
+
+    def tg_element_layout(self, e):
+        res = ""
+        images = []
+        if isinstance(e, str):
+            res, image = self.tgformat(e)
+            if image:
+                images.append(image)
+            return res, images
+        if isinstance(e, list):
+            result = []
+            for i, x in enumerate(e):
+                res_, images_ = self.tg_element_layout(x)
+                images.extend(images_)
+                result.append("{}. {}".format(i + 1, res_))
+            res = "\n".join(result)
+        return res, images
+
+    def post(self, posts):
+        if self.args.dry_run:
+            print("skipping posting due to dry run")
+            return
+        messages = []
+        text, im = posts[0]
+        if im:
+            root_msg = self.app.send_photo(
+                self.channel_id,
+                im,
+                caption="---",
+                parse_mode="md",
+            )
+            time.sleep(2)
+            self.app.edit_message_text(
+                self.channel_id,
+                root_msg.message_id,
+                text=text,
+                parse_mode="md",
+                disable_web_page_preview=True
+            )
+        else:
+            root_msg = self.app.send_message(
+                self.channel_id, text, parse_mode="md", disable_web_page_preview=True
+            )
+        time.sleep(2.1)
+        root_msg_in_chat = self.app.get_discussion_message(
+            self.channel_id, root_msg.message_id
+        )
+        print(f"Posted message {root_msg.link} ({root_msg_in_chat.link} in chat)")
+        time.sleep(random.randint(5, 7))
+        messages.append(root_msg)
+        messages.append(root_msg_in_chat)
+        for post in posts[1:]:
+            text, im = post
+            if im:
+                reply_msg = self.app.send_photo(
+                    self.chat_id,
+                    im,
+                    caption="---",
+                    parse_mode="md",
+                    reply_to_message_id=root_msg_in_chat.message_id,
+                )
+                time.sleep(2)
+                self.app.edit_message_text(
+                    self.chat_id,
+                    reply_msg.message_id,
+                    text=text,
+                    parse_mode="md",
+                    disable_web_page_preview=True
+                )
+            else:
+                reply_msg = self.app.send_message(
+                    self.chat_id,
+                    text,
+                    parse_mode="md",
+                    reply_to_message_id=root_msg_in_chat.message_id,
+                    disable_web_page_preview=True,
+                )
+            print(f"Replied to message {root_msg_in_chat.link} with {reply_msg.link}")
+            time.sleep(random.randint(5, 7))
+            messages.append(reply_msg)
+        return messages
+
+    def post_wrapper(self, posts):
+        messages = self.post(posts)
+        if self.section and not self.args.dry_run:
+            self.section_links.append(messages[0].link)
+        self.section = False
+
+    def tg_process_element(self, pair):
+        if pair[0] == "Question":
+            if self.buffer_texts or self.buffer_images:
+                posts = self.split_to_messages(self.buffer_texts, self.buffer_images)
+                self.post_wrapper(posts)
+                self.buffer_texts = []
+                self.buffer_images = []
+            posts = self.tg_format_question(pair[1])
+            self.post_wrapper(posts)
+        elif pair[0] == "heading":
+            text, images = self.tg_element_layout(pair[1])
+            self.buffer_texts.append(f"**{text}**")
+            self.buffer_images.extend(images)
+        elif pair[0] == "section":
+            if self.buffer_texts or self.buffer_images:
+                posts = self.split_to_messages(self.buffer_texts, self.buffer_images)
+                self.post_wrapper(posts)
+                self.buffer_texts = []
+                self.buffer_images = []
+            text, images = self.tg_element_layout(pair[1])
+            self.buffer_texts.append(f"**{text}**")
+            self.buffer_images.extend(images)
+            self.section = True
+        else:
+            text, images = self.tg_element_layout(pair[1])
+            self.buffer_texts.append(text)
+            self.buffer_images.extend(images)
+
+    def assemble(self, list_):
+        list_ = [x.strip() for x in list_ if x]
+        res = "\n".join(list_)
+        res = res.replace("\n||\n", "\n||")
+        while res.endswith("\n"):
+            res = res[:-1]
+        if res.endswith("\n||"):
+            res = res[:-3] + "||"
+        return res
+
+    def make_chunk(self, texts, images):
+        if images:
+            im, images = images[0], images[1:]
+            threshold = 1024
+        else:
+            im = None
+            threshold = 2048
+        if not texts:
+            return "", im, texts, images
+        if len(texts[0]) <= threshold:
+            for i in range(0, len(texts)):
+                if i:
+                    text = self.assemble(texts[:-i])
+                else:
+                    text = self.assemble(texts)
+                if len(text) <= threshold:
+                    if i:
+                        texts = texts[-i:]
+                    else:
+                        texts = []
+                    return text, im, texts, images
+        else:
+            threshold_ = threshold - 3
+            chunk = texts[0][:threshold_]
+            rest = texts[0][threshold_:]
+            if texts[0].endswith("||"):
+                chunk += "||"
+                rest = "||" + rest
+            texts[0] = rest
+            return chunk, im, texts, images
+
+    def split_to_messages(self, texts, images):
+        result = []
+        while texts or images:
+            chunk, im, texts, images = self.make_chunk(texts, images)
+            result.append((chunk, im))
+        return result
+
+    @staticmethod
+    def swrap(s_):
+        if not s_:
+            return s_
+        return "||" + s_ + "||"
+
+    @staticmethod
+    def lwrap(l_):
+        return [x.strip() for x in l_ if x]
+
+    def tg_format_question(self, q):
+        if "setcounter" in q:
+            self.qcount = int(q["setcounter"])
+        txt_q, images_q = self.tgyapper(q["question"])
+        txt_q = "**{} {}:** {}  \n".format(
+            self.get_label(q, "question"),
+            self.qcount if "number" not in q else q["number"],
+            txt_q,
+        )
+        if "number" not in q:
+            self.qcount += 1
+        images_a = []
+        txt_a, images_ = self.tgyapper(q["answer"])
+        images_a.extend(images_)
+        txt_a = "**{}:** {}".format(self.get_label(q, "answer"), txt_a)
+        txt_z = None
+        txt_nz = None
+        txt_comm = None
+        txt_s = None
+        txt_a = None
+        if "zachet" in q:
+            txt_z, images_ = self.tgyapper(q["zachet"])
+            images_a.extend(images_)
+            txt_z = "**{}:** {}".format(self.get_label(q, "zachet"), txt_z)
+        if "nezachet" in q:
+            txt_nz, images_ = self.tgyapper(q["nezachet"])
+            images_a.extend(images_)
+            txt_nz = "**{}:** {}".format(self.get_label(q, "nezachet"), txt_nz)
+        if "comment" in q:
+            txt_comm, images_ = self.tgyapper(q["comment"])
+            images_a.extend(images_)
+            txt_comm = "**{}:** {}".format(self.get_label(q, "comment"), txt_comm)
+        if "source" in q:
+            txt_s, images_ = self.tgyapper(q["source"])
+            images_a.extend(images_)
+            txt_s = f"**{self.get_label(q, 'source')}:** {txt_s}"
+        if "author" in q:
+            txt_au, images_ = self.tgyapper(q["author"])
+            images_a.extend(images_)
+            txt_au = f"**{self.get_label(q, 'author')}:** {txt_au}"
+        q_threshold = 2048 if not images_q else 1024
+        full_question = self.assemble(
+            [txt_q, "||", txt_a, txt_z, txt_nz, txt_comm, txt_s, "||", txt_au]
+        )
+        if len(full_question) <= q_threshold:
+            res = [(full_question, images_q[0] if images_q else None)]
+            for i in images_a:
+                res.append(("", i))
+            return res
+        q_without_s = self.assemble([txt_q, "||", txt_a, txt_z, txt_nz, txt_comm, "||"])
+        if len(q_without_s) <= q_threshold:
+            res = [(q_without_s, images_q[0] if images_q else None)]
+            res.extend(self.split_to_messages(self.lwrap([self.swrap(txt_s), txt_au]), images_a))
+            return res
+        q_a_only = self.assemble([txt_q, "||", txt_a, "||"])
+        if len(q_a_only) <= q_threshold:
+            res = [(q_a_only, images_q[0] if images_q else None)]
+            res.extend(
+                self.split_to_messages(
+                    self.lwrap([
+                        self.swrap(txt_z),
+                        self.swrap(txt_nz),
+                        self.swrap(txt_comm),
+                        self.swrap(txt_s),
+                        txt_au,
+                    ]),
+                    images_a,
+                )
+            )
+            return res
+        return self.split_to_messages(
+            self.lwrap([
+                txt_q,
+                self.swrap(txt_a),
+                self.swrap(txt_z),
+                self.swrap(txt_nz),
+                self.swrap(txt_comm),
+                self.swrap(txt_s),
+                txt_au,
+            ]),
+            (images_q or []) + (images_a or []),
+        )
+
+    def export(self):
+        self.section_links = []
+        self.buffer_texts = []
+        self.buffer_images = []
+        self.section = False
+        with self.app:
+            self.channel_dialog = None
+            self.chat_dialog = None
+            for dialog in self.app.iter_dialogs():
+                if (dialog.chat.title or "").strip() == args.tgchannel.strip():
+                    self.channel_dialog = dialog
+                if (dialog.chat.title or "").strip() == args.tgchat.strip():
+                    self.chat_dialog = dialog
+                if self.channel_dialog is not None and self.chat_dialog is not None:
+                    break
+            if not self.channel_dialog:
+                raise Exception("Channel not found, please check provided name")
+            if not self.chat_dialog:
+                raise Exception("Linked chat not found, please check provided name")
+            self.channel_id = self.channel_dialog.chat.id
+            self.chat_id = self.chat_dialog.chat.id
+            for pair in self.structure:
+                self.tg_process_element(pair)
+            if self.buffer_texts or self.buffer_images:
+                posts = self.split_to_messages(self.buffer_texts, self.buffer_images)
+                self.post_wrapper(posts)
+                self.buffer_texts = []
+                self.buffer_images = []
+            navigation_text = []
+            for i, link in enumerate(self.section_links):
+                navigation_text.append(
+                    f"{self.labels['general']['section']} {i + 1}: {link}"
+                )
+            navigation_text.append("")
+            navigation_text.append(self.labels["general"]["general_impressions_text"])
+            navigation_text = "\n".join(navigation_text)
+            messages = self.post([(navigation_text.strip(), None)])
+            self.app.pin_chat_message(self.channel_id, messages[0].message_id, disable_notification=True)
+
+
 class LatexExporter(BaseExporter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1276,7 +1644,9 @@ class DocxExporter(BaseExporter):
             for run in parse_4s_elem(el):
                 if run[0] == "img":
                     if run[1].endswith(".shtml"):
-                        r = para.add_run("(ТУТ БЫЛА ССЫЛКА НА ПРОТУХШУЮ КАРТИНКУ)\n")  # TODO: добавить возможность пропускать кривые картинки опцией
+                        r = para.add_run(
+                            "(ТУТ БЫЛА ССЫЛКА НА ПРОТУХШУЮ КАРТИНКУ)\n"
+                        )  # TODO: добавить возможность пропускать кривые картинки опцией
                         continue
                     parsed_image = parseimg(
                         run[1],
@@ -1289,9 +1659,13 @@ class DocxExporter(BaseExporter):
                     height = parsed_image["height"]
                     r = para.add_run("\n")
                     try:
-                        r.add_picture(imgfile, width=Inches(width), height=Inches(height))
+                        r.add_picture(
+                            imgfile, width=Inches(width), height=Inches(height)
+                        )
                     except UnrecognizedImageError:
-                        sys.stderr.write(f"python-docx can't recognize header for {imgfile}.\n")
+                        sys.stderr.write(
+                            f"python-docx can't recognize header for {imgfile}.\n"
+                        )
                     r.add_text("\n")
                     continue
 
@@ -1830,7 +2204,7 @@ class StatsAdder(BaseExporter):
             + "?includeMasksAndControversials=1"
         )
         return req.json()
-    
+
     def process_tournament(self, results):
         for res in results:
             self.total_teams += 1
@@ -1846,10 +2220,9 @@ class StatsAdder(BaseExporter):
             for i, q in enumerate(mask):
                 if not start <= (i + 1) <= end:
                     continue
-                if q == '1':
+                if q == "1":
                     self.q_counter[i + 1] += 1
                     self.q_to_teams[i + 1].add(name)
-
 
     def export(self, outfilename):
         ids = [x.strip() for x in self.args.rating_ids.split(",") if x.strip()]
@@ -1861,7 +2234,9 @@ class StatsAdder(BaseExporter):
             self.process_tournament(results)
         qnumber = 1
         for element in self.structure:
-            if element[0] != "Question" or str(element[1].get("number")).startswith("0"):
+            if element[0] != "Question" or str(element[1].get("number")).startswith(
+                "0"
+            ):
                 continue
             scored_teams = self.q_counter[qnumber]
             message = f"Взятия: {scored_teams}/{self.total_teams}"
@@ -2374,10 +2749,15 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
 
     if args.filetype == "add_stats":
         outfilename = os.path.join(
-            targetdir, make_filename(filename, "4s", nots=args.nots, addsuffix="_with_stats")
+            targetdir,
+            make_filename(filename, "4s", nots=args.nots, addsuffix="_with_stats"),
         )
         exporter = StatsAdder(structure, args, dir_kwargs)
         exporter.export(outfilename)
+
+    if args.filetype == "telegram":
+        exporter = TelegramExporter(structure, args, dir_kwargs)
+        exporter.export()
 
     if not console_mode:
         input("Press Enter to continue...")

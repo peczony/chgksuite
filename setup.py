@@ -58,6 +58,7 @@ setup(
         "pyperclip",
         "toml",
         "mammoth",
-        "pypandoc"
+        "pypandoc",
+        "pyrogram"
     ]
 )

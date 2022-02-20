@@ -5,11 +5,13 @@ dateparser
 html2text
 idna
 lxml
+mammoth
 parse
 Pillow
 ply
-PyDocX
+pypandoc
 pyperclip
+pyrogram
 python-dateutil
 python-docx
 pytz
