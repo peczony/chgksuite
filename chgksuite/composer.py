@@ -2232,6 +2232,8 @@ class StatsAdder(BaseExporter):
 
     def process_tournament(self, results):
         for res in results:
+            if not res.get("mask"):
+                continue
             self.total_teams += 1
             name = res["current"]["name"]
             mask = list(res["mask"])
