@@ -185,6 +185,7 @@ def compose_4s(structure, args=None):
     types_mapping = {
         "meta": "# ",
         "section": "## ",
+        "tour": "## ",
         "tourrev": "## ",
         "editor": "#EDITOR ",
         "heading": "### ",
