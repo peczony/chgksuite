@@ -1137,10 +1137,10 @@ class TelegramExporter(BaseExporter):
         text, im = posts[0]
         root_msg = self._post(
             self.channel_id,
-            text,
+            f"{self.labels['general']['handout_for_question']} {text[3:]}" if text.startswith("QQQ") else text,
             im
         )
-        if len(posts) >= 2 and not text and im and posts[1][0]:  # crutch for case when the question doesn't fit without image
+        if len(posts) >= 2 and text.startswith("QQQ") and im and posts[1][0]:  # crutch for case when the question doesn't fit without image
             prev_root_msg = root_msg
             root_msg = self._post(
                 self.channel_id,
@@ -1277,9 +1277,10 @@ class TelegramExporter(BaseExporter):
         if "setcounter" in q:
             self.qcount = int(q["setcounter"])
         txt_q, images_q = self.tgyapper(q["question"])
+        number = self.qcount if "number" not in q else q["number"]
         txt_q = "**{} {}:** {}  \n".format(
             self.get_label(q, "question"),
-            self.qcount if "number" not in q else q["number"],
+            number,
             txt_q,
         )
         if "number" not in q:
@@ -1324,7 +1325,8 @@ class TelegramExporter(BaseExporter):
                 res.append(("", i))
             return res
         elif images_q and len(full_question) <= 2048:
-            res = [("", images_q[0]), (full_question, None)]
+            full_question = re.sub("\[" + self.labels["question_labels"]["handout"] + ": +?\]\n", "", full_question)
+            res = [(f"QQQ{number}", images_q[0]), (full_question, None)]
             for i in images_a:
                 res.append(("", i))
             return res

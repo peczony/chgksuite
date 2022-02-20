@@ -704,6 +704,14 @@ class ArgparseBuilder:
             help="don't try to post.",
             caption="Тестовый прогон (не постить в телеграм, только подключиться)"
         )
+        self.add_argument(
+            cmdcompose_telegram,
+            "--nospoilers",
+            "-n",
+            action="store_true",
+            help="do not whiten (spoiler) answers.",
+            caption="Не закрывать ответы спойлером",
+        )
         cmdcompose_add_stats = cmdcompose_filetype.add_parser("add_stats")
         self.add_argument(
             cmdcompose_add_stats,
