@@ -712,6 +712,13 @@ class ArgparseBuilder:
             help="do not whiten (spoiler) answers.",
             caption="Не закрывать ответы спойлером",
         )
+        self.add_argument(
+            cmdcompose_telegram,
+            "--skip_until",
+            type=int,
+            help="skip questions until N.",
+            caption="Пропустить вопросы до N-го",
+        )
         cmdcompose_add_stats = cmdcompose_filetype.add_parser("add_stats")
         self.add_argument(
             cmdcompose_add_stats,

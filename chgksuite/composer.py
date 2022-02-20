@@ -48,6 +48,7 @@ from chgksuite.common import (
     retry_wrapper_factory,
     bring_to_front,
     compose_4s,
+    tryint,
 )
 import chgksuite.typotools as typotools
 from chgksuite.typotools import (
@@ -804,7 +805,9 @@ class DbExporter(BaseExporter):
         if isinstance(parsed, datetime.datetime):
             parsed = parsed.date()
         if not parsed:
-            logger.error("unable to parse date {}, setting to default 2010-01-01".format(s))
+            logger.error(
+                "unable to parse date {}, setting to default 2010-01-01".format(s)
+            )
             return datetime.date(2010, 1, 1).strftime("%d-%b-%Y")
         if parsed > datetime.date.today():
             parsed = parsed.replace(year=parsed.year - 1)
@@ -1022,6 +1025,7 @@ class TelegramExporter(BaseExporter):
         with self.app:
             logger.debug(self.app.get_me())
         self.qcount = 1
+        self.number = 1
 
     def get_api_credentials(self):
         pyrogram_toml_file_path = os.path.join(self.chgksuite_dir, "pyrogram.toml")
@@ -1080,6 +1084,8 @@ class TelegramExporter(BaseExporter):
                         raise Exception(f"image {run[1]} doesn't exist")
         while res.endswith("\n"):
             res = res[:-1]
+        for match in re.finditer("[^\s]*\*+[^\s]*", res):
+            res = res.replace(match.group(0), "`" + match.group(0) + "`")
         return res, image
 
     def tg_element_layout(self, e):
@@ -1120,7 +1126,7 @@ class TelegramExporter(BaseExporter):
                     msg.message_id,
                     text=text,
                     parse_mode="md",
-                    disable_web_page_preview=True
+                    disable_web_page_preview=True,
                 )
         else:
             msg = self.app.send_message(
@@ -1128,6 +1134,23 @@ class TelegramExporter(BaseExporter):
             )
         return msg
 
+    def __post(self, *args, **kwargs):
+        retries = 0
+        while retries <= 2:
+            try:
+                return self._post(*args, **kwargs)
+            except pyrogram.errors.exceptions.flood_420.FloodWait as e:
+                mstr = str(e)
+                secs_to_wait = re.search("([0-9]+) seconds is required", mstr)
+                if secs_to_wait:
+                    secs_to_wait = int(secs_to_wait.group(1)) + 30
+                else:
+                    secs_to_wait = 120
+                logger.error(
+                    f"Telegram thinks we are spammers, waiting for {secs_to_wait} seconds"
+                )
+                time.sleep(secs_to_wait)
+                retries += 1
 
     def post(self, posts):
         if self.args.dry_run:
@@ -1135,18 +1158,18 @@ class TelegramExporter(BaseExporter):
             return
         messages = []
         text, im = posts[0]
-        root_msg = self._post(
+        root_msg = self.__post(
             self.channel_id,
-            f"{self.labels['general']['handout_for_question']} {text[3:]}" if text.startswith("QQQ") else text,
-            im
+            f"{self.labels['general']['handout_for_question']} {text[3:]}"
+            if text.startswith("QQQ")
+            else text,
+            im,
         )
-        if len(posts) >= 2 and text.startswith("QQQ") and im and posts[1][0]:  # crutch for case when the question doesn't fit without image
+        if (
+            len(posts) >= 2 and text.startswith("QQQ") and im and posts[1][0]
+        ):  # crutch for case when the question doesn't fit without image
             prev_root_msg = root_msg
-            root_msg = self._post(
-                self.channel_id,
-                posts[1][0],
-                posts[1][1]
-            )
+            root_msg = self.__post(self.channel_id, posts[1][0], posts[1][1])
             posts = posts[1:]
             messages.append(root_msg)
             messages.append(prev_root_msg)
@@ -1160,8 +1183,10 @@ class TelegramExporter(BaseExporter):
             messages.append(root_msg)
         messages.append(root_msg_in_chat)
         for post in posts[1:]:
-            reply_msg = self._post(self.chat_id, text, im)
-            logger.info(f"Replied to message {root_msg_in_chat.link} with {reply_msg.link}")
+            reply_msg = self.__post(self.chat_id, text, im)
+            logger.info(
+                f"Replied to message {root_msg_in_chat.link} with {reply_msg.link}"
+            )
             time.sleep(random.randint(5, 7))
             messages.append(reply_msg)
         return messages
@@ -1174,13 +1199,27 @@ class TelegramExporter(BaseExporter):
 
     def tg_process_element(self, pair):
         if pair[0] == "Question":
+            q = pair[1]
+            if "setcounter" in q:
+                self.qcount = int(q["setcounter"])
+            number = self.qcount if "number" not in q else q["number"]
+            self.qcount += 1
+            self.number = number
+            if self.args.skip_until and (
+                not tryint(number) or tryint(number) < self.args.skip_until
+            ):
+                logger.info(f"skipping question {number}")
+                return
             if self.buffer_texts or self.buffer_images:
                 posts = self.split_to_messages(self.buffer_texts, self.buffer_images)
                 self.post_wrapper(posts)
                 self.buffer_texts = []
                 self.buffer_images = []
-            posts = self.tg_format_question(pair[1])
+            posts = self.tg_format_question(pair[1], number=number)
             self.post_wrapper(posts)
+        elif self.args.skip_until and self.number < self.args.skip_until:
+            logger.info(f"skipping element {pair[0]}")
+            return
         elif pair[0] == "heading":
             text, images = self.tg_element_layout(pair[1])
             self.buffer_texts.append(f"**{text}**")
@@ -1197,8 +1236,10 @@ class TelegramExporter(BaseExporter):
             self.section = True
         else:
             text, images = self.tg_element_layout(pair[1])
-            self.buffer_texts.append(text)
-            self.buffer_images.extend(images)
+            if text:
+                self.buffer_texts.append(text)
+            if images:
+                self.buffer_images.extend(images)
 
     def assemble(self, list_, lb_after_first=False):
         list_ = [x for x in list_ if x]
@@ -1250,7 +1291,8 @@ class TelegramExporter(BaseExporter):
         result = []
         while texts or images:
             chunk, im, texts, images = self.make_chunk(texts, images)
-            result.append((chunk, im))
+            if chunk or im:
+                result.append((chunk, im))
         return result
 
     def swrap(self, s_, t="both"):
@@ -1259,11 +1301,11 @@ class TelegramExporter(BaseExporter):
         if self.args.nospoilers:
             res = s_
         elif t == "both":
-            res  = "||" + s_ + "||"
+            res = "||" + s_ + "||"
         elif t == "left":
-            res  = "||" + s_
+            res = "||" + s_
         elif t == "right":
-            res  = s_ + "||"
+            res = s_ + "||"
         return res
 
     @staticmethod
@@ -1273,11 +1315,8 @@ class TelegramExporter(BaseExporter):
             return l_[0] + "\n" + "\n".join([x for x in l_[1:]])
         return "\n".join(l_)
 
-    def tg_format_question(self, q):
-        if "setcounter" in q:
-            self.qcount = int(q["setcounter"])
+    def tg_format_question(self, q, number=None):
         txt_q, images_q = self.tgyapper(q["question"])
-        number = self.qcount if "number" not in q else q["number"]
         txt_q = "**{} {}:** {}  \n".format(
             self.get_label(q, "question"),
             number,
@@ -1316,8 +1355,16 @@ class TelegramExporter(BaseExporter):
             txt_au = f"**{self.get_label(q, 'author')}:** {txt_au}"
         q_threshold = 2048 if not images_q else 1024
         full_question = self.assemble(
-            [txt_q, self.swrap(txt_a, t="left"), txt_z, txt_nz, txt_comm, self.swrap(txt_s, t="right"), txt_au],
-            lb_after_first=True
+            [
+                txt_q,
+                self.swrap(txt_a, t="left"),
+                txt_z,
+                txt_nz,
+                txt_comm,
+                self.swrap(txt_s, t="right"),
+                txt_au,
+            ],
+            lb_after_first=True,
         )
         if len(full_question) <= q_threshold:
             res = [(full_question, images_q[0] if images_q else None)]
@@ -1325,42 +1372,64 @@ class TelegramExporter(BaseExporter):
                 res.append(("", i))
             return res
         elif images_q and len(full_question) <= 2048:
-            full_question = re.sub("\[" + self.labels["question_labels"]["handout"] + ": +?\]\n", "", full_question)
+            full_question = re.sub(
+                "\[" + self.labels["question_labels"]["handout"] + ": +?\]\n",
+                "",
+                full_question,
+            )
             res = [(f"QQQ{number}", images_q[0]), (full_question, None)]
             for i in images_a:
                 res.append(("", i))
             return res
-        q_without_s = self.assemble([txt_q, self.swrap(txt_a, t="left"), txt_z, txt_nz, self.swrap(txt_comm, t="right")], lb_after_first=True)
+        q_without_s = self.assemble(
+            [
+                txt_q,
+                self.swrap(txt_a, t="left"),
+                txt_z,
+                txt_nz,
+                self.swrap(txt_comm, t="right"),
+            ],
+            lb_after_first=True,
+        )
         if len(q_without_s) <= q_threshold:
             res = [(q_without_s, images_q[0] if images_q else None)]
-            res.extend(self.split_to_messages(self.lwrap([self.swrap(txt_s), txt_au]), images_a))
+            res.extend(
+                self.split_to_messages(
+                    self.lwrap([self.swrap(txt_s), txt_au]), images_a
+                )
+            )
             return res
         q_a_only = self.assemble([txt_q, self.swrap(txt_a)], lb_after_first=True)
         if len(q_a_only) <= q_threshold:
             res = [(q_a_only, images_q[0] if images_q else None)]
             res.extend(
                 self.split_to_messages(
-                    self.lwrap([
-                        self.swrap(txt_z),
-                        self.swrap(txt_nz),
-                        self.swrap(txt_comm),
-                        self.swrap(txt_s),
-                        txt_au,
-                    ]),
+                    self.lwrap(
+                        [
+                            self.swrap(txt_z),
+                            self.swrap(txt_nz),
+                            self.swrap(txt_comm),
+                            self.swrap(txt_s),
+                            txt_au,
+                        ]
+                    ),
                     images_a,
                 )
             )
             return res
         return self.split_to_messages(
-            self.lwrap([
-                txt_q,
-                self.swrap(txt_a),
-                self.swrap(txt_z),
-                self.swrap(txt_nz),
-                self.swrap(txt_comm),
-                self.swrap(txt_s),
-                txt_au,
-            ], lb_after_first=True),
+            self.lwrap(
+                [
+                    txt_q,
+                    self.swrap(txt_a),
+                    self.swrap(txt_z),
+                    self.swrap(txt_nz),
+                    self.swrap(txt_comm),
+                    self.swrap(txt_s),
+                    txt_au,
+                ],
+                lb_after_first=True,
+            ),
             (images_q or []) + (images_a or []),
         )
 
@@ -1392,15 +1461,23 @@ class TelegramExporter(BaseExporter):
                 self.post_wrapper(posts)
                 self.buffer_texts = []
                 self.buffer_images = []
-            navigation_text = []
-            for i, link in enumerate(self.section_links):
+            if not self.args.skip_until:
+                navigation_text = []
+                for i, link in enumerate(self.section_links):
+                    navigation_text.append(
+                        f"{self.labels['general']['section']} {i + 1}: {link}"
+                    )
                 navigation_text.append(
-                    f"{self.labels['general']['section']} {i + 1}: {link}"
+                    self.labels["general"]["general_impressions_text"]
                 )
-            navigation_text.append(self.labels["general"]["general_impressions_text"])
-            navigation_text = "\n".join(navigation_text)
-            messages = self.post([(navigation_text.strip(), None)])
-            self.app.pin_chat_message(self.channel_id, messages[0].message_id, disable_notification=True)
+                navigation_text = "\n".join(navigation_text)
+                messages = self.post([(navigation_text.strip(), None)])
+                if not self.args.dry_run:
+                    self.app.pin_chat_message(
+                        self.channel_id,
+                        messages[0].message_id,
+                        disable_notification=True,
+                    )
 
 
 class LatexExporter(BaseExporter):
@@ -2465,7 +2542,7 @@ class LjExporter(BaseExporter):
             sys.exit(1)
         logger.info("Added a comment")
         logger.debug(log_wrap(comment))
-        time.sleep(random.randint(5, 7))
+        time.sleep(random.randint(7, 12))
 
     def lj_post(self, stru, edit=False):
 

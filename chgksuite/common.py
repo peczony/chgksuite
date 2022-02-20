@@ -181,6 +181,13 @@ def remove_double_separators(s):
     return re.sub(r"({})+".format(SEP), SEP, s)
 
 
+def tryint(s):
+    try:
+        return int(s)
+    except (TypeError, ValueError):
+        return
+
+
 def compose_4s(structure, args=None):
     types_mapping = {
         "meta": "# ",
@@ -223,12 +230,6 @@ def compose_4s(structure, args=None):
                         [remove_double_separators(x) for x in z]
                     )
                 )
-
-    def tryint(s):
-        try:
-            return int(s)
-        except (TypeError, ValueError):
-            return
 
     def is_zero(s):
         return str(s).startswith("0") or not tryint(s)
