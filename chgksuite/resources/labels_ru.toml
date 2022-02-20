@@ -12,8 +12,9 @@ handout = "Раздаточный материал"
 handout_short = "Раздат"
 
 [general]
-tour = "Тур"
+section = "Тур"
 editor = "Редактор"
+date = "Дата"
 questions_in_comments = "Вопросы в комментариях."
 general_impressions_caption = "Общие впечатления"
 general_impressions_text = "В комментариях к этому посту можно поделиться общими впечатлениями от вопросов."
