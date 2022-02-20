@@ -184,7 +184,7 @@ def remove_double_separators(s):
 def compose_4s(structure, args=None):
     types_mapping = {
         "meta": "# ",
-        "tour": "## ",
+        "section": "## ",
         "tourrev": "## ",
         "editor": "#EDITOR ",
         "heading": "### ",
