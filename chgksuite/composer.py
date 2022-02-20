@@ -748,7 +748,7 @@ class DbExporter(BaseExporter):
         pil_image = Image.open(imgfile)
         w_orig, h_orig = pil_image.size
         if w_orig != w or h_orig != h:
-            print("resizing image {}".format(imgfile))
+            logger.info("resizing image {}".format(imgfile))
             pil_image = pil_image.resize((int(w), int(h)), resample=Image.LANCZOS)
             bn, ext = os.path.splitext(imgfile)
             resized_fn = "{}_resized.png".format(bn)
@@ -756,10 +756,10 @@ class DbExporter(BaseExporter):
             to_upload = resized_fn
         else:
             to_upload = imgfile
-        print("uploading {}...".format(to_upload))
+        logger.info("uploading {}...".format(to_upload))
         uploaded_image = self.im.upload_image(to_upload, title=to_upload)
         imglink = uploaded_image["data"]["link"]
-        print("the link for {} is {}...".format(to_upload, imglink))
+        logger.info("the link for {} is {}...".format(to_upload, imglink))
         return imglink
 
     def baseformat(self, s):
@@ -804,7 +804,7 @@ class DbExporter(BaseExporter):
         if isinstance(parsed, datetime.datetime):
             parsed = parsed.date()
         if not parsed:
-            print("unable to parse date {}, setting to default 2010-01-01".format(s))
+            logger.error("unable to parse date {}, setting to default 2010-01-01".format(s))
             return datetime.date(2010, 1, 1).strftime("%d-%b-%Y")
         if parsed > datetime.date.today():
             parsed = parsed.replace(year=parsed.year - 1)
@@ -1020,7 +1020,7 @@ class TelegramExporter(BaseExporter):
             self.args.tgaccount, api_id, api_hash, workdir=self.chgksuite_dir
         )
         with self.app:
-            print(self.app.get_me())
+            logger.debug(self.app.get_me())
         self.qcount = 1
 
     def get_api_credentials(self):
@@ -1131,7 +1131,7 @@ class TelegramExporter(BaseExporter):
 
     def post(self, posts):
         if self.args.dry_run:
-            print("skipping posting due to dry run")
+            logger.info("skipping posting due to dry run")
             return
         messages = []
         text, im = posts[0]
@@ -1154,14 +1154,14 @@ class TelegramExporter(BaseExporter):
         root_msg_in_chat = self.app.get_discussion_message(
             self.channel_id, root_msg.message_id
         )
-        print(f"Posted message {root_msg.link} ({root_msg_in_chat.link} in chat)")
+        logger.info(f"Posted message {root_msg.link} ({root_msg_in_chat.link} in chat)")
         time.sleep(random.randint(5, 7))
         if root_msg not in messages:
             messages.append(root_msg)
         messages.append(root_msg_in_chat)
         for post in posts[1:]:
             reply_msg = self._post(self.chat_id, text, im)
-            print(f"Replied to message {root_msg_in_chat.link} with {reply_msg.link}")
+            logger.info(f"Replied to message {root_msg_in_chat.link} with {reply_msg.link}")
             time.sleep(random.randint(5, 7))
             messages.append(reply_msg)
         return messages
@@ -2254,6 +2254,7 @@ class StatsAdder(BaseExporter):
             qnumber += 1
         with open(outfilename, "w", encoding="utf8") as f:
             f.write(compose_4s(self.structure, args=args))
+            logger.info(f"Output: {outfilename}")
 
 
 class Imgur:
