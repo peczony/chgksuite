@@ -59,6 +59,7 @@ setup(
         "toml",
         "mammoth",
         "pypandoc",
-        "pyrogram"
+        "pyrogram",
+        "TgCrypto"
     ]
 )
