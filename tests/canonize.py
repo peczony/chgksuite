@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from __future__ import division
 import sys
 import os
+import argparse
 import codecs
 import inspect
 
@@ -20,19 +21,23 @@ from chgksuite.composer import parse_4s
 from chgksuite_test import DefaultArgs
 
 
-def workaround_chgk_parse(filename):
+def workaround_chgk_parse(filename, **kwargs):
     if filename.endswith(".txt"):
         return chgk_parse_txt(filename)
     elif filename.endswith(".docx"):
-        return chgk_parse_docx(filename, args=DefaultArgs())
+        return chgk_parse_docx(filename, args=DefaultArgs(**kwargs))
     return
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--parsing_engine", default="mammoth")
+    args = parser.parse_args()
+
     for filename in os.listdir(currentdir):
         if filename.endswith((".docx", ".txt")):
             print("Canonizing {}...".format(filename))
-            parsed = workaround_chgk_parse(os.path.join(currentdir, filename))
+            parsed = workaround_chgk_parse(os.path.join(currentdir, filename), parsing_engine=args.parsing_engine)
             for filename1 in os.listdir(currentdir):
                 if filename1.endswith(
                     (".jpg", ".jpeg", ".png", ".gif")

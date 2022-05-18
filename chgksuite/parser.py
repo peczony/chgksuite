@@ -12,6 +12,8 @@ import shlex
 import logging
 import base64
 import itertools
+import tempfile
+import shutil
 import chardet
 import mammoth
 import pypandoc
@@ -516,8 +518,12 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
     if args.parsing_engine == "pypandoc":
         txt = pypandoc.convert_file(docxfile, "plain", extra_args=["--wrap=none"])
     else:
-        with open(docxfile, "rb") as docx_file:
-            html = mammoth.convert_to_html(docx_file).value
+        if args.parsing_engine == "pypandoc_html":
+            temp_dir = tempfile.mkdtemp()
+            html = pypandoc.convert_file(docxfile, "html", extra_args=[f"--extract-media={temp_dir}"])
+        else:
+            with open(docxfile, "rb") as docx_file:
+                html = mammoth.convert_to_html(docx_file).value
         input_docx = (
             html
             .replace("</strong><strong>", "")
@@ -557,11 +563,18 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
             if tag.string:
                 tag.string = "- " + tag.string
         for tag in bsoup.find_all("img"):
-            imgparse = parse("data:image/{ext};base64,{b64}", tag["src"])
-            imgname = generate_imgname(target_dir, imgparse["ext"])
-            with open(os.path.join(target_dir, imgname), "wb") as f:
-                f.write(base64.b64decode(imgparse["b64"]))
-            imgpath = os.path.basename(imgname)
+            if args.parsing_engine == "pypandoc_html":
+                src = tag["src"].replace("$$$UNDERSCORE$$$", "_")
+                _, ext = os.path.splitext(src)
+                imgname = generate_imgname(target_dir, ext[1:])
+                shutil.copy(src, imgname)
+                imgpath = os.path.basename(imgname)
+            else:
+                imgparse = parse("data:image/{ext};base64,{b64}", tag["src"])
+                imgname = generate_imgname(target_dir, imgparse["ext"])
+                with open(os.path.join(target_dir, imgname), "wb") as f:
+                    f.write(base64.b64decode(imgparse["b64"]))
+                imgpath = os.path.basename(imgname)
             tag.insert_before("(img {})".format(imgpath))
             tag.extract()
         for tag in bsoup.find_all("hr"):
@@ -601,6 +614,13 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
         elif args.parsing_engine == "mammoth":
             html2text_input = str(bsoup)
             txt = h.handle(html2text_input)
+        elif args.parsing_engine == "pypandoc_html":
+            for tag in bsoup:
+                if isinstance(tag, bs4.element.Tag):
+                    tag.unwrap()
+            txt = str(bsoup)
+    if args.parsing_engine == "pypandoc_html":
+        shutil.rmtree(temp_dir)
 
     txt = (
         txt.replace("\\-", "")

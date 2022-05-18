@@ -26,7 +26,6 @@ from chgksuite.parser import (
 )
 from chgksuite.composer import parse_4s
 
-
 class DefaultArgs(object):
     links = "unwrap"
     fix_spans = False
@@ -39,17 +38,21 @@ class DefaultArgs(object):
         except AttributeError:
             return None
 
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
 
 ljlogin, ljpassword = (
     open(os.path.join(currentdir, "ljcredentials")).read().split("\t")
 )
 
 
-def workaround_chgk_parse(filename):
+def workaround_chgk_parse(filename, **kwargs):
     if filename.endswith(".txt"):
         return chgk_parse_txt(filename)
     elif filename.endswith(".docx"):
-        return chgk_parse_docx(filename, args=DefaultArgs())
+        return chgk_parse_docx(filename, args=DefaultArgs(**kwargs))
     return
 
 
@@ -70,7 +73,7 @@ def normalize(string):
     return string.replace("\r\n", "\n")
 
 
-def test_canonical_equality():
+def test_canonical_equality(parsing_engine):
     for filename in os.listdir(currentdir):
         if filename.endswith(".canon"):
             print(os.getcwd())
@@ -84,7 +87,7 @@ def test_canonical_equality():
                 print("Testing {}...".format(filename[:-6]))
                 print(os.getcwd())
                 parsed = workaround_chgk_parse(
-                    os.path.join(temp_dir, to_parse_fn)
+                    os.path.join(temp_dir, to_parse_fn), parsing_engine=parsing_engine
                 )
                 with codecs.open(
                     os.path.join(temp_dir, filename), "r", "utf8"
