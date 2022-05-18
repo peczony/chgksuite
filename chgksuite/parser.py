@@ -590,15 +590,15 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
         h = html2text.HTML2Text()
         h.body_width = 0
 
-        if args.parsing_engine == "bs_prettify":
+        if args.parsing_engine == "mammoth_bs_prettify":
             html2text_input = bsoup.prettify()
             txt = h.handle(html2text_input)
-        elif args.parsing_engine == "hard_unwrap":
+        elif args.parsing_engine == "mammoth_hard_unwrap":
             for tag in bsoup:
                 if isinstance(tag, bs4.element.Tag):
                     tag.unwrap()
             txt = bsoup.prettify()
-        else:
+        elif args.parsing_engine == "mammoth":
             html2text_input = str(bsoup)
             txt = h.handle(html2text_input)
 

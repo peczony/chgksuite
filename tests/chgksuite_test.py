@@ -31,6 +31,7 @@ class DefaultArgs(object):
     links = "unwrap"
     fix_spans = False
     numbers_handling = "default"
+    parsing_engine = "mammoth"
 
     def __getattr__(self, attribute):
         try:

@@ -419,8 +419,8 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--parsing_engine",
-            choices=["pypandoc", "bs_prettify", "bs_hard_unwrap", "bs"],
-            default="pypandoc",
+            choices=["pypandoc", "mammoth_bs_prettify", "mammoth_bs_hard_unwrap", "mammoth"],
+            default="mammoth",
             help="old html processing behaviour (before v0.5.5). "
             "Sometimes it will yield better results than the new default.",
             advanced=True,
