@@ -86,14 +86,27 @@ def test_canonical_equality(parsing_engine):
                 print(os.getcwd())
                 print("Testing {}...".format(filename[:-6]))
                 print(os.getcwd())
-                parsed = workaround_chgk_parse(
-                    os.path.join(temp_dir, to_parse_fn), parsing_engine=parsing_engine
+                bn, _ = os.path.splitext(to_parse_fn)
+                subprocess.call(
+                    [
+                        "python",
+                        "-m",
+                        "chgksuite",
+                        "parse",
+                        "--parsing_engine",
+                        parsing_engine,
+                        os.path.join(temp_dir, to_parse_fn),
+                    ]
                 )
+                with codecs.open(
+                    os.path.join(temp_dir, bn + ".4s"), "r", "utf8"
+                ) as f:
+                    parsed = f.read()
                 with codecs.open(
                     os.path.join(temp_dir, filename), "r", "utf8"
                 ) as f:
                     canonical = f.read()
-                assert normalize(canonical) == normalize(compose_4s(parsed, args=DefaultArgs()))
+                assert normalize(canonical) == normalize(parsed)
 
 
 def test_docx_composition():
