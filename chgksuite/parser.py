@@ -17,6 +17,7 @@ import shutil
 import chardet
 import mammoth
 import pypandoc
+import dashtable
 import bs4
 from bs4 import BeautifulSoup
 from parse import parse
@@ -513,6 +514,17 @@ def generate_imgname(target_dir, ext):
     return "{:03}.{}".format(imgcounter, ext)
 
 
+def ensure_line_breaks(tag):
+    if tag.text:
+        str_ = tag.string or "".join(list(tag.strings))
+        if not str_.startswith("\n"):
+                str_ = "\n" + str_
+        if not str_.endswith("\n"):
+            str_ = str_ + "\n"
+        tag.insert_before(str_)
+    tag.extract()
+
+
 def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
     target_dir = os.path.dirname(os.path.abspath(docxfile))
     if args.parsing_engine == "pypandoc":
@@ -540,9 +552,23 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
 
         for tag in bsoup.find_all("style"):
             tag.extract()
+        for tag in bsoup.find_all("img"):
+            if args.parsing_engine == "pypandoc_html":
+                src = tag["src"].replace("$$$UNDERSCORE$$$", "_")
+                _, ext = os.path.splitext(src)
+                imgname = generate_imgname(target_dir, ext[1:])
+                shutil.copy(src, os.path.join(target_dir, imgname))
+                imgpath = os.path.basename(imgname)
+            else:
+                imgparse = parse("data:image/{ext};base64,{b64}", tag["src"])
+                imgname = generate_imgname(target_dir, imgparse["ext"])
+                with open(os.path.join(target_dir, imgname), "wb") as f:
+                    f.write(base64.b64decode(imgparse["b64"]))
+                imgpath = os.path.basename(imgname)
+            tag.insert_before("(img {})".format(imgpath))
+            tag.extract()
         for tag in bsoup.find_all("p"):
-            if tag.string:
-                tag.string = tag.string + SEP
+            ensure_line_breaks(tag)
         for tag in bsoup.find_all("b"):
             tag.unwrap()
         for tag in bsoup.find_all("strong"):
@@ -558,24 +584,13 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
                 tag.unwrap()
         for h in ["h1", "h2", "h3", "h4"]:
             for tag in bsoup.find_all(h):
-                tag.unwrap()
+                ensure_line_breaks(tag)
         for tag in bsoup.find_all("li"):
             if tag.string:
                 tag.string = "- " + tag.string
-        for tag in bsoup.find_all("img"):
-            if args.parsing_engine == "pypandoc_html":
-                src = tag["src"].replace("$$$UNDERSCORE$$$", "_")
-                _, ext = os.path.splitext(src)
-                imgname = generate_imgname(target_dir, ext[1:])
-                shutil.copy(src, imgname)
-                imgpath = os.path.basename(imgname)
-            else:
-                imgparse = parse("data:image/{ext};base64,{b64}", tag["src"])
-                imgname = generate_imgname(target_dir, imgparse["ext"])
-                with open(os.path.join(target_dir, imgname), "wb") as f:
-                    f.write(base64.b64decode(imgparse["b64"]))
-                imgpath = os.path.basename(imgname)
-            tag.insert_before("(img {})".format(imgpath))
+        for tag in bsoup.find_all("table"):
+            table = dashtable.html2md(str(tag))
+            tag.insert_before(table)
             tag.extract()
         for tag in bsoup.find_all("hr"):
             tag.extract()
@@ -611,10 +626,10 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
                 if isinstance(tag, bs4.element.Tag):
                     tag.unwrap()
             txt = bsoup.prettify()
-        elif args.parsing_engine == "mammoth":
-            html2text_input = str(bsoup)
-            txt = h.handle(html2text_input)
-        elif args.parsing_engine == "pypandoc_html":
+        # elif args.parsing_engine == "mammoth":
+        #     html2text_input = str(bsoup)
+        #     txt = h.handle(html2text_input)
+        elif args.parsing_engine in ("pypandoc_html", "mammoth"):
             for tag in bsoup:
                 if isinstance(tag, bs4.element.Tag):
                     tag.unwrap()
