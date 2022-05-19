@@ -223,6 +223,14 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
         with codecs.open("debug_1.json", "w", "utf8") as f:
             f.write(json.dumps(structure, ensure_ascii=False, indent=4))
 
+    # hack for https://gitlab.com/peczony/chgksuite/-/issues/23; TODO: make less hacky
+    for i, element in enumerate(structure):
+        if (
+            "дуплет" in element[1].lower() or "блиц" in element[1].lower()
+            and element[0] != "question" and (i == 0 or structure[i - 1][0] != "question")
+        ):
+            element[0] = "question"
+
     # 2.
 
     merge_y_to_x("question", "answer")
