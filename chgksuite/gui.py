@@ -332,19 +332,6 @@ class ArgparseBuilder:
         )
         self.add_argument(
             parser,
-            "--numbers_handling",
-            default="default",
-            choices=["default", "all", "none"],
-            help="question numbers handling strategy. "
-            "Default preserves zero questions and numbering "
-            "if the first question has number > 1, omits number otherwise. "
-            "All preserves all numbers, none omits all numbers "
-            "(was default behaviour pre-0.8.0.)",
-            advanced=True,
-            caption="Стратегия обработки номеров вопросов",
-        )
-        self.add_argument(
-            parser,
             "-v",
             "--version",
             action="version",
@@ -425,6 +412,19 @@ class ArgparseBuilder:
             "Sometimes it will yield better results than the new default.",
             advanced=True,
             caption="BeautifulSoup prettify",
+        )
+        self.add_argument(
+            cmdparse,
+            "--numbers_handling",
+            default="default",
+            choices=["default", "all", "none"],
+            help="question numbers handling strategy. "
+            "Default preserves zero questions and numbering "
+            "if the first question has number > 1, omits number otherwise. "
+            "All preserves all numbers, none omits all numbers "
+            "(was default behaviour pre-0.8.0.)",
+            advanced=True,
+            caption="Стратегия обработки номеров вопросов",
         )
 
         cmdcompose = subparsers.add_parser("compose")
