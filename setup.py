@@ -47,19 +47,20 @@ setup(
     install_requires=[
         "beautifulsoup4",
         "chardet",
+        "dashtable",
+        "dateparser",
         "html2text",
+        "mammoth",
         "parse",
-        "python-docx",
-        "python-pptx",
-        "requests",
         "Pillow",
         "ply",
-        "dateparser",
-        "pyperclip",
-        "toml",
-        "mammoth",
         "pypandoc",
+        "pyperclip",
         "pyrogram",
+        "python-pptx",
+        "python-docx",
+        "requests",
         "TgCrypto"
+        "toml",
     ]
 )
