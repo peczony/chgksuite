@@ -1828,9 +1828,12 @@ class DocxExporter(BaseExporter):
         logger.debug(log_wrap(self.structure))
 
         firsttour = True
+        prev_element = None
         for element in self.structure:
             if element[0] == "meta":
                 p = self.doc.add_paragraph()
+                if prev_element and prev_element[0] == "Question":
+                    p.paragraph_format.space_before = DocxPt(18)
                 self._docx_format(element[1], p, False)
                 self.doc.add_paragraph()
 
@@ -1851,6 +1854,7 @@ class DocxExporter(BaseExporter):
 
             if element[0] == "Question":
                 self.add_question(element)
+            prev_element = element
 
         self.doc.save(outfilename)
         logger.info("Output: {}".format(outfilename))
