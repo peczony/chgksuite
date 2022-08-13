@@ -60,7 +60,7 @@ setup(
         "python-pptx",
         "python-docx",
         "requests",
-        "TgCrypto"
+        "TgCrypto",
         "toml",
     ]
 )
