@@ -9,6 +9,7 @@ import argparse
 import time
 import json
 import traceback
+import sys
 
 
 QUESTION_LABELS = [
@@ -178,6 +179,11 @@ def check_question(question, logger=None):
 
 
 def remove_double_separators(s):
+    if isinstance(s, list):
+        sys.stderr.write(
+            f"something weird is going on in remove_double_separators: {s}\n"
+        )
+        return " ".join(s)
     return re.sub(r"({})+".format(SEP), SEP, s)
 
 
