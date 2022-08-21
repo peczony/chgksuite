@@ -2344,7 +2344,9 @@ class StatsAdder(BaseExporter):
             ):
                 continue
             scored_teams = self.q_counter[qnumber]
-            message = f"Взятия: {scored_teams}/{self.total_teams}"
+            label = self.labels["general"]["right_answers_for_stats"]
+            share = scored_teams / self.total_teams
+            message = f"{label}: {scored_teams}/{self.total_teams} ({round(share * 100)}%)"
             if scored_teams > 0 and scored_teams <= self.args.team_naming_threshold:
                 teams = ", ".join(sorted(self.q_to_teams[qnumber]))
                 message += f" ({teams})"
