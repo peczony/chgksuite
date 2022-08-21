@@ -405,6 +405,14 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdparse,
+            "--image_prefix",
+            action="store_true",
+            help="make image prefix from filename",
+            advanced=True,
+            caption="Make image prefix from filename",
+        )
+        self.add_argument(
+            cmdparse,
             "--parsing_engine",
             choices=["pypandoc", "pypandoc_html", "mammoth_bs_prettify", "mammoth_bs_hard_unwrap", "mammoth"],
             default="mammoth",

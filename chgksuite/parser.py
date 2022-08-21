@@ -513,13 +513,13 @@ def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", regexes=None):
     return chgk_parse(text, defaultauthor=defaultauthor, regexes=regexes)
 
 
-def generate_imgname(target_dir, ext):
+def generate_imgname(target_dir, ext, prefix=""):
     imgcounter = 1
     while os.path.isfile(
-        os.path.join(target_dir, "{:03}.{}".format(imgcounter, ext))
+        os.path.join(target_dir, "{}{:03}.{}".format(prefix, imgcounter, ext))
     ):
         imgcounter += 1
-    return "{:03}.{}".format(imgcounter, ext)
+    return "{}{:03}.{}".format(prefix, imgcounter, ext)
 
 
 def ensure_line_breaks(tag):
@@ -535,6 +535,10 @@ def ensure_line_breaks(tag):
 
 def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
     target_dir = os.path.dirname(os.path.abspath(docxfile))
+    if args.image_prefix:
+        bn_for_img = os.path.splitext(os.path.basename(docxfile))[0].replace(" ", "_") + "_"
+    else:
+        bn_for_img = ""
     if args.parsing_engine == "pypandoc":
         txt = pypandoc.convert_file(docxfile, "plain", extra_args=["--wrap=none"])
     else:
@@ -564,12 +568,12 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
             if args.parsing_engine == "pypandoc_html":
                 src = tag["src"].replace("$$$UNDERSCORE$$$", "_")
                 _, ext = os.path.splitext(src)
-                imgname = generate_imgname(target_dir, ext[1:])
+                imgname = generate_imgname(target_dir, ext[1:], prefix=bn_for_img)
                 shutil.copy(src, os.path.join(target_dir, imgname))
                 imgpath = os.path.basename(imgname)
             else:
                 imgparse = parse("data:image/{ext};base64,{b64}", tag["src"])
-                imgname = generate_imgname(target_dir, imgparse["ext"])
+                imgname = generate_imgname(target_dir, imgparse["ext"], prefix=bn_for_img)
                 with open(os.path.join(target_dir, imgname), "wb") as f:
                     f.write(base64.b64decode(imgparse["b64"]))
                 imgpath = os.path.basename(imgname)
