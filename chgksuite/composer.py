@@ -6,6 +6,7 @@ from collections import defaultdict, Counter
 import copy
 import contextlib
 import logging
+import importlib
 import datetime
 import hashlib
 import os
@@ -25,7 +26,6 @@ import dateparser
 import requests
 import pyperclip
 import toml
-import pyrogram
 from pptx.dml.color import RGBColor
 
 from docx import Document
@@ -1019,7 +1019,8 @@ class TelegramExporter(BaseExporter):
         super().__init__(*args, **kwargs)
         self.chgksuite_dir = get_chgksuite_dir()
         api_id, api_hash = self.get_api_credentials()
-        self.app = pyrogram.Client(
+        self.pyrogram = importlib.import_module("pyrogram")  # pyrogram slows down startup quite a bit, so only import it when needed
+        self.app = self.pyrogram.Client(
             self.args.tgaccount, api_id, api_hash, workdir=self.chgksuite_dir
         )
         with self.app:
@@ -1117,7 +1118,7 @@ class TelegramExporter(BaseExporter):
                 chat_id,
                 photo,
                 caption=caption,
-                parse_mode=pyrogram.enums.ParseMode.MARKDOWN,
+                parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
             )
             if text:
                 time.sleep(2)
@@ -1125,14 +1126,14 @@ class TelegramExporter(BaseExporter):
                     chat_id,
                     msg.id,
                     text=text,
-                    parse_mode=pyrogram.enums.ParseMode.MARKDOWN,
+                    parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
                     disable_web_page_preview=True,
                 )
         else:
             msg = self.app.send_message(
                 chat_id,
                 text,
-                parse_mode=pyrogram.enums.ParseMode.MARKDOWN,
+                parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
                 disable_web_page_preview=True,
             )
         return msg
@@ -1142,7 +1143,7 @@ class TelegramExporter(BaseExporter):
         while retries <= 2:
             try:
                 return self._post(*args, **kwargs)
-            except pyrogram.errors.exceptions.flood_420.FloodWait as e:
+            except self.pyrogram.errors.exceptions.flood_420.FloodWait as e:
                 mstr = str(e)
                 secs_to_wait = re.search("([0-9]+) seconds is required", mstr)
                 if secs_to_wait:
