@@ -61,8 +61,8 @@ debug = False
 console_mode = False
 re_url = re.compile(
     r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
-    """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s<>]+|(([^\s()<>]+|(([^\s<>]+)))*))+"""
-    """(?:(([^\s<>]+|(‌​([^\s<>]+)))*)|[^\s`!\[\]{};:'".,<>?«»“”‘’]))""",
+    """|[a-z0-9.\\-]+[.‌​][a-z]{2,4}/)(?:[^\\s<>]+|(([^\\s()<>]+|(([^\\s<>]+)))*))+"""
+    """(?:(([^\\s<>]+|(‌​([^\\s<>]+)))*)|[^\\s`!\\[\\]{};:'".,<>?«»“”‘’]))""",
     re.DOTALL,
 )
 re_perc = re.compile(r"(%[0-9a-fA-F]{2})+")
@@ -1084,7 +1084,7 @@ class TelegramExporter(BaseExporter):
                         raise Exception(f"image {run[1]} doesn't exist")
         while res.endswith("\n"):
             res = res[:-1]
-        for match in re.finditer("[^\s]*\*+[^\s]*", res):
+        for match in re.finditer("[^\\s]*\\*+[^\\s]*", res):
             res = res.replace(match.group(0), "`" + match.group(0) + "`")
         return res, image
 
@@ -1117,20 +1117,23 @@ class TelegramExporter(BaseExporter):
                 chat_id,
                 photo,
                 caption=caption,
-                parse_mode="md",
+                parse_mode=pyrogram.enums.ParseMode.MARKDOWN,
             )
             if text:
                 time.sleep(2)
                 self.app.edit_message_text(
                     chat_id,
-                    msg.message_id,
+                    msg.id,
                     text=text,
-                    parse_mode="md",
+                    parse_mode=pyrogram.enums.ParseMode.MARKDOWN,
                     disable_web_page_preview=True,
                 )
         else:
             msg = self.app.send_message(
-                chat_id, text, parse_mode="md", disable_web_page_preview=True
+                chat_id,
+                text,
+                parse_mode=pyrogram.enums.ParseMode.MARKDOWN,
+                disable_web_page_preview=True,
             )
         return msg
 
@@ -1175,7 +1178,7 @@ class TelegramExporter(BaseExporter):
             messages.append(prev_root_msg)
         time.sleep(2.1)
         root_msg_in_chat = self.app.get_discussion_message(
-            self.channel_id, root_msg.message_id
+            self.channel_id, root_msg.id
         )
         logger.info(f"Posted message {root_msg.link} ({root_msg_in_chat.link} in chat)")
         time.sleep(random.randint(5, 7))
@@ -1183,6 +1186,7 @@ class TelegramExporter(BaseExporter):
             messages.append(root_msg)
         messages.append(root_msg_in_chat)
         for post in posts[1:]:
+            text, im = post
             reply_msg = self.__post(self.chat_id, text, im)
             logger.info(
                 f"Replied to message {root_msg_in_chat.link} with {reply_msg.link}"
@@ -1373,7 +1377,7 @@ class TelegramExporter(BaseExporter):
             return res
         elif images_q and len(full_question) <= 2048:
             full_question = re.sub(
-                "\[" + self.labels["question_labels"]["handout"] + ": +?\]\n",
+                "\\[" + self.labels["question_labels"]["handout"] + ": +?\\]\n",
                 "",
                 full_question,
             )
@@ -1441,7 +1445,7 @@ class TelegramExporter(BaseExporter):
         with self.app:
             self.channel_dialog = None
             self.chat_dialog = None
-            for dialog in self.app.iter_dialogs():
+            for dialog in self.app.get_dialogs():
                 if (dialog.chat.title or "").strip() == args.tgchannel.strip():
                     self.channel_dialog = dialog
                 if (dialog.chat.title or "").strip() == args.tgchat.strip():
@@ -1472,7 +1476,7 @@ class TelegramExporter(BaseExporter):
                 if not self.args.dry_run:
                     self.app.pin_chat_message(
                         self.channel_id,
-                        messages[0].message_id,
+                        messages[0].id,
                         disable_notification=True,
                     )
 
@@ -1524,10 +1528,10 @@ class LatexExporter(BaseExporter):
         zz = re.sub(r"{", r"\{", zz)
         zz = re.sub(r"}", r"\}", zz)
         zz = re.sub(r"\\(?![\}\{])", r"{\\textbackslash}", zz)
-        zz = re.sub("%", "\%", zz)
-        zz = re.sub(r"\$", "\$", zz)
-        zz = re.sub("#", "\#", zz)
-        zz = re.sub("&", "\&", zz)
+        zz = re.sub("%", "\\%", zz)
+        zz = re.sub(r"\$", "\\$", zz)
+        zz = re.sub("#", "\\#", zz)
+        zz = re.sub("&", "\\&", zz)
         zz = re.sub("_", r"\_", zz)
         zz = re.sub(r"\^", r"{\\textasciicircum}", zz)
         zz = re.sub(r"\~", r"{\\textasciitilde}", zz)
@@ -2346,7 +2350,9 @@ class StatsAdder(BaseExporter):
             scored_teams = self.q_counter[qnumber]
             label = self.labels["general"]["right_answers_for_stats"]
             share = scored_teams / self.total_teams
-            message = f"{label}: {scored_teams}/{self.total_teams} ({round(share * 100)}%)"
+            message = (
+                f"{label}: {scored_teams}/{self.total_teams} ({round(share * 100)}%)"
+            )
             if scored_teams > 0 and scored_teams <= self.args.team_naming_threshold:
                 teams = ", ".join(sorted(self.q_to_teams[qnumber]))
                 message += f" ({teams})"
