@@ -1768,7 +1768,7 @@ class DocxExporter(BaseExporter):
                         )
                     except UnrecognizedImageError:
                         sys.stderr.write(
-                            f"python-docx can't recognize header for {imgfile}.\n"
+                            f"python-docx can't recognize header for {imgfile}\n"
                         )
                     r.add_text("\n")
                     continue
