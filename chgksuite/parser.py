@@ -646,9 +646,13 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
         #     html2text_input = str(bsoup)
         #     txt = h.handle(html2text_input)
         elif args.parsing_engine in ("pypandoc_html", "mammoth"):
-            for tag in bsoup:
-                if isinstance(tag, bs4.element.Tag):
-                    tag.unwrap()
+            found = True
+            while found:
+                found = False
+                for tag in bsoup:
+                    if isinstance(tag, bs4.element.Tag):
+                        tag.unwrap()
+                        found = True
             txt = str(bsoup)
     if args.parsing_engine == "pypandoc_html":
         shutil.rmtree(temp_dir)
