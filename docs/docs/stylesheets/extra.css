@@ -1,6 +1,5 @@
 :root > * {
-    --md-primary-fg-color--light: #000 !important;
-    --md-primary-fg-color--dark:  #000 !important;
+    --md-code-bg-color: #eee;
 }
 
 .md-content { max-width: 70em; }
@@ -9,7 +8,7 @@
     .md-sidebar {margin-left: 100px;}
 }
 
-.md-content h1, .md-content h2, .md-content h3, .md-content h4 { color: #000; font-weight: 400; }
+.md-content h1, .md-content h2, .md-content h3, .md-content h4 { color: var(--md-default-fg-color); font-weight: 400; }
 
 .md-content h1 { margin-bottom: 20px;}
 .md-typeset h2 { margin-bottom: -8px;}
