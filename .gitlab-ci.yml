@@ -1,0 +1,17 @@
+image: python:3.8-buster
+
+before_script:
+  - pip install mkdocs mkdocs-material
+
+pages:
+  stage: deploy
+  script:
+  - cd docs
+  - mkdocs build
+  - mv public ../public
+  - cd ..
+  artifacts:
+    paths:
+    - public
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
