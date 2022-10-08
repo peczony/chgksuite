@@ -1,9 +1,12 @@
 site_name: chgksuite
+site_url: https://peczony.gitlab.io/chgksuite
+site_dir: public
 nav:
   - "index.md"
   - "4s.md"
   - "word.md"
   - "lj.md"
+  - "base.md"
   - "pptx.md"
   - "telegram.md"
   - "trello.md"
