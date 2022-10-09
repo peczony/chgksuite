@@ -490,6 +490,71 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     except ValueError:
         pass
 
+    def _replace(obj, val, new_val):
+        if isinstance(obj, str):
+            return obj.replace(val, new_val)
+        elif isinstance(obj, list):
+            for i, el in enumerate(obj):
+                obj[i] = _replace(el, val, new_val)
+            return obj
+
+    def _get_strings(val, list_):
+        if isinstance(val, str):
+            list_.append(val)
+            return
+        elif isinstance(val, list):
+            for el in val:
+                _get_strings(el, list_)
+
+
+    def _try_extract_field(question, k):
+        regex = regexes[k]
+        keys = sorted(question.keys())
+        to_erase = []
+        stop = False
+        val = None
+        k1_to_replace = None
+        for k1 in keys:
+            if stop:
+                break
+            curr_val = question[k1]
+            strings = []
+            _get_strings(curr_val, strings)
+            for string in strings:
+                if stop:
+                    break
+                lines = string.split("\n")
+                for i, line in enumerate(lines):
+                    srch = regex.search(line)
+                    if srch:
+                        val = "\n".join([line.replace(srch.group(0), "")] + lines[i + 1 :])
+                        to_erase.append(srch.group(0))
+                        to_erase.append(val)
+                        val = val.strip()
+                        k1_to_replace = k1
+                        stop = True
+                        break
+        if val:
+            question[k] = val
+            for v in to_erase:
+                question[k1_to_replace] = _replace(question[k1_to_replace], v, "")
+        
+
+    def postprocess_question(question):
+        for k in (
+            "zachet",
+            "nezachet",
+            "source",
+            "comment",
+            "author"
+        ):
+            if k not in question:
+                _try_extract_field(question, k)
+
+    for i, element in enumerate(final_structure):
+        if element[0] == "Question":
+            postprocess_question(element[1])
+
     if debug:
         with codecs.open("debug_final.json", "w", "utf8") as f:
             f.write(json.dumps(final_structure, ensure_ascii=False, indent=4))
