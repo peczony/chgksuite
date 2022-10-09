@@ -1107,6 +1107,8 @@ class TelegramExporter(BaseExporter):
         return res, images
 
     def _post(self, chat_id, text, photo):
+        if text:
+            text = text.replace("*", "\\*")
         if photo:
             if not text:
                 caption = ""
