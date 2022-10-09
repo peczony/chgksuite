@@ -389,7 +389,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                     lc = 0
                     while lc < len(list_candidate):
                         part[lc + 1] = part[lc + 1].replace(
-                            list_candidate[lc][1], ""
+                            list_candidate[lc][1], "", 1
                         )
                         lc += 1
                     element[1] = (
@@ -397,6 +397,11 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                     )
 
         # turn source into list if necessary
+        def _replace_once(regex, val, to_replace):
+            srch = regex.search(val)
+            if srch:
+                return val.replace(srch.group(0), to_replace, 1)
+            return val
 
         if (
             element[0] == "source"
@@ -404,7 +409,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
             and len(re.split(r"\r?\n", element[1])) > 1
         ):
             element[1] = [
-                regexes["number"].sub("", rew(x))
+                _replace_once(regexes["number"], rew(x), "")
                 for x in re.split(r"\r?\n", element[1])
             ]
 
@@ -633,6 +638,8 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
 
         for tag in bsoup.find_all("style"):
             tag.extract()
+        for br in bsoup.find_all("br"):
+            br.replace_with("\n")
         for tag in bsoup.find_all("img"):
             if args.parsing_engine == "pypandoc_html":
                 src = tag["src"].replace("$$$UNDERSCORE$$$", "_")
@@ -685,6 +692,7 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
                 else:
                     tag.string = tag["href"]
                     tag.unwrap()
+
 
         if debug:
             with codecs.open(
