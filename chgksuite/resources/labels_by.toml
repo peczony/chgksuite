@@ -1,0 +1,22 @@
+[question_labels]
+question = "Пытаньне"
+answer = "Адказ"
+zachet = "Залік"
+nezachet = "Незалік"
+comment = "Каментарый"
+source = "Крыніца"
+sources = "Крыніцы"
+author = "Аўтар"
+authors = "Аўтары"
+handout = "Раздатачны матэрыял"
+handout_short = "Раздат"
+
+[general]
+section = "Тур"
+editor = "Рэдактар"
+date = "Дата"
+questions_in_comments = "-"
+handout_for_question = "-"
+general_impressions_caption = "-"
+general_impressions_text = "-"
+right_answers_for_stats = "-"

@@ -1,0 +1,22 @@
+[question_labels]
+question = "Question"
+answer = "Answer"
+zachet = "Accept"
+nezachet = "Reject"
+comment = "Comment"
+source = "Source"
+sources = "Sources"
+author = "Author"
+authors = "Authors"
+handout = "Handout"
+handout_short = "Handout"
+
+[general]
+section = "Block"
+editor = "Editor"
+date = "Date"
+questions_in_comments = "-"
+handout_for_question = "-"
+general_impressions_caption = "-"
+general_impressions_text = "-"
+right_answers_for_stats = "-"
