@@ -351,6 +351,14 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdparse,
+            "--language", "-lang",
+            help="language to use while parsing.",
+            choices=["ru", "ua", "by", "en", "custom"],
+            default="ru",
+            caption="Язык",
+        )
+        self.add_argument(
+            cmdparse,
             "--defaultauthor",
             action="store_true",
             help="pick default author from filename " "where author is missing.",
@@ -443,6 +451,14 @@ class ArgparseBuilder:
             help="merge several source files before output.",
             advanced=True,
             hide=True,
+        )
+        self.add_argument(
+            cmdcompose,
+            "--language", "-lang",
+            help="language to use while composing.",
+            choices=["ru", "ua", "by", "en", "custom"],
+            default="ru",
+            caption="Язык",
         )
         self.add_argument(
             cmdcompose,
@@ -866,6 +882,10 @@ def app():
         args.labels_file = os.path.join(resourcedir, "labels_ru.toml")
     if not args.regexes:
         args.regexes = os.path.join(resourcedir, "regexes.json")
+    if args.language in ("ua", "by", "en") and args.action == "parse":
+        args.regexes = os.path.join(resourcedir, f"regexes_{args.language}.json")
+    elif args.language in ("ua", "by", "en") and args.action == "compose":
+        args.labels_file = os.path.join(resourcedir, f"labels_{args.language}.toml")
     if not args.docx_template:
         args.docx_template = os.path.join(resourcedir, "template.docx")
     if not args.pptx_config:
