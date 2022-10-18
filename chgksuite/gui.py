@@ -32,6 +32,8 @@ from collections import defaultdict
 import json
 import shlex
 
+LANGS = ["ru", "ua", "by", "en", "uz", "custom"]
+
 try:
     basestring
 except NameError:
@@ -369,7 +371,7 @@ class ArgparseBuilder:
             cmdparse,
             "--language", "-lang",
             help="language to use while parsing.",
-            choices=["ru", "ua", "by", "en", "custom"],
+            choices=LANGS,
             default="ru",
             caption="Язык",
             argtype="radiobutton"
@@ -473,7 +475,7 @@ class ArgparseBuilder:
             cmdcompose,
             "--language", "-lang",
             help="language to use while composing.",
-            choices=["ru", "ua", "by", "en", "custom"],
+            choices=LANGS,
             default="ru",
             caption="Язык",
             argtype="radiobutton"
@@ -900,9 +902,9 @@ def app():
         args.labels_file = os.path.join(resourcedir, "labels_ru.toml")
     if not args.regexes:
         args.regexes = os.path.join(resourcedir, "regexes.json")
-    if args.language in ("ua", "by", "en") and args.action == "parse":
+    if args.language in LANGS and args.action == "parse":
         args.regexes = os.path.join(resourcedir, f"regexes_{args.language}.json")
-    elif args.language in ("ua", "by", "en") and args.action == "compose":
+    elif args.language in LANGS and args.action == "compose":
         args.labels_file = os.path.join(resourcedir, f"labels_{args.language}.toml")
     if not args.docx_template:
         args.docx_template = os.path.join(resourcedir, "template.docx")

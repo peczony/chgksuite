@@ -705,7 +705,16 @@ class BaseExporter:
         with open(self.args.labels_file, encoding="utf8") as f:
             self.labels = toml.load(f)
 
-    def get_label(self, question, field):
+    def get_label(self, question, field, number=None):
+        if field in ("question", "tour"):
+            lbl = (question.get("overrides") or {}).get(field) or self.labels[
+                "question_labels"
+            ][field]
+            num = question.get("number") or number
+            if self.args.language == "uz":
+                return f"{num} – {lbl}"
+            else:
+                return f"{lbl} {num}"
         if field in (question.get("overrides") or {}):
             return question["overrides"][field]
         if field == "source" and isinstance(question.get("source" or ""), list):
@@ -1021,7 +1030,9 @@ class TelegramExporter(BaseExporter):
         super().__init__(*args, **kwargs)
         self.chgksuite_dir = get_chgksuite_dir()
         api_id, api_hash = self.get_api_credentials()
-        self.pyrogram = importlib.import_module("pyrogram")  # pyrogram slows down startup quite a bit, so only import it when needed
+        self.pyrogram = importlib.import_module(
+            "pyrogram"
+        )  # pyrogram slows down startup quite a bit, so only import it when needed
         self.app = self.pyrogram.Client(
             self.args.tgaccount, api_id, api_hash, workdir=self.chgksuite_dir
         )
@@ -1196,9 +1207,7 @@ class TelegramExporter(BaseExporter):
             messages.append(root_msg)
             messages.append(prev_root_msg)
         time.sleep(2.1)
-        root_msg_in_chat = self.app.get_discussion_message(
-            self.channel_id, root_msg.id
-        )
+        root_msg_in_chat = self.app.get_discussion_message(self.channel_id, root_msg.id)
         logger.info(f"Posted message {root_msg.link} ({root_msg_in_chat.link} in chat)")
         time.sleep(random.randint(5, 7))
         if root_msg not in messages:
@@ -1340,9 +1349,8 @@ class TelegramExporter(BaseExporter):
 
     def tg_format_question(self, q, number=None):
         txt_q, images_q = self.tgyapper(q["question"])
-        txt_q = "**{} {}:** {}  \n".format(
-            self.get_label(q, "question"),
-            number,
+        txt_q = "**{}:** {}  \n".format(
+            self.get_label(q, "question", number=number),
             txt_q,
         )
         if "number" not in q:
@@ -1809,9 +1817,8 @@ class DocxExporter(BaseExporter):
         if "setcounter" in q:
             self.qcount = int(q["setcounter"])
         p.add_run(
-            "{question} {num}. ".format(
-                question=self.get_label(q, "question"),
-                num=self.qcount if "number" not in q else q["number"],
+            "{question}. ".format(
+                question=self.get_label(q, "question", number=self.qcount if "number" not in q else q["number"])
             )
         ).bold = True
 
@@ -2641,14 +2648,10 @@ class LjExporter(BaseExporter):
 
         for element in structure[i:]:
             if element[0] == "Question":
+                formatted = self.get_label(element[1], "question", number=self.counter)
                 final_structure.append(
                     {
-                        "header": "{question} {num}".format(
-                            question=self.get_label(element[1], "question"),
-                            num=element[1]["number"]
-                            if "number" in element[1]
-                            else self.counter,
-                        ),
+                        "header": formatted,
                         "content": self.html_format_question(element[1]),
                     }
                 )
@@ -2694,9 +2697,8 @@ class LjExporter(BaseExporter):
 
         if "setcounter" in q:
             self.counter = int(q["setcounter"])
-        res = "<strong>{question} {num}.</strong> {content}".format(
-            question=self.get_label(q, "question"),
-            num=self.counter if "number" not in q else q["number"],
+        res = "<strong>{question}.</strong> {content}".format(
+            question=self.get_label(q, "question", self.counter),
             content=yapper(q["question"])
             + ("\n<lj-spoiler>" if not args.nospoilers else ""),
         )

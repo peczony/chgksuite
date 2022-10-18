@@ -35,7 +35,7 @@ from chgksuite.common import (
     check_question,
     QUESTION_LABELS,
     get_source_dirs,
-    compose_4s
+    compose_4s,
 )
 from chgksuite.composer import gui_compose
 
@@ -116,9 +116,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     def merge_to_previous(index):
         target = index - 1
         if structure[target][1]:
-            structure[target][1] = (
-                structure[target][1] + SEP + structure.pop(index)[1]
-            )
+            structure[target][1] = structure[target][1] + SEP + structure.pop(index)[1]
         else:
             structure[target][1] = structure.pop(index)[1]
 
@@ -207,8 +205,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     sep = "\r\n" if "\r\n" in text else "\n"
 
     fragments = [
-        [["", rew(xx)] for xx in x.split(sep) if xx]
-        for x in text.split(sep + sep)
+        [["", rew(xx)] for xx in x.split(sep) if xx] for x in text.split(sep + sep)
     ]
 
     for fragment in fragments:
@@ -226,8 +223,10 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     # hack for https://gitlab.com/peczony/chgksuite/-/issues/23; TODO: make less hacky
     for i, element in enumerate(structure):
         if (
-            "дуплет." in element[1].lower().split() or "блиц." in element[1].lower().split()
-            and element[0] != "question" and (i == 0 or structure[i - 1][0] != "question")
+            "дуплет." in element[1].lower().split()
+            or "блиц." in element[1].lower().split()
+            and element[0] != "question"
+            and (i == 0 or structure[i - 1][0] != "question")
         ):
             element[0] = "question"
 
@@ -265,18 +264,14 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                 "number"
             ].search(rew(structure[i - 1][1])):
                 structure[i][0] = "question"
-                structure[i][1] = regexes["number"].sub(
-                    "", rew(structure[i][1])
-                )
+                structure[i][1] = regexes["number"].sub("", rew(structure[i][1]))
                 try:
                     structure.insert(
                         i,
                         [
                             "number",
                             int(
-                                regexes["number"]
-                                .search(rew(structure[i][1]))
-                                .group(0)
+                                regexes["number"].search(rew(structure[i][1])).group(0)
                             ),
                         ],
                     )
@@ -294,9 +289,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
     for _id, element in enumerate(structure):
         if (
             element[0] == "author"
-            and re.search(
-                r"^{}$".format(regexes["author"].pattern), rew(element[1])
-            )
+            and re.search(r"^{}$".format(regexes["author"].pattern), rew(element[1]))
             and _id + 1 < len(structure)
         ):
             merge_to_previous(_id + 1)
@@ -312,9 +305,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
 
     structure = [x for x in structure if [x[0], rew(x[1])] != ["", ""]]
 
-    if structure[0][0] == "" and regexes["number"].search(
-        rew(structure[0][1])
-    ):
+    if structure[0][0] == "" and regexes["number"].search(rew(structure[0][1])):
         merge_to_next(0)
 
     for _id, element in enumerate(structure):
@@ -359,12 +350,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
 
         # detect inner lists
 
-        mo = {
-            m
-            for m in re.finditer(
-                r"(\s+|^)(\d+)[\.\)]\s*(?!\d)", element[1], re.U
-            )
-        }
+        mo = {m for m in re.finditer(r"(\s+|^)(\d+)[\.\)]\s*(?!\d)", element[1], re.U)}
         if len(mo) > 1:
             sorted_up = sorted(mo, key=lambda m: int(m.group(2)))
             j = 0
@@ -383,18 +369,14 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                     and "дуплет" in element[1].lower()
                     or "блиц" in element[1].lower()
                 ):
-                    part = partition(
-                        element[1], [x[2] for x in list_candidate]
-                    )
+                    part = partition(element[1], [x[2] for x in list_candidate])
                     lc = 0
                     while lc < len(list_candidate):
                         part[lc + 1] = part[lc + 1].replace(
                             list_candidate[lc][1], "", 1
                         )
                         lc += 1
-                    element[1] = (
-                        [part[0], part[1:]] if part[0] != "" else part[1:]
-                    )
+                    element[1] = [part[0], part[1:]] if part[0] != "" else part[1:]
 
         # turn source into list if necessary
         def _replace_once(regex, val, to_replace):
@@ -429,8 +411,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
 
     for element in structure:
         if (
-            element[0]
-            in set(["number", "tour", "tourrev", "question", "meta"])
+            element[0] in set(["number", "tour", "tourrev", "question", "meta"])
             and "question" in current_question
         ):
             if defaultauthor and "author" not in current_question:
@@ -459,9 +440,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                     current_question[element[0]], list
                 ):
                     current_question[element[0]].extend(element[1])
-                elif isinstance(element[0], str) and isinstance(
-                    element[1], str
-                ):
+                elif isinstance(element[0], str) and isinstance(element[1], str):
                     current_question[element[0]] += SEP + element[1]
             else:
                 current_question[element[0]] = element[1]
@@ -511,7 +490,6 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
             for el in val:
                 _get_strings(el, list_)
 
-
     def _try_extract_field(question, k):
         regex = regexes[k]
         keys = sorted(question.keys())
@@ -532,7 +510,9 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
                 for i, line in enumerate(lines):
                     srch = regex.search(line)
                     if srch:
-                        val = "\n".join([line.replace(srch.group(0), "")] + lines[i + 1 :])
+                        val = "\n".join(
+                            [line.replace(srch.group(0), "")] + lines[i + 1 :]
+                        )
                         to_erase.append(srch.group(0))
                         to_erase.append(val)
                         val = val.strip()
@@ -543,16 +523,15 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
             question[k] = val
             for v in to_erase:
                 question[k1_to_replace] = _replace(question[k1_to_replace], v, "")
-        
 
     def postprocess_question(question):
-        for k in (
-            "zachet",
-            "nezachet",
-            "source",
-            "comment",
-            "author"
+        if (
+            "number" in question
+            and isinstance(question["number"], str)
+            and not question["number"].strip()
         ):
+            question.pop("number")
+        for k in ("zachet", "nezachet", "source", "comment", "author"):
             if k not in question:
                 _try_extract_field(question, k)
 
@@ -600,7 +579,7 @@ def ensure_line_breaks(tag):
     if tag.text:
         str_ = tag.string or "".join(list(tag.strings))
         if not str_.startswith("\n"):
-                str_ = "\n" + str_
+            str_ = "\n" + str_
         if not str_.endswith("\n"):
             str_ = str_ + "\n"
         tag.insert_before(str_)
@@ -610,7 +589,9 @@ def ensure_line_breaks(tag):
 def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
     target_dir = os.path.dirname(os.path.abspath(docxfile))
     if args.image_prefix:
-        bn_for_img = os.path.splitext(os.path.basename(docxfile))[0].replace(" ", "_") + "_"
+        bn_for_img = (
+            os.path.splitext(os.path.basename(docxfile))[0].replace(" ", "_") + "_"
+        )
     else:
         bn_for_img = ""
     if args.parsing_engine == "pypandoc":
@@ -618,13 +599,14 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
     else:
         if args.parsing_engine == "pypandoc_html":
             temp_dir = tempfile.mkdtemp()
-            html = pypandoc.convert_file(docxfile, "html", extra_args=[f"--extract-media={temp_dir}"])
+            html = pypandoc.convert_file(
+                docxfile, "html", extra_args=[f"--extract-media={temp_dir}"]
+            )
         else:
             with open(docxfile, "rb") as docx_file:
                 html = mammoth.convert_to_html(docx_file).value
         input_docx = (
-            html
-            .replace("</strong><strong>", "")
+            html.replace("</strong><strong>", "")
             .replace("</em><em>", "")
             .replace("_", "$$$UNDERSCORE$$$")
         )
@@ -649,7 +631,9 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
                 imgpath = os.path.basename(imgname)
             else:
                 imgparse = parse("data:image/{ext};base64,{b64}", tag["src"])
-                imgname = generate_imgname(target_dir, imgparse["ext"], prefix=bn_for_img)
+                imgname = generate_imgname(
+                    target_dir, imgparse["ext"], prefix=bn_for_img
+                )
                 with open(os.path.join(target_dir, imgname), "wb") as f:
                     f.write(base64.b64decode(imgparse["b64"]))
                 imgpath = os.path.basename(imgname)
@@ -692,7 +676,6 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
                 else:
                     tag.string = tag["href"]
                     tag.unwrap()
-
 
         if debug:
             with codecs.open(
@@ -745,14 +728,10 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
     txt = re.sub(r"_ *_", "", txt)  # fix bad italic from Word
 
     if debug:
-        with codecs.open(
-            os.path.join(target_dir, "debug.debug"), "w", "utf8"
-        ) as dbg:
+        with codecs.open(os.path.join(target_dir, "debug.debug"), "w", "utf8") as dbg:
             dbg.write(txt)
 
-    final_structure = chgk_parse(
-        txt, defaultauthor=defaultauthor, regexes=regexes
-    )
+    final_structure = chgk_parse(txt, defaultauthor=defaultauthor, regexes=regexes)
     return final_structure
 
 
@@ -831,9 +810,7 @@ def gui_parse(args, sourcedir):
                         regexes=regexes,
                     )
                     logger.info(
-                        "{} -> {}".format(
-                            filename, os.path.basename(outfilename)
-                        )
+                        "{} -> {}".format(filename, os.path.basename(outfilename))
                     )
             input("Press Enter to continue...")
 
@@ -855,9 +832,7 @@ def gui_parse(args, sourcedir):
                     make_filename(args.filename)
                 )
             )
-            subprocess.call(
-                shlex.split('{} "{}"'.format(TEXTEDITOR, outfilename))
-            )
+            subprocess.call(shlex.split('{} "{}"'.format(TEXTEDITOR, outfilename)))
             input("Press Enter to continue...")
         if args.passthrough:
             cargs = DefaultNamespace()
