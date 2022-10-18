@@ -30,6 +30,7 @@ from chgksuite.common import (
 
 from collections import defaultdict
 import json
+import shlex
 
 try:
     basestring
@@ -37,7 +38,6 @@ except NameError:
     basestring = (str, bytes)
 
 debug = False
-
 
 class VarWrapper(object):
     def __init__(self, name, var):
@@ -131,7 +131,7 @@ class ParserWrapper(object):
             else:
                 result.append(to_append)
                 result_to_print.append(to_append)
-        print("Command line call: {}".format(" ".join(result_to_print)))
+        print("Command line call: {}".format(shlex.join(result_to_print)))
         return result
 
     def ok_button_press(self):
@@ -207,6 +207,22 @@ class ParserWrapper(object):
                 innerframe, text=caption, variable=var, onvalue="true", offvalue="false"
             )
             checkbutton.pack(side="left")
+            self.vars.append(VarWrapper(name=args[0], var=var))
+        elif argtype == "radiobutton":
+            var = tk.StringVar()
+            var.set(kwargs["default"])
+            innerframe = tk.Frame(frame)
+            innerframe.pack(side="top")
+            label = tk.Label(innerframe, text=caption)
+            label.pack(side="left")
+            for ch in kwargs["choices"]:
+                radio = tk.Radiobutton(
+                    innerframe,
+                    text=ch,
+                    variable=var,
+                    value=ch,
+                )
+                radio.pack(side="left")
             self.vars.append(VarWrapper(name=args[0], var=var))
         elif argtype in {"filename", "folder"}:
             text = "(имя файла)" if argtype == "filename" else "(имя папки)"
@@ -356,6 +372,7 @@ class ArgparseBuilder:
             choices=["ru", "ua", "by", "en", "custom"],
             default="ru",
             caption="Язык",
+            argtype="radiobutton"
         )
         self.add_argument(
             cmdparse,
@@ -459,6 +476,7 @@ class ArgparseBuilder:
             choices=["ru", "ua", "by", "en", "custom"],
             default="ru",
             caption="Язык",
+            argtype="radiobutton"
         )
         self.add_argument(
             cmdcompose,
