@@ -1015,6 +1015,8 @@ class RedditExporter(BaseExporter):
 
 
 class TelegramExporter(BaseExporter):
+    re_asterisk = re.compile("[\\w\\*]*\\*[\\w\\*]*")
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.chgksuite_dir = get_chgksuite_dir()
@@ -1060,6 +1062,22 @@ class TelegramExporter(BaseExporter):
                     res.append(res_)
                 return "\n".join(res), images
 
+    @classmethod
+    def escape_asterisks(cls, src):
+        to_search = src
+        result = []
+        srch = cls.re_asterisk.search(to_search)
+        while srch:
+            span = srch.span()
+            replacement = "```" + srch.group(0) + "```"
+            chunk = to_search[: span[0]] + replacement
+            result.append(chunk)
+            to_search = to_search[span[1] :]
+            srch = cls.re_asterisk.search(to_search)
+        result.append(to_search)
+        result = "".join(result)
+        return result
+
     def tgformat(self, s):
         res = ""
         image = None
@@ -1085,8 +1103,8 @@ class TelegramExporter(BaseExporter):
                         raise Exception(f"image {run[1]} doesn't exist")
         while res.endswith("\n"):
             res = res[:-1]
-        for match in re.finditer("[^\\s]*\\*+[^\\s]*", res):
-            res = res.replace(match.group(0), "`" + match.group(0) + "`")
+        if "```" not in res and "*" in res:
+            res = self.escape_asterisks(res)
         return res, image
 
     def tg_element_layout(self, e):
@@ -1107,8 +1125,6 @@ class TelegramExporter(BaseExporter):
         return res, images
 
     def _post(self, chat_id, text, photo):
-        if text:
-            text = text.replace("*", "\\*")
         if photo:
             if not text:
                 caption = ""
