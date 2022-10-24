@@ -32,7 +32,7 @@ from collections import defaultdict
 import json
 import shlex
 
-LANGS = ["ru", "ua", "by", "en", "uz", "custom"]
+LANGS = ["ru", "ua", "by", "en", "uz_cyr", "custom"]
 
 try:
     basestring
@@ -891,21 +891,20 @@ def app():
     if isinstance(sourcedir, bytes):
         sourcedir = sourcedir.decode("utf8")
     ld = get_lastdir()
-    parser = argparse.ArgumentParser(prog="chgksuite".format(__version__))
+    parser = argparse.ArgumentParser(prog=f"chgksuite {__version__}")
     use_wrapper = len(sys.argv) == 1 and TKINTER
     if use_wrapper:
         parser = ParserWrapper(parser, lastdir=ld)
     ArgparseBuilder(parser, use_wrapper).build()
     args = DefaultNamespace(parser.parse_args())
 
-    if not args.labels_file:
-        args.labels_file = os.path.join(resourcedir, "labels_ru.toml")
     if not args.regexes:
         args.regexes = os.path.join(resourcedir, "regexes.json")
-    if args.language in LANGS and args.action == "parse":
-        args.regexes = os.path.join(resourcedir, f"regexes_{args.language}.json")
-    elif args.language in LANGS and args.action == "compose":
-        args.labels_file = os.path.join(resourcedir, f"labels_{args.language}.toml")
+    if args.language in LANGS:
+        if args.action == "parse":
+            args.regexes = os.path.join(resourcedir, f"regexes_{args.language}.json")
+        elif args.action == "compose":
+            args.labels_file = os.path.join(resourcedir, f"labels_{args.language}.toml")
     if not args.docx_template:
         args.docx_template = os.path.join(resourcedir, "template.docx")
     if not args.pptx_config:
