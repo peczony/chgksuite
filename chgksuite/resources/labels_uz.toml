@@ -1,0 +1,24 @@
+[question_labels]
+question = "Savol"
+answer = "Javob"
+zachet = "Qabul"
+nezachet = "Qabul emas"
+comment = "Izoh"
+source = "Manba"
+sources = "Manbalar"
+author = "Muallif"
+authors = "Mualliflar"
+handout = "Tarqatma material"
+handout_short = "Tarqat"
+
+[general]
+section = "Tur"
+editor = "Muharrir"
+date = "Sana"
+questions_in_comments = "Savollar izohlarda."
+handout_for_question = "{} savolga tarqatma material."
+general_impressions_caption = "Umumiy taasurotlar"
+general_impressions_text = "To‘plamdan umumiy taasurotlar — ushbu postning izohlarida."
+right_answers_for_stats = "To‘g‘ri javoblar foizi"
+
+
