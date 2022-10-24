@@ -1135,7 +1135,7 @@ class TelegramExporter(BaseExporter):
             res = "\n".join(result)
         return res, images
 
-    def _post(self, chat_id, text, photo):
+    def _post(self, chat_id, text, photo, reply_to_message_id=None):
         if photo:
             if not text:
                 caption = ""
@@ -1148,6 +1148,7 @@ class TelegramExporter(BaseExporter):
                 photo,
                 caption=caption,
                 parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
+                reply_to_message_id=reply_to_message_id
             )
             if text:
                 time.sleep(2)
@@ -1157,6 +1158,7 @@ class TelegramExporter(BaseExporter):
                     text=text,
                     parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
                     disable_web_page_preview=True,
+                    reply_to_message_id=reply_to_message_id
                 )
         else:
             msg = self.app.send_message(
@@ -1164,6 +1166,7 @@ class TelegramExporter(BaseExporter):
                 text,
                 parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
                 disable_web_page_preview=True,
+                reply_to_message_id=reply_to_message_id
             )
         return msg
 
@@ -1193,7 +1196,7 @@ class TelegramExporter(BaseExporter):
         text, im = posts[0]
         root_msg = self.__post(
             self.channel_id,
-            f"{self.labels['general']['handout_for_question']} {text[3:]}"
+            self.labels['general']['handout_for_question'].format(text[3:])
             if text.startswith("QQQ")
             else text,
             im,
@@ -1215,7 +1218,7 @@ class TelegramExporter(BaseExporter):
         messages.append(root_msg_in_chat)
         for post in posts[1:]:
             text, im = post
-            reply_msg = self.__post(self.chat_id, text, im)
+            reply_msg = self.__post(self.chat_id, text, im, reply_to_message_id=root_msg_in_chat.id)
             logger.info(
                 f"Replied to message {root_msg_in_chat.link} with {reply_msg.link}"
             )
