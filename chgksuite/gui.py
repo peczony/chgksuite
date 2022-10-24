@@ -891,7 +891,7 @@ def app():
     if isinstance(sourcedir, bytes):
         sourcedir = sourcedir.decode("utf8")
     ld = get_lastdir()
-    parser = argparse.ArgumentParser(prog=f"chgksuite {__version__}")
+    parser = argparse.ArgumentParser(prog="chgksuite")
     use_wrapper = len(sys.argv) == 1 and TKINTER
     if use_wrapper:
         parser = ParserWrapper(parser, lastdir=ld)
