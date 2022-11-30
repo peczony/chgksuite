@@ -711,7 +711,7 @@ class BaseExporter:
                 "question_labels"
             ][field]
             num = question.get("number") or number
-            if self.args.language == "uz":
+            if self.args.language in ("uz", "uz_cyr"):
                 return f"{num} – {lbl}"
             else:
                 return f"{lbl} {num}"
