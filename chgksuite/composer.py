@@ -1899,6 +1899,9 @@ class PptxExporter(BaseExporter):
         with open(self.config_path, encoding="utf8") as f:
             self.c = toml.load(f)
         self.qcount = 0
+        hs = self.labels["question_labels"]["handout"]
+        self.re_handout_1 = re.compile("\\[" + hs + ".(?P<body>.+?)\\]", flags=re.DOTALL)
+        self.re_handout_2 = re.compile("^" + hs + ".(?P<body>.+?)$")
 
     def get_textbox_qnumber(self, slide):
         kwargs = {}
@@ -2075,6 +2078,23 @@ class PptxExporter(BaseExporter):
         if self.c["number_textbox"].get("color"):
             qtf_r.font.color.rgb = RGBColor(*self.c["number_textbox"]["color"])
 
+    def _get_handout_from_4s(self, text):
+        if isinstance(text, list):
+            for el in text:
+                handout = self._get_handout_from_4s(el)
+                if handout:
+                    return handout
+        elif isinstance(text, str):
+            match_ = self.re_handout_1.search(text)
+            if match_:
+                return match_.group("body")
+            else:
+                lines = text.split("\n")
+                for line in lines:
+                    match_ = self.re_handout_2.search(line)
+                    if match_:
+                        return match_.group("body")
+
     def _get_image_from_4s(self, text):
         if isinstance(text, list):
             for el in text:
@@ -2195,10 +2215,24 @@ class PptxExporter(BaseExporter):
         if isinstance(s, list):
             return "\n".join(self.recursive_join(x) for x in s)
 
+    def add_slide_with_handout(self, handout, number=None):
+        slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+        textbox = self.get_textbox(slide)
+        tf = textbox.text_frame
+        tf.word_wrap = True
+        if number is not None:
+            self.set_question_number(slide, number)
+        p = self.init_paragraph(tf, text=handout)
+        r = p.add_run()
+        r.text = self.pptx_process_text(handout)
+
     def process_question_text(self, q):
         image = self._get_image_from_4s(q["question"])
+        handout = self._get_handout_from_4s(q["question"])
         if image:
             self.add_slide_with_image(image, number=self.number)
+        elif handout:
+            self.add_slide_with_handout(handout, number=self.number)
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         text_is_duplicated = bool(self.c.get("text_is_duplicated"))
         self.put_question_on_slide(
