@@ -1157,8 +1157,7 @@ class TelegramExporter(BaseExporter):
                     msg.id,
                     text=text,
                     parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
-                    disable_web_page_preview=True,
-                    reply_to_message_id=reply_to_message_id
+                    disable_web_page_preview=True
                 )
         else:
             msg = self.app.send_message(
