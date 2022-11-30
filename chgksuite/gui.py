@@ -32,7 +32,7 @@ from collections import defaultdict
 import json
 import shlex
 
-LANGS = ["ru", "ua", "by", "en", "uz_cyr", "custom"]
+LANGS = ["ru", "ua", "by", "en", "uz", "uz_cyr", "custom"]
 
 try:
     basestring
