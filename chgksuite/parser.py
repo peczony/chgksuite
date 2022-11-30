@@ -108,7 +108,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
 
     if not regexes:
         _, resourcedir = get_source_dirs()
-        regexes_file = os.path.join(resourcedir, "regexes.json")
+        regexes_file = os.path.join(resourcedir, "regexes_ru.json")
         regexes = load_regexes(regexes_file)
     elif isinstance(regexes, str):
         regexes = load_regexes(regexes)

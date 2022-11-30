@@ -396,7 +396,7 @@ class ArgparseBuilder:
             cmdparse,
             "--regexes",
             default=None,
-            help="A file containing regexes " "(the default is regexes.json).",
+            help="A file containing regexes " "(the default is regexes_ru.json).",
             advanced=True,
             caption="Файл с регулярными выражениями",
             argtype="filename",
@@ -898,8 +898,6 @@ def app():
     ArgparseBuilder(parser, use_wrapper).build()
     args = DefaultNamespace(parser.parse_args())
 
-    if not args.regexes:
-        args.regexes = os.path.join(resourcedir, "regexes.json")
     if args.language in LANGS:
         if args.action == "parse":
             args.regexes = os.path.join(resourcedir, f"regexes_{args.language}.json")

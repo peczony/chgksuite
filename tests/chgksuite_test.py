@@ -25,12 +25,15 @@ from chgksuite.parser import (
     compose_4s,
 )
 from chgksuite.composer import parse_4s
+from chgksuite.common import get_source_dirs
 
 class DefaultArgs(object):
     links = "unwrap"
     fix_spans = False
     numbers_handling = "default"
     parsing_engine = "mammoth"
+    language = "ru"
+    regexes = os.path.join(get_source_dirs()[1], "regexes_ru.json")
 
     def __getattr__(self, attribute):
         try:
