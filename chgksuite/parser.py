@@ -658,8 +658,6 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
             for tag in bsoup.find_all(h):
                 ensure_line_breaks(tag)
         for tag in bsoup.find_all("li"):
-            if tag.string:
-                tag.string = "- " + tag.string
             ensure_line_breaks(tag)
         for tag in bsoup.find_all("table"):
             table = dashtable.html2md(str(tag))
