@@ -3,10 +3,9 @@ from setuptools import setup
 
 def get_version():
     version = {}
-    with open("chgksuite/version.py") as f:
+    with open("chgksuite/version.py", encoding="utf8") as f:
         exec(f.read(), version)
     return version["__version__"]
-
 
 long_description = """**chgksuite** is an utility that helps chgk editors.
 
@@ -14,7 +13,7 @@ long_description = """**chgksuite** is an utility that helps chgk editors.
 
 Project home on gitlab: https://gitlab.com/peczony/chgksuite
 
-Documentation (in Russian): https://peczony.gitbook.io/chgksuite
+Documentation (in Russian): https://peczony.gitlab.io/chgksuite
 """
 
 
