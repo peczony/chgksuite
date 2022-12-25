@@ -229,7 +229,7 @@ def gui_trello_download(args, sourcedir):
             card_title = "Тема {}. {}".format(_list_counters[list_id], card["name"])
             clear_card_title = card["name"]
 
-        id_ = "singlefile" if args.singlefile else list_name
+        id_ = list_name
 
         if args.si:
             doc_ = _docs[id_]
@@ -298,12 +298,22 @@ def gui_trello_download(args, sourcedir):
             p = qb_doc.add_paragraph()
         qb_doc.save("quizbowl.docx")
 
-    for _list in _lists:
-        filename = "{}.4s".format(_list)
+    if args.singlefile:
+        result = []
+        for _list in open_lists:
+            result.extend(_lists[_list["name"]])
+        filename = "singlefile.4s"
         print("outputting {}".format(filename))
         with codecs.open(filename, "w", "utf8") as f:
-            for item in _lists[_list]:
+            for item in result:
                 f.write("\n" + item + "\n")
+    else:
+        for _list in _lists:
+            filename = "{}.4s".format(_list)
+            print("outputting {}".format(filename))
+            with codecs.open(filename, "w", "utf8") as f:
+                for item in _lists[_list]:
+                    f.write("\n" + item + "\n")
 
 
 def get_board_id(path=None):
