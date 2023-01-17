@@ -33,6 +33,11 @@ class DefaultArgs(object):
     numbers_handling = "default"
     parsing_engine = "mammoth"
     language = "ru"
+    typography_accents = "on"
+    typography_dashes = "on"
+    typography_quotes = "on"
+    typography_whitespace = "on"
+    typography_percent = "on"
     regexes = os.path.join(get_source_dirs()[1], "regexes_ru.json")
 
     def __getattr__(self, attribute):

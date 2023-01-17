@@ -1825,7 +1825,7 @@ class DocxExporter(BaseExporter):
         ).bold = True
 
         if "handout" in q:
-            p.add_run("\n[{handout}: ".format(self.get_label(q, "handout")))
+            p.add_run("\n[{handout}: ".format(handout=self.get_label(q, "handout")))
             self._docx_format(q["handout"], p, WHITEN["handout"])
             p.add_run("\n]")
         if not args.noparagraph:
@@ -1861,20 +1861,26 @@ class DocxExporter(BaseExporter):
 
         firsttour = True
         prev_element = None
+        para = None
+        page_break_before_heading = False
         for element in self.structure:
             if element[0] == "meta":
-                p = self.doc.add_paragraph()
+                para = self.doc.add_paragraph()
                 if prev_element and prev_element[0] == "Question":
-                    p.paragraph_format.space_before = DocxPt(18)
-                self._docx_format(element[1], p, False)
+                    para.paragraph_format.space_before = DocxPt(18)
+                self._docx_format(element[1], para, False)
                 self.doc.add_paragraph()
 
             if element[0] in ["editor", "date", "heading", "section"]:
+                if element[0] == "heading" and para is not None:
+                    page_break_before_heading = True
                 if para is None:
                     para = self.doc.paragraphs[0]
                     para.add_run(element[1])
                 else:
                     para = self.doc.add_paragraph(element[1])
+                if element[0] == "heading" and page_break_before_heading:
+                    para.paragraph_format.page_break_before = True
                 if element[0] == "section":
                     if not firsttour:
                         para.paragraph_format.page_break_before = True

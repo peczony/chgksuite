@@ -461,6 +461,51 @@ class ArgparseBuilder:
             advanced=True,
             caption="Стратегия обработки номеров вопросов",
         )
+        self.add_argument(
+            cmdparse,
+            "--typography_quotes",
+            default="on",
+            choices=["on", "off"],
+            help="typography: try to fix quotes.",
+            advanced=True,
+            caption="Типография: кавычки",
+        )
+        self.add_argument(
+            cmdparse,
+            "--typography_dashes",
+            default="on",
+            choices=["on", "off"],
+            help="typography: try to fix dashes.",
+            advanced=True,
+            caption="Типография: тире",
+        )
+        self.add_argument(
+            cmdparse,
+            "--typography_whitespace",
+            default="on",
+            choices=["on", "off"],
+            help="typography: try to fix whitespace.",
+            advanced=True,
+            caption="Типография: whitespace",
+        )
+        self.add_argument(
+            cmdparse,
+            "--typography_accents",
+            default="on",
+            choices=["on", "off"],
+            help="typography: try to fix accents.",
+            advanced=True,
+            caption="Типография: ударения",
+        )
+        self.add_argument(
+            cmdparse,
+            "--typography_percent",
+            default="on",
+            choices=["on", "off"],
+            help="typography: try to fix percent encoding.",
+            advanced=True,
+            caption="Типография: %-энкодинг ссылок",
+        )
 
         cmdcompose = subparsers.add_parser("compose")
         self.add_argument(

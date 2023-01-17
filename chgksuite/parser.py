@@ -77,7 +77,7 @@ def load_regexes(regexfile):
     return {k: re.compile(v) for k, v in regexes.items()}
 
 
-def chgk_parse(text, defaultauthor=None, regexes=None):
+def chgk_parse(text, defaultauthor=None, regexes=None, args=None):
     """
     Parsing rationale: every Question has two required fields: 'question' and
     the immediately following 'answer'. All the rest are optional, as is
@@ -398,7 +398,14 @@ def chgk_parse(text, defaultauthor=None, regexes=None):
         # typogrify
 
         if element[0] != "date":
-            element[1] = typotools.recursive_typography(element[1])
+            element[1] = typotools.recursive_typography(
+                element[1],
+                accents=args.typography_accents == "on",
+                dashes=args.typography_dashes == "on",
+                quotes=args.typography_quotes == "on",
+                wsp=args.typography_whitespace == "on",
+                percent=args.typography_percent == "on",
+            )
 
     if debug:
         with codecs.open("debug_5.json", "w", "utf8") as f:
@@ -549,7 +556,7 @@ class UnknownEncodingException(Exception):
     pass
 
 
-def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", regexes=None):
+def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", regexes=None, args=None):
     raw = open(txtfile, "rb").read()
     if not encoding:
         if chardet.detect(raw)["confidence"] > 0.7:
@@ -563,7 +570,7 @@ def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", regexes=None):
     text = raw.decode(encoding)
     if text[0:10] == "Чемпионат:":
         return chgk_parse_db(text.replace("\r", ""), debug=debug)
-    return chgk_parse(text, defaultauthor=defaultauthor, regexes=regexes)
+    return chgk_parse(text, defaultauthor=defaultauthor, regexes=regexes, args=args)
 
 
 def generate_imgname(target_dir, ext, prefix=""):
@@ -730,7 +737,7 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
         with codecs.open(os.path.join(target_dir, "debug.debug"), "w", "utf8") as dbg:
             dbg.write(txt)
 
-    final_structure = chgk_parse(txt, defaultauthor=defaultauthor, regexes=regexes)
+    final_structure = chgk_parse(txt, defaultauthor=defaultauthor, regexes=regexes, args=args)
     return final_structure
 
 
@@ -746,6 +753,7 @@ def chgk_parse_wrapper(path, args, regexes=None):
             defaultauthor=defaultauthor,
             encoding=args.encoding,
             regexes=regexes,
+            args=args
         )
     elif os.path.splitext(abspath)[1] == ".docx":
         final_structure = chgk_parse_docx(

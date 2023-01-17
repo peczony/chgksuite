@@ -122,8 +122,7 @@ def get_quotes_right(s_in):
 
 def get_dashes_right(s):
     s = re.sub(r'(?<=\s)-+(?=\s)', '—', s)
-    # s = re.sub(r'(?<=\d)-(?<=\d)','–',s)
-    # s = re.sub(r'-(?=\d)','−',s)
+    s = s.replace(" – ", " — ")
     return s
 
 
@@ -186,14 +185,14 @@ def percent_decode(s):
     return s
 
 
-def recursive_typography(s):
+def recursive_typography(s, **kwargs):
     if isinstance(s, basestring):
         s = typography(s)
         return s
     elif isinstance(s, list):
         new_s = []
         for element in s:
-            new_s.append(recursive_typography(element))
+            new_s.append(recursive_typography(element, **kwargs))
         return new_s
 
 
