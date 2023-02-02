@@ -872,6 +872,15 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdtrello_download,
+            "--fix_trello_new_editor",
+            "-ftne",
+            action="store_true",
+            help="This flag fixes mess caused by Trello's new editor "
+                "(introduced in early 2023).",
+            caption="Пофиксить новый редактор Трелло",
+        )
+        self.add_argument(
+            cmdtrello_download,
             "--onlyanswers",
             action="store_true",
             help="This flag forces SI download to only include answers.",

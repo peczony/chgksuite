@@ -119,6 +119,18 @@ def noanswers_line_check(line):
     )
 
 
+RE_LINK = re.compile("\\[(.+?)\\]\\((.+?)\\)")
+
+
+def fix_trello_new_editor_links(desc):
+    srch = RE_LINK.search(desc)
+    while srch:
+        actual_link = srch.group(2).split()[0]
+        desc = desc.replace(srch.group(0), actual_link)
+        srch = RE_LINK.search(desc)
+    return desc
+
+
 def process_desc(s, onlyanswers=False, noanswers=False):
     s = s.strip()
     s = s.replace(r"\`", "`")
@@ -211,8 +223,10 @@ def gui_trello_download(args, sourcedir):
         qb_doc = Document(template_path)
 
     for card in json_["cards"]:
-        if args.replace_double_line_breaks:
+        if args.replace_double_line_breaks or args.fix_trello_new_editor:
             card["desc"] = card["desc"].replace("\n\n", "\n")
+        if args.fix_trello_new_editor:
+            card["desc"] = fix_trello_new_editor_links(card["desc"])
         list_id = card["idList"]
         list_name = _names[list_id]
         if card.get("closed") or list_name is None:
@@ -243,7 +257,9 @@ def gui_trello_download(args, sourcedir):
                 if card_title.startswith("#"):
                     title_re = r"(#+)\s*(.*)"
                     m = re.search(title_re, card_title)
-                    doc_.add_paragraph(m[2], style=get_style(doc_, f"Heading {len(m[1])}"))
+                    doc_.add_paragraph(
+                        m[2], style=get_style(doc_, f"Heading {len(m[1])}")
+                    )
                     add_themes_list(group_)
                     group_["paragraph"] = doc_.add_paragraph()
                     group_["themes"] = []
