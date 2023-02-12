@@ -1040,6 +1040,7 @@ class TelegramExporter(BaseExporter):
             logger.debug(self.app.get_me())
         self.qcount = 1
         self.number = 1
+        self.tg_heading = None
 
     def get_api_credentials(self):
         pyrogram_toml_file_path = os.path.join(self.chgksuite_dir, "pyrogram.toml")
@@ -1256,6 +1257,8 @@ class TelegramExporter(BaseExporter):
             return
         elif pair[0] == "heading":
             text, images = self.tg_element_layout(pair[1])
+            if not self.tg_heading:
+                self.tg_heading = text
             self.buffer_texts.append(f"**{text}**")
             self.buffer_images.extend(images)
         elif pair[0] == "section":
@@ -1496,6 +1499,8 @@ class TelegramExporter(BaseExporter):
                 self.buffer_images = []
             if not self.args.skip_until:
                 navigation_text = [self.labels["general"]["general_impressions_text"]]
+                if self.tg_heading:
+                    navigation_text = [f"**{self.tg_heading}**", ""] + navigation_text
                 for i, link in enumerate(self.section_links):
                     navigation_text.append(
                         f"{self.labels['general']['section']} {i + 1}: {link}"
