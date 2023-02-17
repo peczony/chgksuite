@@ -1024,8 +1024,6 @@ class RedditExporter(BaseExporter):
 
 
 class TelegramExporter(BaseExporter):
-    re_asterisk = re.compile("[\\w\\*]*\\*[\\w\\*]*")
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.chgksuite_dir = get_chgksuite_dir()
@@ -1074,22 +1072,6 @@ class TelegramExporter(BaseExporter):
                     res.append(res_)
                 return "\n".join(res), images
 
-    @classmethod
-    def escape_asterisks(cls, src):
-        to_search = src
-        result = []
-        srch = cls.re_asterisk.search(to_search)
-        while srch:
-            span = srch.span()
-            replacement = "`" + srch.group(0) + "`"
-            chunk = to_search[: span[0]] + replacement
-            result.append(chunk)
-            to_search = to_search[span[1] :]
-            srch = cls.re_asterisk.search(to_search)
-        result.append(to_search)
-        result = "".join(result)
-        return result
-
     def tgformat(self, s):
         res = ""
         image = None
@@ -1115,9 +1097,8 @@ class TelegramExporter(BaseExporter):
                         raise Exception(f"image {run[1]} doesn't exist")
         while res.endswith("\n"):
             res = res[:-1]
-        if "```" not in res and "*" in res:
-            res = self.escape_asterisks(res)
-        print("debug print:", res)
+        if "*" in res and not self.args.disable_asterisks_processing:
+            res = res.replace("*", "&#42;")
         return res, image
 
     def tg_element_layout(self, e):
@@ -1150,7 +1131,7 @@ class TelegramExporter(BaseExporter):
                 photo,
                 caption=caption,
                 parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
-                reply_to_message_id=reply_to_message_id
+                reply_to_message_id=reply_to_message_id,
             )
             if text:
                 time.sleep(2)
@@ -1159,7 +1140,7 @@ class TelegramExporter(BaseExporter):
                     msg.id,
                     text=text,
                     parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
-                    disable_web_page_preview=True
+                    disable_web_page_preview=True,
                 )
         else:
             msg = self.app.send_message(
@@ -1167,7 +1148,7 @@ class TelegramExporter(BaseExporter):
                 text,
                 parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
                 disable_web_page_preview=True,
-                reply_to_message_id=reply_to_message_id
+                reply_to_message_id=reply_to_message_id,
             )
         return msg
 
@@ -1197,7 +1178,7 @@ class TelegramExporter(BaseExporter):
         text, im = posts[0]
         root_msg = self.__post(
             self.channel_id,
-            self.labels['general']['handout_for_question'].format(text[3:])
+            self.labels["general"]["handout_for_question"].format(text[3:])
             if text.startswith("QQQ")
             else text,
             im,
@@ -1219,7 +1200,9 @@ class TelegramExporter(BaseExporter):
         messages.append(root_msg_in_chat)
         for post in posts[1:]:
             text, im = post
-            reply_msg = self.__post(self.chat_id, text, im, reply_to_message_id=root_msg_in_chat.id)
+            reply_msg = self.__post(
+                self.chat_id, text, im, reply_to_message_id=root_msg_in_chat.id
+            )
             logger.info(
                 f"Replied to message {root_msg_in_chat.link} with {reply_msg.link}"
             )
@@ -1826,7 +1809,11 @@ class DocxExporter(BaseExporter):
             self.qcount = int(q["setcounter"])
         p.add_run(
             "{question}. ".format(
-                question=self.get_label(q, "question", number=self.qcount if "number" not in q else q["number"])
+                question=self.get_label(
+                    q,
+                    "question",
+                    number=self.qcount if "number" not in q else q["number"],
+                )
             )
         ).bold = True
 
@@ -1912,7 +1899,9 @@ class PptxExporter(BaseExporter):
             self.c = toml.load(f)
         self.qcount = 0
         hs = self.labels["question_labels"]["handout"]
-        self.re_handout_1 = re.compile("\\[" + hs + ".(?P<body>.+?)\\]", flags=re.DOTALL)
+        self.re_handout_1 = re.compile(
+            "\\[" + hs + ".(?P<body>.+?)\\]", flags=re.DOTALL
+        )
         self.re_handout_2 = re.compile("^" + hs + ".(?P<body>.+?)$")
 
     def get_textbox_qnumber(self, slide):
