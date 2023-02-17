@@ -808,6 +808,13 @@ class ArgparseBuilder:
             help="skip questions until N.",
             caption="Пропустить вопросы до N-го",
         )
+        self.add_argument(
+            cmdcompose_telegram,
+            "--disable_asterisks_processing",
+            type=int,
+            help="disable asterisks processing.",
+            caption="Не обрабатывать звёздочки",
+        )
         cmdcompose_add_stats = cmdcompose_filetype.add_parser("add_stats")
         self.add_argument(
             cmdcompose_add_stats,

@@ -1081,7 +1081,7 @@ class TelegramExporter(BaseExporter):
         srch = cls.re_asterisk.search(to_search)
         while srch:
             span = srch.span()
-            replacement = "```" + srch.group(0) + "```"
+            replacement = "`" + srch.group(0) + "`"
             chunk = to_search[: span[0]] + replacement
             result.append(chunk)
             to_search = to_search[span[1] :]
@@ -1117,6 +1117,7 @@ class TelegramExporter(BaseExporter):
             res = res[:-1]
         if "```" not in res and "*" in res:
             res = self.escape_asterisks(res)
+        print("debug print:", res)
         return res, image
 
     def tg_element_layout(self, e):
