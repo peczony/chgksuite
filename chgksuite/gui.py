@@ -755,6 +755,14 @@ class ArgparseBuilder:
             caption="Файл конфигурации",
             argtype="filename",
         )
+        self.add_argument(
+            cmdcompose_pptx,
+            "--do_dot_remove_accents",
+            help="do not remove accents.",
+            advanced=True,
+            caption="Не убирать знаки ударения",
+            action="store_true",
+        )
         cmdcompose_telegram = cmdcompose_filetype.add_parser("telegram")
         self.add_argument(
             cmdcompose_telegram,

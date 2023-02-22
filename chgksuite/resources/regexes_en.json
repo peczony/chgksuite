@@ -1,6 +1,6 @@
 {
-    "tour": "^(# +)?B[Ll][Oo][Cc][Kk] ?№? ?([0-9IVXLCDM]*)([\\.:])?$",
-    "tourrev": "^([0-9IVXLCDM]+) [Bb][Ll][Oo][Cc][Kk]([\\.:])?$",
+    "tour": "^(# +)?(B[Ll][Oo][Cc][Kk]|R[Oo][Uu][Nn][Dd]) ?№? ?([0-9IVXLCDM]*)([\\.:])?$",
+    "tourrev": "^([0-9IVXLCDM]+) (B[Ll][Oo][Cc][Kk]|R[Oo][Uu][Nn][Dd])([\\.:])?$",
     "question": "Q[Uu][Ee][Ss][Tt][Ii][Oo][Nn] ?[№N]?([0-9 ]*) ?([\\.:]|\n|\r\n|$)",
     "answer": "A[Nn][Ss][Ww][Ee][Rr] ?[№N]?([0-9]+)? ?[\\.:]",
     "zachet": "A[Cc][Ee][Pp][Tt] ?[\\.:]",
@@ -8,7 +8,7 @@
     "comment": "C[Oo][Mm][Mm]?([Ee][Nn][Tt])? ?[№N]?([0-9]+)? ?[\\.:]",
     "author": "A[Uu][Tt][Hh][Oo][Rr][Ss]? ?[\\.:]",
     "source": "S[Oo][Uu][Rr][Cc][Ee][Ss]? ?[\\.:]",
-    "editor": "E[Dd][Ii][Tt][Oo][Rr][Ss]? ( ?[\\.:]| [\\-–—]+ )",
+    "editor": "E[Dd][Ii][Tt]([Oo][Rr][Ss]?|[Ee][Dd] [Bb][Yy]) ?( ?[\\.:]| [\\-–—]+ )",
     "date": "D[Aa][Tt][Ee] ?[\\.:]",
     "date2": "(^|\\s)Jan(uary)?|Feb(ruary)?|Mar(ch)?|Apr(il)?|May|June?|July?|Aug(ust)?|Sep(tember)?|Oct(ober)?|Nov(ember)?|Dec(ember)?(\\s|$)",
     "number": "^[0-9]+[\\.\\)] *"

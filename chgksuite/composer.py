@@ -1983,7 +1983,8 @@ class PptxExporter(BaseExporter):
             for i in range(len(s)):
                 s[i] = self.pptx_process_text(s[i], image=image)
             return s
-        s = s.replace("\u0301", "")
+        if not self.args.do_not_remove_accents:
+            s = s.replace("\u0301", "")
         if strip_brackets:
             s = self.remove_square_brackets(s)
         if image:
