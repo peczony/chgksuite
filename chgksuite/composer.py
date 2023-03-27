@@ -2359,7 +2359,7 @@ class StatsAdder(BaseExporter):
         elif isinstance(question["comment"], str):
             question["comment"] += "\n" + message
         elif isinstance(question["comment"], list):
-            if len(question["comment"] > 1):
+            if len(question["comment"]) > 1:
                 if isinstance(question["comment"][1], list):
                     question["comment"][1].append(message)
                 else:
