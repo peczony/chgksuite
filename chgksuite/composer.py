@@ -252,6 +252,11 @@ def parse_4s_elem(s):
             if typotools.find_matching_closing_bracket(s, i) is not None:
                 topart.append(typotools.find_matching_closing_bracket(s, i) + 1)
                 i = typotools.find_matching_closing_bracket(s, i)
+        if (
+            s[i : i + len("(PAGEBREAK)")] == "(PAGEBREAK)"
+        ):
+            topart.append(i)
+            topart.append(i + len("(PAGEBREAK)"))
         # if (s[i] == '(' and i + len('(sc') < len(s) and ''.join(s[i:
         #                     i+len('(sc')])=='(sc'):
         #     debug_print('sc candidate')
@@ -280,6 +285,9 @@ def parse_4s_elem(s):
                 part[0] = "em"
             if not part[1]:
                 continue
+            if part[1] == "(PAGEBREAK)":
+                part[0] = "pagebreak"
+                part[1] = ""
             if len(part[1]) > 4 and part[1][:4] == "(img":
                 if part[1][-1] != ")":
                     part[1] = part[1] + ")"
@@ -1763,6 +1771,8 @@ class DocxExporter(BaseExporter):
             el = backtick_replace(el)
 
             for run in parse_4s_elem(el):
+                if run[0] == "pagebreak":
+                    para = self.doc.add_page_break()
                 if run[0] == "img":
                     if run[1].endswith(".shtml"):
                         r = para.add_run(
