@@ -314,7 +314,7 @@ def process_list(element):
     sp = element[1].split("\n")
     sp = [rew(x) for x in sp]
     list_markers = [i for i in range(len(sp)) if sp[i].startswith("-")]
-    if not list_markers or len(list_markers) == 1:
+    if not list_markers:
         return
     preamble = "\n".join(sp[: list_markers[0]])
     inner_list = []
@@ -323,7 +323,9 @@ def process_list(element):
             inner_list.append(rew("\n".join(sp[index:])[1:]))
         else:
             inner_list.append(rew("\n".join(sp[index : list_markers[num + 1]])[1:]))
-    if preamble:
+    if len(inner_list) == 1:
+        element[1] = rew(re.sub("(^|\n)- +", "\\1", element[1]))
+    elif preamble:
         element[1] = [preamble, inner_list]
     else:
         element[1] = inner_list
