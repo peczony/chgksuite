@@ -40,13 +40,11 @@ from chgksuite.common import (
     get_lastdir,
     get_chgksuite_dir,
     set_lastdir,
-    on_close,
     DummyLogger,
     log_wrap,
     QUESTION_LABELS,
     check_question,
     retry_wrapper_factory,
-    bring_to_front,
     compose_4s,
     tryint,
 )
@@ -164,7 +162,6 @@ def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
     width = -1
     height = -1
     sp = shlex.split(s)
-    cwd = os.getcwd()
     imgfile = sp[-1]
     imgfile = search_for_imgfile(imgfile, tmp_dir, targetdir)
     size = imgsize(imgfile)
@@ -952,8 +949,6 @@ class RedditExporter(BaseExporter):
             tmp_dir=self.dir_kwargs.get("tmp_dir"),
         )
         imgfile = parsed_image["imgfile"]
-        w = parsed_image["width"]
-        h = parsed_image["height"]
         if os.path.isfile(imgfile):
             uploaded_image = self.im.upload_image(imgfile, title=imgfile)
             imglink = uploaded_image["data"]["link"]
