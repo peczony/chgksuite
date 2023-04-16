@@ -378,6 +378,14 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdparse,
+            "--labels_file",
+            help="i18n config",
+            caption="Конфиг для интернационализации",
+            advanced=True,
+            argtype="filename",
+        )
+        self.add_argument(
+            cmdparse,
             "--defaultauthor",
             action="store_true",
             help="pick default author from filename " "where author is missing.",
@@ -506,6 +514,15 @@ class ArgparseBuilder:
             advanced=True,
             caption="Типография: %-энкодинг ссылок",
         )
+        self.add_argument(
+            cmdparse,
+            "--single_number_line_handling",
+            default="smart",
+            choices=["smart", "on", "off"],
+            help="handling cases where a line consists of a single number.",
+            advanced=True,
+            caption="Обработка строчек, состоящих из одного числа",
+        )
 
         cmdcompose = subparsers.add_parser("compose")
         self.add_argument(
@@ -527,19 +544,19 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose,
-            "--nots",
-            action="store_true",
-            help="don't append timestamp to filenames",
-            caption="Не добавлять временную отметку в имя файла",
-            advanced=True,
-        )
-        self.add_argument(
-            cmdcompose,
             "--labels_file",
             help="i18n config",
             caption="Конфиг для интернационализации",
             advanced=True,
             argtype="filename",
+        )
+        self.add_argument(
+            cmdcompose,
+            "--nots",
+            action="store_true",
+            help="don't append timestamp to filenames",
+            caption="Не добавлять временную отметку в имя файла",
+            advanced=True,
         )
         self.add_argument(
             cmdcompose,
@@ -970,8 +987,7 @@ def app():
     if args.language in LANGS:
         if args.action == "parse":
             args.regexes = os.path.join(resourcedir, f"regexes_{args.language}.json")
-        elif args.action == "compose":
-            args.labels_file = os.path.join(resourcedir, f"labels_{args.language}.toml")
+        args.labels_file = os.path.join(resourcedir, f"labels_{args.language}.toml")
     if not args.docx_template:
         args.docx_template = os.path.join(resourcedir, "template.docx")
     if not args.pptx_config:

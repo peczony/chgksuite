@@ -18,6 +18,7 @@ import chardet
 import mammoth
 import pypandoc
 import dashtable
+import toml
 import bs4
 from bs4 import BeautifulSoup
 from parse import parse
@@ -78,6 +79,7 @@ def load_regexes(regexfile):
 
 class ChgkParser:
     BADNEXTFIELDS = set(["question", "answer"])
+    RE_NUM = re.compile("^[0-9]+$")
 
     def __init__(self, defaultauthor=None, regexes=None, args=None):
         self.defaultauthor = defaultauthor
@@ -90,6 +92,15 @@ class ChgkParser:
         elif isinstance(regexes, dict):
             self.regexes = regexes
         self.args = args
+        with open(self.args.labels_file, encoding="utf8") as f:
+            self.labels = toml.load(f)
+        question_label = self.labels[
+            "question_labels"
+        ]["question"]
+        if self.args.language in ("uz", "uz_cyr"):
+            self.question_stub = f"{{}} – {question_label}."
+        else:
+            self.question_stub = f"{question_label} {{}}."
 
     def merge_to_previous(self, index):
         target = index - 1
@@ -234,6 +245,48 @@ class ChgkParser:
             if k not in question:
                 self._try_extract_field(question, k)
 
+    def get_single_number_lines(self):
+        result = []
+        for i, x in enumerate(self.structure):
+            if x[0] != "":
+                continue
+            txt = x[1].strip()
+            srch = self.RE_NUM.search(txt)
+            if srch:
+                num = int(srch.group(0))
+                result.append((i, x, num))
+        return result
+    
+    def patch_single_number_line(self, line):
+        index, _, num = line
+        self.structure[index] = ["question", self.question_stub.format(num)]
+
+    def process_single_number_lines(self):
+        if self.args.single_number_line_handling == "off":
+            return
+        if self.args.single_number_line_handling == "smart":
+            for el in self.structure:
+                if el[0] == "question":
+                    return
+            single_number_lines = self.get_single_number_lines()
+            frac = len(self.structure) / len(single_number_lines)
+            if not (
+                4.0 <= frac <= 13.0
+            ):
+                return
+            prev = None
+            for line in single_number_lines:
+                if not prev or (
+                    line[2] - prev[2] <= 3
+                    and line[0] - prev[0] > 1
+                ):
+                    self.patch_single_number_line(line)
+                    prev = line
+        elif self.args.single_number_line_handling == "on":
+            single_number_lines = self.get_single_number_lines()
+            for line in single_number_lines:
+                self.patch_single_number_line(line)
+
     def parse(self, text):
         """
         Parsing rationale: every Question has two required fields: 'question' and
@@ -284,6 +337,8 @@ class ChgkParser:
         if debug:
             with codecs.open("debug_1.json", "w", "utf8") as f:
                 f.write(json.dumps(self.structure, ensure_ascii=False, indent=4))
+
+        self.process_single_number_lines()
 
         # hack for https://gitlab.com/peczony/chgksuite/-/issues/23; TODO: make less hacky
         for i, element in enumerate(self.structure):

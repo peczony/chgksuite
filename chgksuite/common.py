@@ -59,6 +59,8 @@ class DefaultArgs:
     typography_whitespace = "on"
     typography_percent = "on"
     regexes = os.path.join(get_source_dirs()[1], "regexes_ru.json")
+    labels_file = os.path.join(get_source_dirs()[1], "labels_ru.toml")
+    single_number_line_handling = "smart"
 
     def __getattr__(self, attribute):
         try:
