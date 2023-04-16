@@ -12,43 +12,17 @@ import contextlib
 import subprocess
 import pytest
 
-currentdir = os.path.dirname(
-    os.path.abspath(inspect.getfile(inspect.currentframe()))
-)
-parentdir = os.path.dirname(currentdir)
-# sys.path.insert(0, parentdir)
-
 from chgksuite.parser import (
-    chgk_parse,
     chgk_parse_txt,
     chgk_parse_docx,
     compose_4s,
 )
-from chgksuite.composer import parse_4s
-from chgksuite.common import get_source_dirs
+from chgksuite.common import DefaultArgs
 
-class DefaultArgs(object):
-    links = "unwrap"
-    fix_spans = False
-    numbers_handling = "default"
-    parsing_engine = "mammoth"
-    language = "ru"
-    typography_accents = "on"
-    typography_dashes = "on"
-    typography_quotes = "on"
-    typography_whitespace = "on"
-    typography_percent = "on"
-    regexes = os.path.join(get_source_dirs()[1], "regexes_ru.json")
-
-    def __getattr__(self, attribute):
-        try:
-            return object.__getattr__(self, attribute)
-        except AttributeError:
-            return None
-
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+currentdir = os.path.dirname(
+    os.path.abspath(inspect.getfile(inspect.currentframe()))
+)
+parentdir = os.path.dirname(currentdir)
 
 
 ljlogin, ljpassword = (

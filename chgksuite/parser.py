@@ -52,7 +52,6 @@ EDITORS = {
     "darwin": "open -t",
 }
 TEXTEDITOR = EDITORS[sys.platform]
-regexes = {}
 
 
 logger = DummyLogger()
@@ -77,90 +76,70 @@ def load_regexes(regexfile):
     return {k: re.compile(v) for k, v in regexes.items()}
 
 
-def chgk_parse(text, defaultauthor=None, regexes=None, args=None):
-    """
-    Parsing rationale: every Question has two required fields: 'question' and
-    the immediately following 'answer'. All the rest are optional, as is
-    the order of these fields. On the other hand, everything
-    except the 'question' is obligatorily marked, while the 'question' is
-    optionally marked. But IF the question is not marked, 'meta' comments
-    between Questions will not be parsed as 'meta' but will be merged to
-    'question's.
-    Parsing is done by regexes in the following steps:
-
-    1. Identify all the fields you can, mark them with their respective
-        labels, mark all the others with ''
-    2. Merge fields inside Question with '' lines between them
-    3. Ensure every 'answer' has a 'question'
-    4. Mark all remaining '' fields as 'meta'
-    5. Prettify input
-    6. Pack Questions into dicts
-    7. Return the resulting structure
-
-    """
-
+class ChgkParser:
     BADNEXTFIELDS = set(["question", "answer"])
 
-    # WHITESPACE = set([' ', ' ', '\n', '\r'])
-    # PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
+    def __init__(self, defaultauthor=None, regexes=None, args=None):
+        self.defaultauthor = defaultauthor
+        if not regexes:
+            _, resourcedir = get_source_dirs()
+            regexes_file = os.path.join(resourcedir, "regexes_ru.json")
+            self.regexes = load_regexes(regexes_file)
+        elif isinstance(regexes, str):
+            self.regexes = load_regexes(regexes)
+        elif isinstance(regexes, dict):
+            self.regexes = regexes
+        self.args = args
 
-    structure = []
-
-    if not regexes:
-        _, resourcedir = get_source_dirs()
-        regexes_file = os.path.join(resourcedir, "regexes_ru.json")
-        regexes = load_regexes(regexes_file)
-    elif isinstance(regexes, str):
-        regexes = load_regexes(regexes)
-
-    def merge_to_previous(index):
+    def merge_to_previous(self, index):
         target = index - 1
-        if structure[target][1]:
-            structure[target][1] = structure[target][1] + SEP + structure.pop(index)[1]
+        if self.structure[target][1]:
+            self.structure[target][1] = self.structure[target][1] + SEP + self.structure.pop(index)[1]
         else:
-            structure[target][1] = structure.pop(index)[1]
+            self.structure[target][1] = self.structure.pop(index)[1]
 
-    def merge_to_next(index):
-        target = structure.pop(index)
-        structure[index][1] = target[1] + SEP + structure[index][1]
+    def merge_to_next(self, index):
+        target = self.structure.pop(index)
+        self.structure[index][1] = target[1] + SEP + self.structure[index][1]
 
-    def find_next_fieldname(index):
+    def find_next_fieldname(self, index):
         target = index + 1
-        if target < len(structure):
-            while target < len(structure) - 1 and structure[target][0] == "":
+        if target < len(self.structure):
+            while target < len(self.structure) - 1 and self.structure[target][0] == "":
                 target += 1
-            return structure[target][0]
+            return self.structure[target][0]
 
-    def merge_y_to_x(x, y):
+    def merge_y_to_x(self, x, y):
         i = 0
-        while i < len(structure):
-            if structure[i][0] == x:
-                while i + 1 < len(structure) and structure[i + 1][0] != y:
-                    merge_to_previous(i + 1)
+        while i < len(self.structure):
+            if self.structure[i][0] == x:
+                while i + 1 < len(self.structure) and self.structure[i + 1][0] != y:
+                    self.merge_to_previous(i + 1)
             i += 1
 
-    def merge_to_x_until_nextfield(x):
+    def merge_to_x_until_nextfield(self, x):
         i = 0
-        while i < len(structure):
-            if structure[i][0] == x:
+        while i < len(self.structure):
+            if self.structure[i][0] == x:
                 while (
-                    i + 1 < len(structure)
-                    and structure[i + 1][0] == ""
-                    and find_next_fieldname(i) not in BADNEXTFIELDS
+                    i + 1 < len(self.structure)
+                    and self.structure[i + 1][0] == ""
+                    and self.find_next_fieldname(i) not in self.BADNEXTFIELDS
                 ):
-                    merge_to_previous(i + 1)
+                    self.merge_to_previous(i + 1)
             i += 1
 
-    def dirty_merge_to_x_until_nextfield(x):
+    def dirty_merge_to_x_until_nextfield(self, x):
         i = 0
-        while i < len(structure):
-            if structure[i][0] == x:
-                while i + 1 < len(structure) and structure[i + 1][0] == "":
-                    merge_to_previous(i + 1)
+        while i < len(self.structure):
+            if self.structure[i][0] == x:
+                while i + 1 < len(self.structure) and self.structure[i + 1][0] == "":
+                    self.merge_to_previous(i + 1)
             i += 1
 
-    def apply_regexes(st):
+    def apply_regexes(self, st):
         i = 0
+        regexes = self.regexes
         while i < len(st):
             matching_regexes = {
                 (regex, regexes[regex].search(st[i][1]).start(0))
@@ -193,312 +172,25 @@ def chgk_parse(text, defaultauthor=None, regexes=None, args=None):
                 st[i][1] = st[i][1][: sorted_r[1][1]]
             i += 1
 
-    if defaultauthor:
-        logger.info(
-            "The default author is {}. "
-            "Missing authors will be substituted with them".format(
-                log_wrap(defaultauthor)
-            )
-        )
-
-    # 1.
-    sep = "\r\n" if "\r\n" in text else "\n"
-
-    fragments = [
-        [["", rew(xx)] for xx in x.split(sep) if xx] for x in text.split(sep + sep)
-    ]
-
-    for fragment in fragments:
-        apply_regexes(fragment)
-        elements = {x[0] for x in fragment}
-        if "answer" in elements and not fragment[0][0]:
-            fragment[0][0] = "question"
-    structure = list(itertools.chain(*fragments))
-    i = 0
-
-    if debug:
-        with codecs.open("debug_1.json", "w", "utf8") as f:
-            f.write(json.dumps(structure, ensure_ascii=False, indent=4))
-
-    # hack for https://gitlab.com/peczony/chgksuite/-/issues/23; TODO: make less hacky
-    for i, element in enumerate(structure):
-        if (
-            "дуплет." in element[1].lower().split()
-            or "блиц." in element[1].lower().split()
-            and element[0] != "question"
-            and (i == 0 or structure[i - 1][0] != "question")
-        ):
-            element[0] = "question"
-
-    if debug:
-        with codecs.open("debug_1a.json", "w", "utf8") as f:
-            f.write(json.dumps(structure, ensure_ascii=False, indent=4))
-
-    # 2.
-
-    merge_y_to_x("question", "answer")
-    merge_to_x_until_nextfield("answer")
-    merge_to_x_until_nextfield("comment")
-
-    if debug:
-        with codecs.open("debug_2.json", "w", "utf8") as f:
-            f.write(json.dumps(structure, ensure_ascii=False, indent=4))
-
-    # 3.
-
-    i = 0
-    while i < len(structure):
-        if structure[i][0] == "answer" and structure[i - 1][0] not in (
-            "question",
-            "newquestion",
-        ):
-            structure.insert(i, ["newquestion", ""])
-            i = 0
-        i += 1
-
-    i = 0
-    while i < len(structure) - 1:
-        if structure[i][0] == "" and structure[i + 1][0] == "newquestion":
-            merge_to_next(i)
-            if regexes["number"].search(rew(structure[i][1])) and not regexes[
-                "number"
-            ].search(rew(structure[i - 1][1])):
-                structure[i][0] = "question"
-                structure[i][1] = regexes["number"].sub("", rew(structure[i][1]))
-                try:
-                    structure.insert(
-                        i,
-                        [
-                            "number",
-                            int(
-                                regexes["number"].search(rew(structure[i][1])).group(0)
-                            ),
-                        ],
-                    )
-                except:
-                    pass
-            i = 0
-        i += 1
-
-    for element in structure:
-        if element[0] == "newquestion":
-            element[0] = "question"
-
-    dirty_merge_to_x_until_nextfield("source")
-
-    for _id, element in enumerate(structure):
-        if (
-            element[0] == "author"
-            and re.search(r"^{}$".format(regexes["author"].pattern), rew(element[1]))
-            and _id + 1 < len(structure)
-        ):
-            merge_to_previous(_id + 1)
-
-    merge_to_x_until_nextfield("zachet")
-    merge_to_x_until_nextfield("nezachet")
-
-    if debug:
-        with codecs.open("debug_3.json", "w", "utf8") as f:
-            f.write(json.dumps(structure, ensure_ascii=False, indent=4))
-
-    # 4.
-
-    structure = [x for x in structure if [x[0], rew(x[1])] != ["", ""]]
-
-    if structure[0][0] == "" and regexes["number"].search(rew(structure[0][1])):
-        merge_to_next(0)
-
-    for _id, element in enumerate(structure):
-        if element[0] == "":
-            element[0] = "meta"
-        if element[0] in regexes and element[0] not in [
-            "tour",
-            "tourrev",
-            "editor",
-        ]:
-            if element[0] == "question":
-                try:
-                    num = regexes["question"].search(element[1]).group(1)
-                    structure.insert(_id, ["number", num])
-                except:
-                    pass
-            # TODO: переделать корявую обработку авторки на нормальную
-            before_replacement = element[1]
-            element[1] = regexes[element[0]].sub("", element[1], 1)
-            if element[1].startswith(SEP):
-                element[1] = element[1][len(SEP) :]
-            if element[0] == "author" and "авторка:" in before_replacement.lower():
-                element[1] = "!!Авторка" + element[1]
-
-    if debug:
-        with codecs.open("debug_4.json", "w", "utf8") as f:
-            f.write(json.dumps(structure, ensure_ascii=False, indent=4))
-
-    # 5.
-
-    for _id, element in enumerate(structure):
-
-        # remove question numbers
-
-        if element[0] == "question":
-            try:
-                num = regexes["question"].search(element[1]).group(1)
-                structure.insert(_id, ["number", num])
-            except:
-                pass
-            element[1] = regexes["question"].sub("", element[1])
-
-        # detect inner lists
-
-        mo = {m for m in re.finditer(r"(\s+|^)(\d+)[\.\)]\s*(?!\d)", element[1], re.U)}
-        if len(mo) > 1:
-            sorted_up = sorted(mo, key=lambda m: int(m.group(2)))
-            j = 0
-            list_candidate = []
-            while j == int(sorted_up[j].group(2)) - 1:
-                list_candidate.append(
-                    (j + 1, sorted_up[j].group(0), sorted_up[j].start())
-                )
-                if j + 1 < len(sorted_up):
-                    j += 1
-                else:
-                    break
-            if len(list_candidate) > 1:
-                if element[0] != "question" or (
-                    element[0] == "question"
-                    and "дуплет" in element[1].lower()
-                    or "блиц" in element[1].lower()
-                ):
-                    part = partition(element[1], [x[2] for x in list_candidate])
-                    lc = 0
-                    while lc < len(list_candidate):
-                        part[lc + 1] = part[lc + 1].replace(
-                            list_candidate[lc][1], "", 1
-                        )
-                        lc += 1
-                    element[1] = [part[0], part[1:]] if part[0] != "" else part[1:]
-
-        # turn source into list if necessary
-        def _replace_once(regex, val, to_replace):
-            srch = regex.search(val)
-            if srch:
-                return val.replace(srch.group(0), to_replace, 1)
-            return val
-
-        if (
-            element[0] == "source"
-            and isinstance(element[1], str)
-            and len(re.split(r"\r?\n", element[1])) > 1
-        ):
-            element[1] = [
-                _replace_once(regexes["number"], rew(x), "")
-                for x in re.split(r"\r?\n", element[1])
-            ]
-
-        # typogrify
-
-        if element[0] != "date":
-            element[1] = typotools.recursive_typography(
-                element[1],
-                accents=args.typography_accents == "on",
-                dashes=args.typography_dashes == "on",
-                quotes=args.typography_quotes == "on",
-                wsp=args.typography_whitespace == "on",
-                percent=args.typography_percent == "on",
-            )
-
-    if debug:
-        with codecs.open("debug_5.json", "w", "utf8") as f:
-            f.write(json.dumps(structure, ensure_ascii=False, indent=4))
-
-    # 6.
-
-    final_structure = []
-    current_question = {}
-
-    for element in structure:
-        if (
-            element[0] in set(["number", "tour", "tourrev", "question", "meta"])
-            and "question" in current_question
-        ):
-            if defaultauthor and "author" not in current_question:
-                current_question["author"] = defaultauthor
-            check_question(current_question, logger=logger)
-            final_structure.append(["Question", current_question])
-            current_question = {}
-        if element[0] in QUESTION_LABELS:
-            if element[0] in current_question:
-                logger.warning(
-                    "Warning: question {} has multiple {}s.".format(
-                        log_wrap(current_question), element[0]
-                    )
-                )
-                if isinstance(element[1], list) and isinstance(
-                    current_question[element[0]], str
-                ):
-                    current_question[element[0]] = [
-                        current_question[element[0]]
-                    ] + element[1]
-                elif isinstance(element[1], str) and isinstance(
-                    current_question[element[0]], list
-                ):
-                    current_question[element[0]].append(element[1])
-                elif isinstance(element[1], list) and isinstance(
-                    current_question[element[0]], list
-                ):
-                    current_question[element[0]].extend(element[1])
-                elif isinstance(element[0], str) and isinstance(element[1], str):
-                    current_question[element[0]] += SEP + element[1]
-            else:
-                current_question[element[0]] = element[1]
-        else:
-            final_structure.append([element[0], element[1]])
-    if current_question != {}:
-        if defaultauthor and "author" not in current_question:
-            current_question["author"] = defaultauthor
-        check_question(current_question, logger=logger)
-        final_structure.append(["Question", current_question])
-
-    # 7.
-    try:
-        fq = [x[0] for x in final_structure].index("Question")
-        headerlabels = [x[0] for x in final_structure[:fq]]
-        datedefined = False
-        headingdefined = False
-        if "date" in headerlabels:
-            datedefined = True
-        if "heading" in headerlabels or "ljheading" in headerlabels:
-            headingdefined = True
-        if not headingdefined and final_structure[0][0] == "meta":
-            final_structure[0][0] = "heading"
-            final_structure.insert(0, ["ljheading", final_structure[0][1]])
-        i = 0
-        while not datedefined and i < fq:
-            if regexes["date2"].search(final_structure[i][1]):
-                final_structure[i][0] = "date"
-                datedefined = True
-            i += 1
-    except ValueError:
-        pass
-
-    def _replace(obj, val, new_val):
+    @classmethod
+    def _replace(cls, obj, val, new_val):
         if isinstance(obj, str):
             return obj.replace(val, new_val)
         elif isinstance(obj, list):
             for i, el in enumerate(obj):
-                obj[i] = _replace(el, val, new_val)
+                obj[i] = cls._replace(el, val, new_val)
             return obj
 
-    def _get_strings(val, list_):
+    def _get_strings(self, val, list_):
         if isinstance(val, str):
             list_.append(val)
             return
         elif isinstance(val, list):
             for el in val:
-                _get_strings(el, list_)
+                self._get_strings(el, list_)
 
-    def _try_extract_field(question, k):
-        regex = regexes[k]
+    def _try_extract_field(self, question, k):
+        regex = self.regexes[k]
         keys = sorted(question.keys())
         to_erase = []
         stop = False
@@ -509,7 +201,7 @@ def chgk_parse(text, defaultauthor=None, regexes=None, args=None):
                 break
             curr_val = question[k1]
             strings = []
-            _get_strings(curr_val, strings)
+            self._get_strings(curr_val, strings)
             for string in strings:
                 if stop:
                     break
@@ -529,9 +221,9 @@ def chgk_parse(text, defaultauthor=None, regexes=None, args=None):
         if val:
             question[k] = val
             for v in to_erase:
-                question[k1_to_replace] = _replace(question[k1_to_replace], v, "")
+                question[k1_to_replace] = self._replace(question[k1_to_replace], v, "")
 
-    def postprocess_question(question):
+    def postprocess_question(self, question):
         if (
             "number" in question
             and isinstance(question["number"], str)
@@ -540,16 +232,333 @@ def chgk_parse(text, defaultauthor=None, regexes=None, args=None):
             question.pop("number")
         for k in ("zachet", "nezachet", "source", "comment", "author"):
             if k not in question:
-                _try_extract_field(question, k)
+                self._try_extract_field(question, k)
 
-    for i, element in enumerate(final_structure):
-        if element[0] == "Question":
-            postprocess_question(element[1])
+    def parse(self, text):
+        """
+        Parsing rationale: every Question has two required fields: 'question' and
+        the immediately following 'answer'. All the rest are optional, as is
+        the order of these fields. On the other hand, everything
+        except the 'question' is obligatorily marked, while the 'question' is
+        optionally marked. But IF the question is not marked, 'meta' comments
+        between Questions will not be parsed as 'meta' but will be merged to
+        'question's.
+        Parsing is done by regexes in the following steps:
 
-    if debug:
-        with codecs.open("debug_final.json", "w", "utf8") as f:
-            f.write(json.dumps(final_structure, ensure_ascii=False, indent=4))
-    return final_structure
+        1. Identify all the fields you can, mark them with their respective
+            labels, mark all the others with ''
+        2. Merge fields inside Question with '' lines between them
+        3. Ensure every 'answer' has a 'question'
+        4. Mark all remaining '' fields as 'meta'
+        5. Prettify input
+        6. Pack Questions into dicts
+        7. Return the resulting structure
+
+        """
+
+        regexes = self.regexes
+
+        if self.defaultauthor:
+            logger.info(
+                "The default author is {}. "
+                "Missing authors will be substituted with them".format(
+                    log_wrap(self.defaultauthor)
+                )
+            )
+
+        # 1.
+        sep = "\r\n" if "\r\n" in text else "\n"
+
+        fragments = [
+            [["", rew(xx)] for xx in x.split(sep) if xx] for x in text.split(sep + sep)
+        ]
+
+        for fragment in fragments:
+            self.apply_regexes(fragment)
+            elements = {x[0] for x in fragment}
+            if "answer" in elements and not fragment[0][0]:
+                fragment[0][0] = "question"
+        self.structure = list(itertools.chain(*fragments))
+        i = 0
+
+        if debug:
+            with codecs.open("debug_1.json", "w", "utf8") as f:
+                f.write(json.dumps(self.structure, ensure_ascii=False, indent=4))
+
+        # hack for https://gitlab.com/peczony/chgksuite/-/issues/23; TODO: make less hacky
+        for i, element in enumerate(self.structure):
+            if (
+                "дуплет." in element[1].lower().split()
+                or "блиц." in element[1].lower().split()
+                and element[0] != "question"
+                and (i == 0 or self.structure[i - 1][0] != "question")
+            ):
+                element[0] = "question"
+
+        if debug:
+            with codecs.open("debug_1a.json", "w", "utf8") as f:
+                f.write(json.dumps(self.structure, ensure_ascii=False, indent=4))
+
+        # 2.
+
+        self.merge_y_to_x("question", "answer")
+        self.merge_to_x_until_nextfield("answer")
+        self.merge_to_x_until_nextfield("comment")
+
+        if debug:
+            with codecs.open("debug_2.json", "w", "utf8") as f:
+                f.write(json.dumps(self.structure, ensure_ascii=False, indent=4))
+
+        # 3.
+
+        i = 0
+        while i < len(self.structure):
+            if self.structure[i][0] == "answer" and self.structure[i - 1][0] not in (
+                "question",
+                "newquestion",
+            ):
+                self.structure.insert(i, ["newquestion", ""])
+                i = 0
+            i += 1
+
+        i = 0
+        while i < len(self.structure) - 1:
+            if self.structure[i][0] == "" and self.structure[i + 1][0] == "newquestion":
+                self.merge_to_next(i)
+                if regexes["number"].search(rew(self.structure[i][1])) and not regexes[
+                    "number"
+                ].search(rew(self.structure[i - 1][1])):
+                    self.structure[i][0] = "question"
+                    self.structure[i][1] = regexes["number"].sub("", rew(self.structure[i][1]))
+                    try:
+                        self.structure.insert(
+                            i,
+                            [
+                                "number",
+                                int(
+                                    regexes["number"].search(rew(self.structure[i][1])).group(0)
+                                ),
+                            ],
+                        )
+                    except:
+                        pass
+                i = 0
+            i += 1
+
+        for element in self.structure:
+            if element[0] == "newquestion":
+                element[0] = "question"
+
+        self.dirty_merge_to_x_until_nextfield("source")
+
+        for _id, element in enumerate(self.structure):
+            if (
+                element[0] == "author"
+                and re.search(r"^{}$".format(regexes["author"].pattern), rew(element[1]))
+                and _id + 1 < len(self.structure)
+            ):
+                self.merge_to_previous(_id + 1)
+
+        self.merge_to_x_until_nextfield("zachet")
+        self.merge_to_x_until_nextfield("nezachet")
+
+        if debug:
+            with codecs.open("debug_3.json", "w", "utf8") as f:
+                f.write(json.dumps(self.structure, ensure_ascii=False, indent=4))
+
+        # 4.
+
+        self.structure = [x for x in self.structure if [x[0], rew(x[1])] != ["", ""]]
+
+        if self.structure[0][0] == "" and regexes["number"].search(rew(self.structure[0][1])):
+            self.merge_to_next(0)
+
+        for _id, element in enumerate(self.structure):
+            if element[0] == "":
+                element[0] = "meta"
+            if element[0] in regexes and element[0] not in [
+                "tour",
+                "tourrev",
+                "editor",
+            ]:
+                if element[0] == "question":
+                    try:
+                        num = regexes["question"].search(element[1]).group(1)
+                        self.structure.insert(_id, ["number", num])
+                    except:
+                        pass
+                # TODO: переделать корявую обработку авторки на нормальную
+                before_replacement = element[1]
+                element[1] = regexes[element[0]].sub("", element[1], 1)
+                if element[1].startswith(SEP):
+                    element[1] = element[1][len(SEP) :]
+                if element[0] == "author" and "авторка:" in before_replacement.lower():
+                    element[1] = "!!Авторка" + element[1]
+
+        if debug:
+            with codecs.open("debug_4.json", "w", "utf8") as f:
+                f.write(json.dumps(self.structure, ensure_ascii=False, indent=4))
+
+        # 5.
+
+        for _id, element in enumerate(self.structure):
+
+            # remove question numbers
+
+            if element[0] == "question":
+                try:
+                    num = regexes["question"].search(element[1]).group(1)
+                    self.structure.insert(_id, ["number", num])
+                except:
+                    pass
+                element[1] = regexes["question"].sub("", element[1])
+
+            # detect inner lists
+
+            mo = {m for m in re.finditer(r"(\s+|^)(\d+)[\.\)]\s*(?!\d)", element[1], re.U)}
+            if len(mo) > 1:
+                sorted_up = sorted(mo, key=lambda m: int(m.group(2)))
+                j = 0
+                list_candidate = []
+                while j == int(sorted_up[j].group(2)) - 1:
+                    list_candidate.append(
+                        (j + 1, sorted_up[j].group(0), sorted_up[j].start())
+                    )
+                    if j + 1 < len(sorted_up):
+                        j += 1
+                    else:
+                        break
+                if len(list_candidate) > 1:
+                    if element[0] != "question" or (
+                        element[0] == "question"
+                        and "дуплет" in element[1].lower()
+                        or "блиц" in element[1].lower()
+                    ):
+                        part = partition(element[1], [x[2] for x in list_candidate])
+                        lc = 0
+                        while lc < len(list_candidate):
+                            part[lc + 1] = part[lc + 1].replace(
+                                list_candidate[lc][1], "", 1
+                            )
+                            lc += 1
+                        element[1] = [part[0], part[1:]] if part[0] != "" else part[1:]
+
+            # turn source into list if necessary
+            def _replace_once(regex, val, to_replace):
+                srch = regex.search(val)
+                if srch:
+                    return val.replace(srch.group(0), to_replace, 1)
+                return val
+
+            if (
+                element[0] == "source"
+                and isinstance(element[1], str)
+                and len(re.split(r"\r?\n", element[1])) > 1
+            ):
+                element[1] = [
+                    _replace_once(regexes["number"], rew(x), "")
+                    for x in re.split(r"\r?\n", element[1])
+                ]
+
+            # typogrify
+
+            if element[0] != "date":
+                element[1] = typotools.recursive_typography(
+                    element[1],
+                    accents=self.args.typography_accents == "on",
+                    dashes=self.args.typography_dashes == "on",
+                    quotes=self.args.typography_quotes == "on",
+                    wsp=self.args.typography_whitespace == "on",
+                    percent=self.args.typography_percent == "on",
+                )
+
+        if debug:
+            with codecs.open("debug_5.json", "w", "utf8") as f:
+                f.write(json.dumps(self.structure, ensure_ascii=False, indent=4))
+
+        # 6.
+
+        final_structure = []
+        current_question = {}
+
+        for element in self.structure:
+            if (
+                element[0] in set(["number", "tour", "tourrev", "question", "meta"])
+                and "question" in current_question
+            ):
+                if self.defaultauthor and "author" not in current_question:
+                    current_question["author"] = self.defaultauthor
+                check_question(current_question, logger=logger)
+                final_structure.append(["Question", current_question])
+                current_question = {}
+            if element[0] in QUESTION_LABELS:
+                if element[0] in current_question:
+                    logger.warning(
+                        "Warning: question {} has multiple {}s.".format(
+                            log_wrap(current_question), element[0]
+                        )
+                    )
+                    if isinstance(element[1], list) and isinstance(
+                        current_question[element[0]], str
+                    ):
+                        current_question[element[0]] = [
+                            current_question[element[0]]
+                        ] + element[1]
+                    elif isinstance(element[1], str) and isinstance(
+                        current_question[element[0]], list
+                    ):
+                        current_question[element[0]].append(element[1])
+                    elif isinstance(element[1], list) and isinstance(
+                        current_question[element[0]], list
+                    ):
+                        current_question[element[0]].extend(element[1])
+                    elif isinstance(element[0], str) and isinstance(element[1], str):
+                        current_question[element[0]] += SEP + element[1]
+                else:
+                    current_question[element[0]] = element[1]
+            else:
+                final_structure.append([element[0], element[1]])
+        if current_question != {}:
+            if self.defaultauthor and "author" not in current_question:
+                current_question["author"] = self.defaultauthor
+            check_question(current_question, logger=logger)
+            final_structure.append(["Question", current_question])
+
+        # 7.
+        try:
+            fq = [x[0] for x in final_structure].index("Question")
+            headerlabels = [x[0] for x in final_structure[:fq]]
+            datedefined = False
+            headingdefined = False
+            if "date" in headerlabels:
+                datedefined = True
+            if "heading" in headerlabels or "ljheading" in headerlabels:
+                headingdefined = True
+            if not headingdefined and final_structure[0][0] == "meta":
+                final_structure[0][0] = "heading"
+                final_structure.insert(0, ["ljheading", final_structure[0][1]])
+            i = 0
+            while not datedefined and i < fq:
+                if regexes["date2"].search(final_structure[i][1]):
+                    final_structure[i][0] = "date"
+                    datedefined = True
+                i += 1
+        except ValueError:
+            pass
+
+        for i, element in enumerate(final_structure):
+            if element[0] == "Question":
+                self.postprocess_question(element[1])
+
+        if debug:
+            with codecs.open("debug_final.json", "w", "utf8") as f:
+                f.write(json.dumps(final_structure, ensure_ascii=False, indent=4))
+        return final_structure
+
+
+def chgk_parse(text, defaultauthor=None, regexes=None, args=None):
+    parser = ChgkParser(defaultauthor=defaultauthor, regexes=regexes, args=args)
+    return parser.parse(text)
 
 
 class UnknownEncodingException(Exception):
