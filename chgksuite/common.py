@@ -47,6 +47,32 @@ def get_source_dirs():
     return sourcedir, resourcedir
 
 
+class DefaultArgs:
+    links = "unwrap"
+    fix_spans = False
+    numbers_handling = "default"
+    parsing_engine = "mammoth"
+    language = "ru"
+    typography_accents = "on"
+    typography_dashes = "on"
+    typography_quotes = "on"
+    typography_whitespace = "on"
+    typography_percent = "on"
+    regexes = os.path.join(get_source_dirs()[1], "regexes_ru.json")
+    labels_file = os.path.join(get_source_dirs()[1], "labels_ru.toml")
+    single_number_line_handling = "smart"
+
+    def __getattr__(self, attribute):
+        try:
+            return object.__getattr__(self, attribute)
+        except AttributeError:
+            return None
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
 def set_lastdir(path):
     chgksuite_dir = get_chgksuite_dir()
     lastdir = os.path.join(chgksuite_dir, "lastdir")
