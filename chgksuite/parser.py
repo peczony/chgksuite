@@ -79,7 +79,7 @@ def load_regexes(regexfile):
 
 class ChgkParser:
     BADNEXTFIELDS = set(["question", "answer"])
-    RE_NUM = re.compile("^[0-9]+$")
+    RE_NUM = re.compile("^([0-9]+)\\.?$")
 
     def __init__(self, defaultauthor=None, regexes=None, args=None):
         self.defaultauthor = defaultauthor
@@ -253,7 +253,7 @@ class ChgkParser:
             txt = x[1].strip()
             srch = self.RE_NUM.search(txt)
             if srch:
-                num = int(srch.group(0))
+                num = int(srch.group(1))
                 result.append((i, x, num))
         return result
     
