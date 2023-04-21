@@ -269,6 +269,8 @@ class ChgkParser:
                 if el[0] == "question":
                     return
             single_number_lines = self.get_single_number_lines()
+            if not single_number_lines:
+                return
             frac = len(self.structure) / len(single_number_lines)
             if not (
                 4.0 <= frac <= 13.0
