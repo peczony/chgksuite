@@ -117,7 +117,7 @@ def cyr_lat_check_char(i, char, word):
     return
 
 
-ACCENTS_TO_FIX = {"\u0301", "\u0341"}
+ACCENTS_TO_FIX = {"\u0300", "\u0341"}
 
 
 def cyr_lat_check_word(word):
@@ -133,7 +133,7 @@ def cyr_lat_check_word(word):
             and i < len(word) - 1
             and word[i + 1] in ACCENTS_TO_FIX
         ):
-            replacements[char + word[i + 1]] = char + "\u0300"
+            replacements[char + word[i + 1]] = char + "\u0301"
     if replacements:
         for k in replacements:
             word = word.replace(k, replacements[k])
@@ -144,7 +144,7 @@ def cyr_lat_check_word(word):
 def fix_accents_func(str_):
     str_ = detect_accent(str_)
     replacements = {}
-    for word in str_.strip():
+    for word in str_.split():
         if check := cyr_lat_check_word(word):
             replacements[word] = check
     for rep in replacements:
@@ -268,7 +268,7 @@ def recursive_typography(s, **kwargs):
 
 
 def typography(s, wsp=True, quotes=True,
-               dashes=True, accents=True, percent=True, fix_accents=True):
+               dashes=True, accents=True, percent=True):
     if wsp:
         s = remove_excessive_whitespace(s)
     if quotes:

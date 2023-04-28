@@ -438,10 +438,11 @@ class ChgkParser:
             ]:
                 if element[0] == "question":
                     try:
-                        num = regexes["question"].search(element[1]).group(1)
-                        self.structure.insert(_id, ["number", num])
+                        num = regexes["question"].search(element[1])
+                        if num:
+                            self.structure.insert(_id, ["number", num.group(1)])
                     except Exception as e:
-                        sys.stderr.write(f"exception at line 444     of parser: {type(e)} {e}\n")
+                        sys.stderr.write(f"exception at line 445 of parser: {type(e)} {e}\n")
                 # TODO: переделать корявую обработку авторки на нормальную
                 before_replacement = element[1]
                 element[1] = regexes[element[0]].sub("", element[1], 1)
@@ -462,10 +463,11 @@ class ChgkParser:
 
             if element[0] == "question":
                 try:
-                    num = regexes["question"].search(element[1]).group(1)
-                    self.structure.insert(_id, ["number", num])
+                    num = regexes["question"].search(element[1])
+                    if num:
+                        self.structure.insert(_id, ["number", num.group(1)])
                 except Exception as e:
-                    sys.stderr.write(f"exception at line 468 of parser: {type(e)} {e}\n")
+                    sys.stderr.write(f"exception at line 470 of parser: {type(e)} {e}\n")
                 element[1] = regexes["question"].sub("", element[1])
 
             # detect inner lists
