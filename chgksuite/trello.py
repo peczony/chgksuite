@@ -12,9 +12,7 @@ from collections import defaultdict
 from chgksuite.common import (
     get_lastdir,
     set_lastdir,
-    on_close,
     log_wrap,
-    bring_to_front,
     get_chgksuite_dir,
 )
 
@@ -61,7 +59,7 @@ def upload_file(filepath, trello):
 
 
 def gui_trello_upload(args, sourcedir):
-    ld = get_lastdir()
+    get_lastdir()
 
     if not args.board_id:
         board_id = get_board_id()
@@ -211,7 +209,7 @@ def gui_trello_download(args, sourcedir):
 
     json_ = json.loads(req.content.decode("utf8"))
     _names = defaultdict(lambda: None)
-    open_lists = list(filter(lambda l: not l["closed"], json_["lists"]))
+    open_lists = list(filter(lambda x: not x["closed"], json_["lists"]))
     for list_ in open_lists:
         _names[list_["id"]] = list_["name"].replace("/", "_")
         _list_counters[list_["id"]] = 0

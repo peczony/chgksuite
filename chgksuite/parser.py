@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import pprint
 import re
 import os
-import pdb
 import sys
 import codecs
 import json
@@ -397,8 +395,8 @@ class ChgkParser:
                                 ),
                             ],
                         )
-                    except:
-                        pass
+                    except Exception as e:
+                        sys.stderr.write(f"exception at line 399 of parser: {type(e)} {e}\n")
                 i = 0
             i += 1
 
@@ -442,8 +440,8 @@ class ChgkParser:
                     try:
                         num = regexes["question"].search(element[1]).group(1)
                         self.structure.insert(_id, ["number", num])
-                    except:
-                        pass
+                    except Exception as e:
+                        sys.stderr.write(f"exception at line 444     of parser: {type(e)} {e}\n")
                 # TODO: переделать корявую обработку авторки на нормальную
                 before_replacement = element[1]
                 element[1] = regexes[element[0]].sub("", element[1], 1)
@@ -466,8 +464,8 @@ class ChgkParser:
                 try:
                     num = regexes["question"].search(element[1]).group(1)
                     self.structure.insert(_id, ["number", num])
-                except:
-                    pass
+                except Exception as e:
+                    sys.stderr.write(f"exception at line 468 of parser: {type(e)} {e}\n")
                 element[1] = regexes["question"].sub("", element[1])
 
             # detect inner lists

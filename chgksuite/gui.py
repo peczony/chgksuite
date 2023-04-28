@@ -18,17 +18,12 @@ from chgksuite.composer import gui_compose
 from chgksuite.trello import gui_trello
 from chgksuite.version import __version__
 from chgksuite.common import (
-    on_close,
-    button_factory,
-    toggle_factory,
     DefaultNamespace,
-    bring_to_front,
     get_lastdir,
     ensure_utf8,
     get_source_dirs,
 )
 
-from collections import defaultdict
 import json
 import shlex
 

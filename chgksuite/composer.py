@@ -223,11 +223,9 @@ def parse_4s_elem(s):
     for gr in grs:
         try:
             s = s.replace(gr, unquote(gr.encode("utf8")).decode("utf8"))
-        except:
+        except Exception as e:
             logger.debug(
-                "error decoding on line {}: {}\n".format(
-                    log_wrap(gr), traceback.format_exc()
-                )
+                f"error decoding on line {log_wrap(gr)}: {type(e)} {e}\n"
             )
 
     i = 0
@@ -300,9 +298,9 @@ def parse_4s_elem(s):
             part[1] = part[1].replace("\\_", "_")
             part[1] = part[1].replace("\\.", ".")
             part[1] = part[1].replace("$$$$UNDERSCORE$$$$", "_")
-        except:
+        except Exception as e:
             sys.stderr.write(
-                "Error on part {}: {}".format(log_wrap(part), traceback.format_exc())
+                f"Error on part {log_wrap(part)}: {type(e)} {e}"
             )
 
     return parts
@@ -2480,11 +2478,11 @@ class Imgur:
             with open(self.cache_file_path, "w", encoding="utf8") as f:
                 json.dump(self.cache, f, indent=2, sort_keys=True)
             return json_
-        except:
+        except Exception as e:
             raise Exception(
-                "Imgur API error code {}: {}".format(
-                    req.status_code, req.content.decode("utf8", errors="replace")
-                )
+                f"Imgur API error code {req.status_code}: "
+                f"{req.content.decode('utf8', errors='replace')}, raw exception data: "
+                f"{type(e)} {e}"
             )
 
 
