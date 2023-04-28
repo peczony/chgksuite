@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import re
+import functools
+import unicodedata
 try:
     import urllib
     unquote = urllib.unquote
@@ -62,14 +64,92 @@ NO_BREAK_SEQUENCES_LEFT = [
     "ли",
     "же"
 ]
+LETTERS_MAPPING = {"a": "а", "e": "е", "y": "у", "o": "о", "u": "и"}
+for x in list(LETTERS_MAPPING.keys()):
+    LETTERS_MAPPING[x.upper()] = LETTERS_MAPPING[x].upper()
+CYRILLIC_CHARS = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+СYRILLIC_CHARS = set(CYRILLIC_CHARS + CYRILLIC_CHARS.upper())
 
 re_bad_wsp_start = re.compile(r'^[{}]+'.format(''.join(WHITESPACE)))
 re_bad_wsp_end = re.compile(r'[{}]+$'.format(''.join(WHITESPACE)))
 re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
-                    """|[a-z0-9.\-]+[.‌​][a-z]{2,4}/)(?:[^\s()<>]+|(([^\s()<>]+|(([^\s()<>]+)))*))+"""
-                    """(?:(([^\s()<>]+|(‌​([^\s()<>]+)))*)|[^\s`!()[]{};:'".,<>?«»“”‘’]))""",
+                    """|[a-z0-9.\\-]+[.‌​][a-z]{2,4}/)(?:[^\\s()<>]+|(([^\\s()<>]+|(([^\\s()<>]+)))*))+"""
+                    """(?:(([^\\s()<>]+|(‌​([^\\s()<>]+)))*)|[^\\s`!()[]{};:'".,<>?«»“”‘’]))""",
                     re.DOTALL)
 re_percent = re.compile(r"(%[0-9a-fA-F]{2})+")
+
+
+def strings_iterator(str_):
+    result = []
+    if isinstance(str_, str):
+        return [str_]
+    elif isinstance(str_, list):
+        for el in str_:
+            result.extend(strings_iterator(el))
+    elif isinstance(str_, dict):
+        for v in str_.values():
+            result.extend(strings_iterator(v))
+    return result
+
+
+@functools.cache
+def uni_normalize(k):
+    return unicodedata.normalize("NFD", k)
+
+
+def cyr_lat_check_char(i, char, word):
+    if char in CYRILLIC_CHARS:
+        return
+    if not (
+        (i == 0 or word[i - 1] in CYRILLIC_CHARS or not word[i - 1].isalpha())
+        and (
+            i == len(word) - 1
+            or word[i + 1] in CYRILLIC_CHARS
+            or not word[i + 1].isalpha()
+        )
+    ):
+        return
+    norm = uni_normalize(char)
+    if norm != char and norm[0] in LETTERS_MAPPING:
+        if len(norm) > 1 and norm[1] == "\u0300":
+            return LETTERS_MAPPING[norm[0]] + "\u0301" + norm[2:]
+        return LETTERS_MAPPING[norm[0]] + norm[1:]
+    return
+
+
+ACCENTS_TO_FIX = {"\u0301", "\u0341"}
+
+
+def cyr_lat_check_word(word):
+    if len(word) == 1:
+        return
+    replacements = {}
+    for i, char in enumerate(word):
+        check_result = cyr_lat_check_char(i, char, word)
+        if check_result:
+            replacements[char] = check_result
+        elif (
+            char in CYRILLIC_CHARS
+            and i < len(word) - 1
+            and word[i + 1] in ACCENTS_TO_FIX
+        ):
+            replacements[char + word[i + 1]] = char + "\u0300"
+    if replacements:
+        for k in replacements:
+            word = word.replace(k, replacements[k])
+        return word
+    return
+
+
+def fix_accents_func(str_):
+    str_ = detect_accent(str_)
+    replacements = {}
+    for word in str_.strip():
+        if check := cyr_lat_check_word(word):
+            replacements[word] = check
+    for rep in replacements:
+        str_ = str_.replace(rep, replacements[rep])
+    return str_
 
 
 def remove_excessive_whitespace(s):
@@ -129,11 +209,11 @@ def get_dashes_right(s):
 def replace_no_break_spaces(s):
     for sp in (NO_BREAK_SEQUENCES + [x.title() for x in NO_BREAK_SEQUENCES]):
         r_from = "(^|[ \u00a0]){sp} ".format(sp=sp)
-        r_to = "\g<1>{sp}\u00a0".format(sp=sp)
+        r_to = "\\g<1>{sp}\u00a0".format(sp=sp)
         s = re.sub(r_from, r_to, s)
     for sp in (NO_BREAK_SEQUENCES_LEFT + [x.title() for x in NO_BREAK_SEQUENCES_LEFT]):
         r_from = " {sp}([ \u00a0]|$)".format(sp=sp)
-        r_to = "\u00a0{sp}\g<1>".format(sp=sp)
+        r_to = "\u00a0{sp}\\g<1>".format(sp=sp)
         s = re.sub(r_from, r_to, s)
     return s
 
@@ -145,15 +225,6 @@ def search_accent(s):
 
 
 def detect_accent(s):
-    # srch = search_accent(s)
-    # while srch:
-    #     to_replace = srch.group(1) + srch.group(2) + srch.group(3)
-    #     replacement = "{}{}\u0301{}".format(
-    #         srch.group(1), srch.group(2).lower(), srch.group(3)
-    #     )
-    #     s = s.replace(to_replace, replacement)
-    #     srch = search_accent(s)
-    # return s
     for word in re.split(r'[^{}{}]+'.format(
             ''.join(LOWERCASE_RUSSIAN), ''.join(UPPERCASE_RUSSIAN)), s):
         if word.upper() != word and len(word) > 1:
@@ -187,7 +258,7 @@ def percent_decode(s):
 
 def recursive_typography(s, **kwargs):
     if isinstance(s, basestring):
-        s = typography(s)
+        s = typography(s, **kwargs)
         return s
     elif isinstance(s, list):
         new_s = []
@@ -197,7 +268,7 @@ def recursive_typography(s, **kwargs):
 
 
 def typography(s, wsp=True, quotes=True,
-               dashes=True, accents=True, percent=True):
+               dashes=True, accents=True, percent=True, fix_accents=True):
     if wsp:
         s = remove_excessive_whitespace(s)
     if quotes:
@@ -205,7 +276,7 @@ def typography(s, wsp=True, quotes=True,
     if dashes:
         s = get_dashes_right(s)
     if accents:
-        s = detect_accent(s)
+        s = fix_accents_func(s)
     if percent:
         s = percent_decode(s)
     return s
