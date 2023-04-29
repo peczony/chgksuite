@@ -8,8 +8,6 @@ import codecs
 import argparse
 import time
 import json
-import traceback
-import sys
 
 
 QUESTION_LABELS = [
@@ -106,8 +104,8 @@ def retry_wrapper_factory(logger):
         while not ret and cntr < retries:
             try:
                 ret = func(*args, **kwargs)
-            except:
-                logger.error(traceback.format_exc())
+            except Exception as e:
+                logger.error(f"exception {type(e)} {e}")
                 time.sleep(5)
                 cntr += 1
         return ret
@@ -205,11 +203,6 @@ def check_question(question, logger=None):
 
 
 def remove_double_separators(s):
-    if isinstance(s, list):
-        sys.stderr.write(
-            f"something weird is going on in remove_double_separators: {s}\n"
-        )
-        return " ".join(s)
     return re.sub(r"({})+".format(SEP), SEP, s)
 
 
