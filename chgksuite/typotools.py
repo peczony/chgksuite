@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import re
 import functools
 import unicodedata
+import sys
 try:
     import urllib
     unquote = urllib.unquote
@@ -240,8 +241,11 @@ def detect_accent(s):
                 if word != word_new:
                     s = (s[:s.index(word)] + word_new +
                          s[s.index(word) + len(word):])
-            except:
-                print(repr(word))
+            except Exception as e:
+                sys.stderr.write(
+                    f"exception {type(e)} {e} "
+                    f"while trying to process word {repr(word)}"
+                )
     return s
 
 
@@ -251,8 +255,11 @@ def percent_decode(s):
     for gr in grs:
         try:
             s = s.replace(gr, unquote(gr.encode('utf8')).decode('utf8'))
-        except:
-            pass
+        except Exception as e:
+            sys.stderr.write(
+                f"exception {type(e)} {e} "
+                f"while trying to replace percents in {gr}"
+            )
     return s
 
 
