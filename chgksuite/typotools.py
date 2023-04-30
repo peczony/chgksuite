@@ -111,14 +111,12 @@ def cyr_lat_check_char(i, char, word):
     ):
         return
     norm = uni_normalize(char)
-    if norm != char and norm[0] in LETTERS_MAPPING:
-        if len(norm) > 1 and norm[1] == "\u0300":
-            return LETTERS_MAPPING[norm[0]] + "\u0301" + norm[2:]
-        return LETTERS_MAPPING[norm[0]] + norm[1:]
+    if norm != char and norm[0] in LETTERS_MAPPING and norm[1] in ACCENTS_TO_FIX:
+        return LETTERS_MAPPING[norm[0]] + "\u0301" + norm[2:]
     return
 
 
-ACCENTS_TO_FIX = {"\u0300", "\u0341"}
+ACCENTS_TO_FIX = {"\u0300", "\u0341", "\u0301"}
 
 
 def cyr_lat_check_word(word):
