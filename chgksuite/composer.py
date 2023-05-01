@@ -1351,11 +1351,11 @@ class TelegramExporter(BaseExporter):
         txt_a, images_ = self.tgyapper(q["answer"])
         images_a.extend(images_)
         txt_a = "**{}:** {}".format(self.get_label(q, "answer"), txt_a)
-        txt_z = None
-        txt_nz = None
-        txt_comm = None
-        txt_s = None
-        txt_au = None
+        txt_z = ""
+        txt_nz = ""
+        txt_comm = ""
+        txt_s = ""
+        txt_au = ""
         if "zachet" in q:
             txt_z, images_ = self.tgyapper(q["zachet"])
             images_a.extend(images_)
