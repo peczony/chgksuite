@@ -3,6 +3,7 @@
     "tourrev": "^([0-9IVXLCDM]+) (B[Ll][Oo][Cc][Kk]|R[Oo][Uu][Nn][Dd])([\\.:])?$",
     "question": "Q[Uu][Ee][Ss][Tt][Ii][Oo][Nn] ?[№N]?([0-9 ]*) ?([\\.:]|\n|\r\n|$)",
     "answer": "A[Nn][Ss][Ww][Ee][Rr] ?[№N]?([0-9]+)? ?[\\.:]",
+    "handout": "^H[Aa][Nn][Dd][Oo][Uu][Tt][\\.:]",
     "zachet": "A[Cc][Ee][Pp][Tt] ?[\\.:]",
     "nezachet": "R[Ee][Jj][Ee][Cc][Tt] ?[\\.:]",
     "comment": "C[Oo][Mm][Mm]?([Ee][Nn][Tt])? ?[№N]?([0-9]+)? ?[\\.:]",

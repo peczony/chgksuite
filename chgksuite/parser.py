@@ -92,9 +92,7 @@ class ChgkParser:
         self.args = args
         with open(self.args.labels_file, encoding="utf8") as f:
             self.labels = toml.load(f)
-        question_label = self.labels[
-            "question_labels"
-        ]["question"]
+        question_label = self.labels["question_labels"]["question"]
         if self.args.language in ("uz", "uz_cyr"):
             self.question_stub = f"{{}} – {question_label}."
         else:
@@ -103,7 +101,9 @@ class ChgkParser:
     def merge_to_previous(self, index):
         target = index - 1
         if self.structure[target][1]:
-            self.structure[target][1] = self.structure[target][1] + SEP + self.structure.pop(index)[1]
+            self.structure[target][1] = (
+                self.structure[target][1] + SEP + self.structure.pop(index)[1]
+            )
         else:
             self.structure[target][1] = self.structure.pop(index)[1]
 
@@ -254,7 +254,7 @@ class ChgkParser:
                 num = int(srch.group(1))
                 result.append((i, x, num))
         return result
-    
+
     def patch_single_number_line(self, line):
         index, _, num = line
         self.structure[index] = ["question", self.question_stub.format(num)]
@@ -270,16 +270,11 @@ class ChgkParser:
             if not single_number_lines:
                 return
             frac = len(self.structure) / len(single_number_lines)
-            if not (
-                4.0 <= frac <= 13.0
-            ):
+            if not (4.0 <= frac <= 13.0):
                 return
             prev = None
             for line in single_number_lines:
-                if not prev or (
-                    line[2] - prev[2] <= 3
-                    and line[0] - prev[0] > 1
-                ):
+                if not prev or (line[2] - prev[2] <= 3 and line[0] - prev[0] > 1):
                     self.patch_single_number_line(line)
                     prev = line
         elif self.args.single_number_line_handling == "on":
@@ -332,6 +327,9 @@ class ChgkParser:
             if "answer" in elements and not fragment[0][0]:
                 fragment[0][0] = "question"
         self.structure = list(itertools.chain(*fragments))
+        for el in self.structure:
+            if el[0] == "handout":
+                el[0] = "question"
         i = 0
 
         if debug:
@@ -384,19 +382,23 @@ class ChgkParser:
                     "number"
                 ].search(rew(self.structure[i - 1][1])):
                     self.structure[i][0] = "question"
-                    self.structure[i][1] = regexes["number"].sub("", rew(self.structure[i][1]))
+                    self.structure[i][1] = regexes["number"].sub(
+                        "", rew(self.structure[i][1])
+                    )
                     try:
-                        self.structure.insert(
-                            i,
-                            [
-                                "number",
-                                int(
-                                    regexes["number"].search(rew(self.structure[i][1])).group(0)
-                                ),
-                            ],
-                        )
+                        num = regexes["number"].search(rew(self.structure[i][1]))
+                        if num:
+                            self.structure.insert(
+                                i,
+                                [
+                                    "number",
+                                    int(num.group(0)),
+                                ],
+                            )
                     except Exception as e:
-                        sys.stderr.write(f"exception at line 399 of parser: {type(e)} {e}\n")
+                        sys.stderr.write(
+                            f"exception at line 399 of parser: {type(e)} {e}\n"
+                        )
                 i = 0
             i += 1
 
@@ -409,7 +411,9 @@ class ChgkParser:
         for _id, element in enumerate(self.structure):
             if (
                 element[0] == "author"
-                and re.search(r"^{}$".format(regexes["author"].pattern), rew(element[1]))
+                and re.search(
+                    r"^{}$".format(regexes["author"].pattern), rew(element[1])
+                )
                 and _id + 1 < len(self.structure)
             ):
                 self.merge_to_previous(_id + 1)
@@ -425,7 +429,9 @@ class ChgkParser:
 
         self.structure = [x for x in self.structure if [x[0], rew(x[1])] != ["", ""]]
 
-        if self.structure[0][0] == "" and regexes["number"].search(rew(self.structure[0][1])):
+        if self.structure[0][0] == "" and regexes["number"].search(
+            rew(self.structure[0][1])
+        ):
             self.merge_to_next(0)
 
         for _id, element in enumerate(self.structure):
@@ -442,7 +448,9 @@ class ChgkParser:
                         if num:
                             self.structure.insert(_id, ["number", num.group(1)])
                     except Exception as e:
-                        sys.stderr.write(f"exception at line 445 of parser: {type(e)} {e}\n")
+                        sys.stderr.write(
+                            f"exception at line 445 of parser: {type(e)} {e}\n"
+                        )
                 # TODO: переделать корявую обработку авторки на нормальную
                 before_replacement = element[1]
                 element[1] = regexes[element[0]].sub("", element[1], 1)
@@ -467,12 +475,16 @@ class ChgkParser:
                     if num:
                         self.structure.insert(_id, ["number", num.group(1)])
                 except Exception as e:
-                    sys.stderr.write(f"exception at line 470 of parser: {type(e)} {e}\n")
+                    sys.stderr.write(
+                        f"exception at line 470 of parser: {type(e)} {e}\n"
+                    )
                 element[1] = regexes["question"].sub("", element[1])
 
             # detect inner lists
 
-            mo = {m for m in re.finditer(r"(\s+|^)(\d+)[\.\)]\s*(?!\d)", element[1], re.U)}
+            mo = {
+                m for m in re.finditer(r"(\s+|^)(\d+)[\.\)]\s*(?!\d)", element[1], re.U)
+            }
             if len(mo) > 1:
                 sorted_up = sorted(mo, key=lambda m: int(m.group(2)))
                 j = 0
@@ -660,6 +672,15 @@ def ensure_line_breaks(tag):
 
 
 def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
+    for_ol = {}
+
+    def get_number(tag):
+        if not for_ol.get(tag):
+            for_ol[tag] = 1
+        else:
+            for_ol[tag] += 1
+        return for_ol[tag]
+
     target_dir = os.path.dirname(os.path.abspath(docxfile))
     if args.image_prefix:
         bn_for_img = (
@@ -731,6 +752,9 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
             for tag in bsoup.find_all(h):
                 ensure_line_breaks(tag)
         for tag in bsoup.find_all("li"):
+            if tag.parent and tag.parent.name == "ol":
+                num = get_number(tag.parent)
+                tag.string = f"{num}. " + tag.get_text()
             ensure_line_breaks(tag)
         for tag in bsoup.find_all("table"):
             table = dashtable.html2md(str(tag))
@@ -770,9 +794,6 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
                 if isinstance(tag, bs4.element.Tag):
                     tag.unwrap()
             txt = bsoup.prettify()
-        # elif args.parsing_engine == "mammoth":
-        #     html2text_input = str(bsoup)
-        #     txt = h.handle(html2text_input)
         elif args.parsing_engine in ("pypandoc_html", "mammoth"):
             found = True
             while found:
@@ -803,7 +824,9 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
         with codecs.open(os.path.join(target_dir, "debug.debug"), "w", "utf8") as dbg:
             dbg.write(txt)
 
-    final_structure = chgk_parse(txt, defaultauthor=defaultauthor, regexes=regexes, args=args)
+    final_structure = chgk_parse(
+        txt, defaultauthor=defaultauthor, regexes=regexes, args=args
+    )
     return final_structure
 
 
@@ -819,7 +842,7 @@ def chgk_parse_wrapper(path, args, regexes=None):
             defaultauthor=defaultauthor,
             encoding=args.encoding,
             regexes=regexes,
-            args=args
+            args=args,
         )
     elif os.path.splitext(abspath)[1] == ".docx":
         final_structure = chgk_parse_docx(
