@@ -725,12 +725,15 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
                 imgpath = os.path.basename(imgname)
             else:
                 imgparse = parse("data:image/{ext};base64,{b64}", tag["src"])
-                imgname = generate_imgname(
-                    target_dir, imgparse["ext"], prefix=bn_for_img
-                )
-                with open(os.path.join(target_dir, imgname), "wb") as f:
-                    f.write(base64.b64decode(imgparse["b64"]))
-                imgpath = os.path.basename(imgname)
+                if imgparse:
+                    imgname = generate_imgname(
+                        target_dir, imgparse["ext"], prefix=bn_for_img
+                    )
+                    with open(os.path.join(target_dir, imgname), "wb") as f:
+                        f.write(base64.b64decode(imgparse["b64"]))
+                    imgpath = os.path.basename(imgname)
+                else:
+                    imgpath = "BROKEN_IMAGE"
             tag.insert_before("(img {})".format(imgpath))
             tag.extract()
         for tag in bsoup.find_all("p"):
