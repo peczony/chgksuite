@@ -317,6 +317,15 @@ class ChgkParser:
         # 1.
         sep = "\r\n" if "\r\n" in text else "\n"
 
+        if ("«" in text or "»" in text) and self.args.typography_quotes == "smart":
+            typography_quotes = "smart_disable"
+        else:
+            typography_quotes = self.args.typography_quotes
+        if "\u0301" in text and self.args.typography_accents == "smart":
+            typography_accents = "smart_disable"
+        else:
+            typography_accents = self.args.typography_accents
+
         fragments = [
             [["", rew(xx)] for xx in x.split(sep) if xx] for x in text.split(sep + sep)
         ]
@@ -534,11 +543,11 @@ class ChgkParser:
             if element[0] != "date":
                 element[1] = typotools.recursive_typography(
                     element[1],
-                    accents=self.args.typography_accents == "on",
-                    dashes=self.args.typography_dashes == "on",
-                    quotes=self.args.typography_quotes == "on",
-                    wsp=self.args.typography_whitespace == "on",
-                    percent=self.args.typography_percent == "on",
+                    accents=typography_accents,
+                    dashes=self.args.typography_dashes,
+                    quotes=typography_quotes,
+                    wsp=self.args.typography_whitespace,
+                    percent=self.args.typography_percent,
                 )
 
         if debug:

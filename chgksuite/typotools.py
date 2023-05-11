@@ -5,29 +5,32 @@ import re
 import functools
 import unicodedata
 import sys
+
 try:
     import urllib
+
     unquote = urllib.unquote
 except AttributeError:
     import urllib.parse
+
     unquote = urllib.parse.unquote_to_bytes
 try:
     basestring
 except NameError:
     basestring = str
 
-OPENING_QUOTES = set(['«', '„', '“'])
-CLOSING_QUOTES = set(['»', '“', '”'])
+OPENING_QUOTES = set(["«", "„", "“"])
+CLOSING_QUOTES = set(["»", "“", "”"])
 QUOTES = OPENING_QUOTES | CLOSING_QUOTES | set(['"', "'"])
-WHITESPACE = set([' ', ' ', '\n'])
-PUNCTUATION = set([',', '.', ':', ';', '?', '!'])
-OPENING_BRACKETS = ['[', '(', '{']
-CLOSING_BRACKETS = [']', ')', '}']
+WHITESPACE = set([" ", " ", "\n"])
+PUNCTUATION = set([",", ".", ":", ";", "?", "!"])
+OPENING_BRACKETS = ["[", "(", "{"]
+CLOSING_BRACKETS = ["]", ")", "}"]
 BRACKETS = set(OPENING_BRACKETS) | set(CLOSING_BRACKETS)
-LOWERCASE_RUSSIAN = set(list('абвгдеёжзийклмнопрстуфхцчшщъыьэюя'))
-UPPERCASE_RUSSIAN = set(list('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'))
-POTENTIAL_ACCENTS = set(list('АОУЫЭЯЕЮИ'))
-BAD_BEGINNINGS = set(['Мак', 'мак', "О'", 'о’', 'О’', "о'"])
+LOWERCASE_RUSSIAN = set(list("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"))
+UPPERCASE_RUSSIAN = set(list("АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"))
+POTENTIAL_ACCENTS = set(list("АОУЫЭЯЕЮИ"))
+BAD_BEGINNINGS = set(["Мак", "мак", "О'", "о’", "О’", "о'"])
 NO_BREAK_SEQUENCES = [
     "а",
     "без",
@@ -58,25 +61,23 @@ NO_BREAK_SEQUENCES = [
     "то",
     "у",
     "что",
-    "перед"
+    "перед",
 ]
-NO_BREAK_SEQUENCES_LEFT = [
-    "бы",
-    "ли",
-    "же"
-]
+NO_BREAK_SEQUENCES_LEFT = ["бы", "ли", "же"]
 LETTERS_MAPPING = {"a": "а", "e": "е", "y": "у", "o": "о", "u": "и"}
 for x in list(LETTERS_MAPPING.keys()):
     LETTERS_MAPPING[x.upper()] = LETTERS_MAPPING[x].upper()
 CYRILLIC_CHARS = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
 СYRILLIC_CHARS = set(CYRILLIC_CHARS + CYRILLIC_CHARS.upper())
 
-re_bad_wsp_start = re.compile(r'^[{}]+'.format(''.join(WHITESPACE)))
-re_bad_wsp_end = re.compile(r'[{}]+$'.format(''.join(WHITESPACE)))
-re_url = re.compile(r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
-                    """|[a-z0-9.\\-]+[.‌​][a-z]{2,4}/)(?:[^\\s()<>]+|(([^\\s()<>]+|(([^\\s()<>]+)))*))+"""
-                    """(?:(([^\\s()<>]+|(‌​([^\\s()<>]+)))*)|[^\\s`!()[]{};:'".,<>?«»“”‘’]))""",
-                    re.DOTALL)
+re_bad_wsp_start = re.compile(r"^[{}]+".format("".join(WHITESPACE)))
+re_bad_wsp_end = re.compile(r"[{}]+$".format("".join(WHITESPACE)))
+re_url = re.compile(
+    r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
+    """|[a-z0-9.\\-]+[.‌​][a-z]{2,4}/)(?:[^\\s()<>]+|(([^\\s()<>]+|(([^\\s()<>]+)))*))+"""
+    """(?:(([^\\s()<>]+|(‌​([^\\s()<>]+)))*)|[^\\s`!()[]{};:'".,<>?«»“”‘’]))""",
+    re.DOTALL,
+)
 re_percent = re.compile(r"(%[0-9a-fA-F]{2})+")
 
 
@@ -140,8 +141,9 @@ def cyr_lat_check_word(word):
     return
 
 
-def fix_accents_func(str_):
-    str_ = detect_accent(str_)
+def fix_accents_func(str_, mode="on"):
+    if mode in ("on", "smart"):
+        str_ = detect_accent(str_)
     replacements = {}
     for word in str_.split():
         if check := cyr_lat_check_word(word):
@@ -152,65 +154,65 @@ def fix_accents_func(str_):
 
 
 def remove_excessive_whitespace(s):
-    s = re_bad_wsp_start.sub('', s)
-    s = re_bad_wsp_end.sub('', s)
-    s = re.sub(r'\s+\n\s+', '\n', s)
+    s = re_bad_wsp_start.sub("", s)
+    s = re_bad_wsp_end.sub("", s)
+    s = re.sub(r"\s+\n\s+", "\n", s)
     return s
 
 
 def get_quotes_right(s_in):
     s = s_in
-    s = re.sub(r'[{}]'.format(''.join(OPENING_QUOTES)), '«', s)
-    s = re.sub(r'[{}]'.format(''.join(CLOSING_QUOTES)), '»', s)
-    s = re.sub(r'^"', '«', s)
-    s = re.sub(r'"$', '»', s)
-    s = re.sub(r'(\w)(")([^\w]|$)', r'\1»\3', s, flags=re.U)
-    s = re.sub(r'(^|[^\w])(")(\w)', r'\1«\3', s, flags=re.U)
-    s = re.sub(r'([^\w\s])(")([^\w\s])', r'\1»\3', s, flags=re.U)
-    s = re.sub(r'" ', '» ', s)
-    s = re.sub(r' "', ' «', s)
+    s = re.sub(r"[{}]".format("".join(OPENING_QUOTES)), "«", s)
+    s = re.sub(r"[{}]".format("".join(CLOSING_QUOTES)), "»", s)
+    s = re.sub(r'^"', "«", s)
+    s = re.sub(r'"$', "»", s)
+    s = re.sub(r'(\w)(")([^\w]|$)', r"\1»\3", s, flags=re.U)
+    s = re.sub(r'(^|[^\w])(")(\w)', r"\1«\3", s, flags=re.U)
+    s = re.sub(r'([^\w\s])(")([^\w\s])', r"\1»\3", s, flags=re.U)
+    s = re.sub(r'" ', "» ", s)
+    s = re.sub(r' "', " «", s)
     cntr = 0
 
     s = list(s)
     for i, c in enumerate(s):
         if c == '"':
             if cntr:
-                s[i] = '»'
+                s[i] = "»"
                 cntr -= 1
             else:
-                s[i] = '«'
+                s[i] = "«"
                 cntr += 1
 
     cntr = 0
     for i, c in enumerate(s):
-        if c == '«':
+        if c == "«":
             cntr += 1
             if cntr % 2 == 0:
-                s[i] = '„'
-        if c == '»':
+                s[i] = "„"
+        if c == "»":
             if cntr % 2 == 0:
-                s[i] = '“'
+                s[i] = "“"
             cntr -= 1
-    s = ''.join(s)
+    s = "".join(s)
 
-    s = re.sub(r"(\w)'", r'\1’', s, flags=re.U)
-    s = re.sub(r"'(\w)", r'‘\1', s, flags=re.U)
+    s = re.sub(r"(\w)'", r"\1’", s, flags=re.U)
+    s = re.sub(r"'(\w)", r"‘\1", s, flags=re.U)
 
     return s
 
 
 def get_dashes_right(s):
-    s = re.sub(r'(?<=\s)-+(?=\s)', '—', s)
+    s = re.sub(r"(?<=\s)-+(?=\s)", "—", s)
     s = s.replace(" – ", " — ")
     return s
 
 
 def replace_no_break_spaces(s):
-    for sp in (NO_BREAK_SEQUENCES + [x.title() for x in NO_BREAK_SEQUENCES]):
+    for sp in NO_BREAK_SEQUENCES + [x.title() for x in NO_BREAK_SEQUENCES]:
         r_from = "(^|[ \u00a0]){sp} ".format(sp=sp)
         r_to = "\\g<1>{sp}\u00a0".format(sp=sp)
         s = re.sub(r_from, r_to, s)
-    for sp in (NO_BREAK_SEQUENCES_LEFT + [x.title() for x in NO_BREAK_SEQUENCES_LEFT]):
+    for sp in NO_BREAK_SEQUENCES_LEFT + [x.title() for x in NO_BREAK_SEQUENCES_LEFT]:
         r_from = " {sp}([ \u00a0]|$)".format(sp=sp)
         r_to = "\u00a0{sp}\\g<1>".format(sp=sp)
         s = re.sub(r_from, r_to, s)
@@ -224,21 +226,27 @@ def search_accent(s):
 
 
 def detect_accent(s):
-    for word in re.split(r'[^{}{}]+'.format(
-            ''.join(LOWERCASE_RUSSIAN), ''.join(UPPERCASE_RUSSIAN)), s):
+    for word in re.split(
+        r"[^{}{}]+".format("".join(LOWERCASE_RUSSIAN), "".join(UPPERCASE_RUSSIAN)), s
+    ):
         if word.upper() != word and len(word) > 1:
             try:
                 i = 1
                 word_new = word
                 while i < len(word_new):
-                    if (word_new[i] in POTENTIAL_ACCENTS and
-                            word_new[:i] not in BAD_BEGINNINGS):
-                        word_new = word_new[:i] + \
-                            word_new[i].lower() + '\u0301' + word_new[i + 1:]
+                    if (
+                        word_new[i] in POTENTIAL_ACCENTS
+                        and word_new[:i] not in BAD_BEGINNINGS
+                    ):
+                        word_new = (
+                            word_new[:i]
+                            + word_new[i].lower()
+                            + "\u0301"
+                            + word_new[i + 1 :]
+                        )
                     i += 1
                 if word != word_new:
-                    s = (s[:s.index(word)] + word_new +
-                         s[s.index(word) + len(word):])
+                    s = s[: s.index(word)] + word_new + s[s.index(word) + len(word) :]
             except Exception as e:
                 sys.stderr.write(
                     f"exception {type(e)} {e} "
@@ -248,15 +256,15 @@ def detect_accent(s):
 
 
 def percent_decode(s):
-    grs = sorted([match.group(0)
-                  for match in re_percent.finditer(s)], key=len, reverse=True)
+    grs = sorted(
+        [match.group(0) for match in re_percent.finditer(s)], key=len, reverse=True
+    )
     for gr in grs:
         try:
-            s = s.replace(gr, unquote(gr.encode('utf8')).decode('utf8'))
+            s = s.replace(gr, unquote(gr.encode("utf8")).decode("utf8"))
         except Exception as e:
             sys.stderr.write(
-                f"exception {type(e)} {e} "
-                f"while trying to replace percents in {gr}"
+                f"exception {type(e)} {e} " f"while trying to replace percents in {gr}"
             )
     return s
 
@@ -270,18 +278,40 @@ def recursive_typography(s, **kwargs):
         for element in s:
             new_s.append(recursive_typography(element, **kwargs))
         return new_s
+    
+
+RE_BAD_CYR_QUOTES = re.compile("“[а-яА-ЯЁё0-9,\\.:!\\? ]+?”")
+RE_BAD_LAT_QUOTES = re.compile("'[a-zA-Z0-9,\\.:!\\? ]+?'")
+RE_BAD_LAT_DQUOTES = re.compile('"[a-zA-Z0-9,\\.:!\\? ]+?"')
 
 
-def typography(s, wsp=True, quotes=True,
-               dashes=True, accents=True, percent=True):
-    if wsp:
+def typography(s, wsp="on", quotes="on", dashes="on", accents="on", percent="on"):
+    if wsp == "on":
         s = remove_excessive_whitespace(s)
-    if quotes:
+    if quotes in ("on", "smart"):
         s = get_quotes_right(s)
-    if dashes:
+    if quotes == "on" or quotes.startswith("smart") and "'s" in s:
+        s = s.replace("'s", "’s")
+    if quotes.startswith("smart"):
+        srch = RE_BAD_CYR_QUOTES.search(s)
+        while srch:
+            grp = srch.group(0)
+            s = s.replace(grp, "„" + grp[1:-1] + "“")
+            srch = RE_BAD_CYR_QUOTES.search(s)
+        srch = RE_BAD_LAT_QUOTES.search(s)
+        while srch:
+            grp = srch.group(0)
+            s = s.replace(grp, "‘" + grp[1:-1] + "’")
+            srch = RE_BAD_CYR_QUOTES.search(s)
+        srch = RE_BAD_LAT_DQUOTES.search(s)
+        while srch:
+            grp = srch.group(0)
+            s = s.replace(grp, "“" + grp[1:-1] + "”")
+            srch = RE_BAD_LAT_DQUOTES.search(s)
+    if dashes == "on":
         s = get_dashes_right(s)
-    if accents:
-        s = fix_accents_func(s)
+    if accents in ("on", "light") or accents.startswith("smart"):
+        s = fix_accents_func(s, mode=accents)
     if percent:
         s = percent_decode(s)
     return s

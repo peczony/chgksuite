@@ -467,20 +467,22 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--typography_quotes",
-            default="on",
-            choices=["on", "off"],
+            default="smart",
+            choices=["smart", "on", "off"],
             help="typography: try to fix quotes.",
             advanced=True,
             caption="Типография: кавычки",
+            argtype="radiobutton"
         )
         self.add_argument(
             cmdparse,
             "--typography_dashes",
             default="on",
-            choices=["on", "off"],
+            choices=["smart", "on", "off"],
             help="typography: try to fix dashes.",
             advanced=True,
             caption="Типография: тире",
+            argtype="radiobutton"
         )
         self.add_argument(
             cmdparse,
@@ -490,15 +492,17 @@ class ArgparseBuilder:
             help="typography: try to fix whitespace.",
             advanced=True,
             caption="Типография: whitespace",
+            argtype="radiobutton"
         )
         self.add_argument(
             cmdparse,
             "--typography_accents",
-            default="on",
-            choices=["on", "off"],
+            default="smart",
+            choices=["smart", "light", "on", "off"],
             help="typography: try to fix accents.",
             advanced=True,
             caption="Типография: ударения",
+            argtype="radiobutton"
         )
         self.add_argument(
             cmdparse,
@@ -508,6 +512,7 @@ class ArgparseBuilder:
             help="typography: try to fix percent encoding.",
             advanced=True,
             caption="Типография: %-энкодинг ссылок",
+            argtype="radiobutton"
         )
         self.add_argument(
             cmdparse,
@@ -517,6 +522,7 @@ class ArgparseBuilder:
             help="handling cases where a line consists of a single number.",
             advanced=True,
             caption="Обработка строчек, состоящих из одного числа",
+            argtype="radiobutton"
         )
 
         cmdcompose = subparsers.add_parser("compose")
