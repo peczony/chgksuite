@@ -1800,7 +1800,7 @@ class DocxExporter(BaseExporter):
                     r.italic = True
                 elif run[0] == "sc":
                     r.small_caps = True
-                if whiten and not args.nospoilers and not args.pagebreakspoilers:
+                if whiten and args.spoilers == "whiten":
                     r.style = "Whitened"
 
     def add_question(self, element):
@@ -1832,8 +1832,13 @@ class DocxExporter(BaseExporter):
         self._docx_format(q["question"], p, False)
 
         if not args.noanswers:
-            if args.pagebreakspoilers:
+            if args.spoilers == "pagebreak":
                 p = self.doc.add_page_break()
+            elif args.spoilers == "dots":
+                for _ in range(10):
+                    p = self.doc.add_paragraph()
+                    p.add_run(".")
+                p = self.doc.add_paragraph()
             else:
                 p = self.doc.add_paragraph()
             p.paragraph_format.keep_together = True
@@ -2871,7 +2876,7 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
 
     if args.debug:
         debug_fn = os.path.join(
-            targetdir, make_filename(os.path.basename(filename), "dbg", nots=args.nots)
+            targetdir, make_filename(os.path.basename(filename), "dbg", nots=not args.add_ts)
         )
         with codecs.open(debug_fn, "w", "utf8") as output_file:
             output_file.write(json.dumps(structure, indent=2, ensure_ascii=False))
@@ -2879,23 +2884,27 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
     if not args.filetype:
         print("Filetype not specified.")
         sys.exit(1)
+    if args.filetype == "docx":
+        spoilers = args.spoilers
+    else:
+        spoilers = "off" if args.nospoilers else "on"
     logger.info(
         "Exporting to {}, spoilers are {}...\n".format(
-            args.filetype, "off" if args.nospoilers else "on"
+            args.filetype, spoilers
         )
     )
 
     if args.filetype == "docx":
 
         outfilename = os.path.join(
-            targetdir, make_filename(filename, "docx", nots=args.nots)
+            targetdir, make_filename(filename, "docx", nots=not args.add_ts)
         )
         exporter = DocxExporter(structure, args, dir_kwargs)
         exporter.export(outfilename)
 
     if args.filetype == "tex":
         outfilename = os.path.join(
-            tmp_dir, make_filename(filename, "tex", nots=args.nots)
+            tmp_dir, make_filename(filename, "tex", nots=args.add_ts)
         )
         exporter = LatexExporter(structure, args, dir_kwargs)
         exporter.export(outfilename)
@@ -2914,13 +2923,13 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
     if args.filetype == "redditmd":
         exporter = RedditExporter(structure, args, dir_kwargs)
         outfilename = os.path.join(
-            targetdir, make_filename(filename, "md", nots=args.nots)
+            targetdir, make_filename(filename, "md", nots=not args.add_ts)
         )
         exporter.export(outfilename)
 
     if args.filetype == "pptx":
         outfilename = os.path.join(
-            targetdir, make_filename(filename, "pptx", nots=args.nots)
+            targetdir, make_filename(filename, "pptx", nots=not args.add_ts)
         )
         exporter = PptxExporter(structure, args, dir_kwargs)
         exporter.export(outfilename)
@@ -2928,7 +2937,7 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
     if args.filetype == "add_stats":
         outfilename = os.path.join(
             targetdir,
-            make_filename(filename, "4s", nots=args.nots, addsuffix="_with_stats"),
+            make_filename(filename, "4s", nots=not args.add_ts, addsuffix="_with_stats"),
         )
         exporter = StatsAdder(structure, args, dir_kwargs)
         exporter.export(outfilename)

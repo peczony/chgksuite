@@ -435,11 +435,11 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdparse,
-            "--image_prefix",
+            "--no_image_prefix",
             action="store_true",
-            help="make image prefix from filename",
+            help="don't make image prefix from filename",
             advanced=True,
-            caption="Make image prefix from filename",
+            caption="Don't make image prefix from filename",
         )
         self.add_argument(
             cmdparse,
@@ -553,10 +553,10 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose,
-            "--nots",
+            "--add_ts", "-ts",
             action="store_true",
-            help="don't append timestamp to filenames",
-            caption="Не добавлять временную отметку в имя файла",
+            help="append timestamp to filenames",
+            caption="Добавить временную отметку в имя файла",
             advanced=True,
         )
         self.add_argument(
@@ -586,19 +586,13 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose_docx,
-            "--nospoilers",
-            "-n",
-            action="store_true",
-            help="do not whiten (spoiler) answers.",
-            caption="Не забелять ответы",
-        )
-        self.add_argument(
-            cmdcompose_docx,
-            "--pagebreakspoilers",
-            "-pbs",
-            action="store_true",
-            help="use page break spoilers instead of whiten spoilers.",
-            caption="Использовать новую страницу, а не забеление в качестве защиты от спойлеров",
+            "--spoilers",
+            "-s",
+            choices=["off", "whiten", "pagebreak", "dots"],
+            default="off",
+            help="whether to hide answers behind spoilers.",
+            caption="Спойлеры",
+            argtype="radiobutton"
         )
         self.add_argument(
             cmdcompose_docx,

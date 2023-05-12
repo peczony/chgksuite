@@ -691,7 +691,7 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
         return for_ol[tag]
 
     target_dir = os.path.dirname(os.path.abspath(docxfile))
-    if args.image_prefix:
+    if not args.not_image_prefix:
         bn_for_img = (
             os.path.splitext(os.path.basename(docxfile))[0].replace(" ", "_") + "_"
         )
