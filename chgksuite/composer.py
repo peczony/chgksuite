@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 import codecs
 import base64
+import csv
 from collections import defaultdict, Counter
 import copy
 import contextlib
 import logging
 import importlib
+import itertools
 import datetime
 import hashlib
 import os
@@ -2385,6 +2387,19 @@ class StatsAdder(BaseExporter):
             + "?includeMasksAndControversials=1"
         )
         return req.json()
+    
+    @staticmethod
+    def custom_csv_to_results(csv_file_path):
+        results = []
+        with open(csv_file_path, encoding="utf8") as f:
+            reader = csv.reader(f)
+            for row in itertools.islice(reader, 1, None):
+                val = {
+                    "current": {"name": row[1]},
+                    "mask": "".join(row[3:])
+                }
+                results.append(val)
+        return results
 
     def process_tournament(self, results):
         for res in results:
@@ -2400,20 +2415,26 @@ class StatsAdder(BaseExporter):
             else:
                 start = 0
                 end = 9999
+            qnum = 1
             for i, q in enumerate(mask):
                 if not start <= (i + 1) <= end:
                     continue
                 if q == "1":
-                    self.q_counter[i + 1] += 1
-                    self.q_to_teams[i + 1].add(name)
+                    self.q_counter[qnum] += 1
+                    self.q_to_teams[qnum].add(name)
+                qnum += 1
 
     def export(self, outfilename):
-        ids = [x.strip() for x in self.args.rating_ids.split(",") if x.strip()]
         self.q_to_teams = defaultdict(set)
         self.total_teams = 0
         self.q_counter = Counter()
-        for id_ in ids:
-            results = self.get_tournament_results(id_)
+        if self.args.rating_ids:
+            ids = [x.strip() for x in self.args.rating_ids.split(",") if x.strip()]
+            for id_ in ids:
+                results = self.get_tournament_results(id_)
+                self.process_tournament(results)
+        elif self.args.custom_csv:
+            results = self.custom_csv_to_results(self.args.custom_csv)
             self.process_tournament(results)
         qnumber = 1
         for element in self.structure:

@@ -853,6 +853,12 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose_add_stats,
+            "--custom_csv",
+            help="custom csv in rating.chgk.info format",
+            caption="кастомный csv с результатами в формате rating.chgk.info",
+        )
+        self.add_argument(
+            cmdcompose_add_stats,
             "--question_range",
             help="range of question numbers to include.",
             caption="Диапазон вопросов (например, \"25-36\"), по умолчанию берутся все)",
