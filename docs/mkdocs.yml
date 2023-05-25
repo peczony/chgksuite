@@ -9,16 +9,17 @@ nav:
   - "base.md"
   - "pptx.md"
   - "telegram.md"
+  - "add_stats.md"
   - "trello.md"
   - "i14n.md"
 theme:
   name: material
   language: ru
-  features:
-    - navigation.instant
-    - navigation.tracking
-    - navigation.tabs
-    - navigation.tabs.sticky
+  # features:
+  #   - navigation.instant
+  #   - navigation.tracking
+  #   - navigation.tabs
+  #   - navigation.tabs.sticky
   font:
     text: Open Sans
     mono: Source Code Pro
