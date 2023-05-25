@@ -225,6 +225,7 @@ def search_accent(s):
     )
 
 
+
 def detect_accent(s):
     for word in re.split(
         r"[^{}{}]+".format("".join(LOWERCASE_RUSSIAN), "".join(UPPERCASE_RUSSIAN)), s
@@ -237,6 +238,13 @@ def detect_accent(s):
                     if (
                         word_new[i] in POTENTIAL_ACCENTS
                         and word_new[:i] not in BAD_BEGINNINGS
+                        and (
+                            i == 1 or not word_new[i - 1].isupper()
+                        )
+                        and (
+                            i + 1 == len(word_new)
+                            or not word_new[i + 1].isupper()
+                        )
                     ):
                         word_new = (
                             word_new[:i]
@@ -294,9 +302,15 @@ def typography(s, wsp="on", quotes="on", dashes="on", accents="on", percent="on"
         s = s.replace("'s", "’s")
     if quotes.startswith("smart"):
         srch = RE_BAD_CYR_QUOTES.search(s)
+        if "«" in s:
+            fix_start = "„"
+            fix_end = "“"
+        else:
+            fix_start = "«"
+            fix_end = "»"
         while srch:
             grp = srch.group(0)
-            s = s.replace(grp, "„" + grp[1:-1] + "“")
+            s = s.replace(grp, fix_start + grp[1:-1] + fix_end)
             srch = RE_BAD_CYR_QUOTES.search(s)
         srch = RE_BAD_LAT_QUOTES.search(s)
         while srch:
