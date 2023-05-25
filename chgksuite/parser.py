@@ -242,6 +242,16 @@ class ChgkParser:
         for k in ("zachet", "nezachet", "source", "comment", "author"):
             if k not in question:
                 self._try_extract_field(question, k)
+        strings = []
+        self._get_strings(question["question"], strings)
+        strings = "\n".join(strings)
+        srch = re.search("Раздаточный материал:([ \n]+)\\[", strings)
+        if srch:
+            question["question"] = self._replace(
+                question["question"],
+                srch.group(0),
+                "[Раздаточный материал:" + srch.group(1),
+            )
 
     def get_single_number_lines(self):
         result = []
