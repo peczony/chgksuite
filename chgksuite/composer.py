@@ -1784,7 +1784,13 @@ class DocxExporter(BaseExporter):
 
             for run in parse_4s_elem(el):
                 if run[0] == "pagebreak":
-                    para = self.doc.add_page_break()
+                    if self.args.spoilers == "dots":
+                        for _ in range(30):
+                            para = self.doc.add_paragraph()
+                            para.add_run(".")
+                        para = self.doc.add_paragraph()
+                    else:
+                        para = self.doc.add_page_break()
                 if run[0] == "img":
                     if run[1].endswith(".shtml"):
                         r = para.add_run(
@@ -1817,7 +1823,7 @@ class DocxExporter(BaseExporter):
                     r.italic = True
                 elif run[0] == "sc":
                     r.small_caps = True
-                if whiten and args.spoilers == "whiten":
+                if whiten and self.args.spoilers == "whiten":
                     r.style = "Whitened"
 
     def add_question(self, element, skip_qcount=False, screen_mode=False):
@@ -1849,7 +1855,7 @@ class DocxExporter(BaseExporter):
                 remove_brackets=screen_mode,
             )
             p.add_run("\n]")
-        if not args.noparagraph:
+        if not self.args.noparagraph:
             p.add_run("\n")
 
         self._docx_format(
@@ -1860,11 +1866,11 @@ class DocxExporter(BaseExporter):
             remove_brackets=screen_mode,
         )
 
-        if not args.noanswers:
-            if args.spoilers == "pagebreak":
+        if not self.args.noanswers:
+            if self.args.spoilers == "pagebreak":
                 p = self.doc.add_page_break()
-            elif args.spoilers == "dots":
-                for _ in range(10):
+            elif self.args.spoilers == "dots":
+                for _ in range(30):
                     p = self.doc.add_paragraph()
                     p.add_run(".")
                 p = self.doc.add_paragraph()
@@ -1892,8 +1898,8 @@ class DocxExporter(BaseExporter):
                     )
 
     def export(self, outfilename):
-        logger.debug(args.docx_template)
-        self.doc = Document(args.docx_template)
+        logger.debug(self.args.docx_template)
+        self.doc = Document(self.args.docx_template)
         para = None
         logger.debug(log_wrap(self.structure))
 
@@ -2946,6 +2952,8 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
             addsuffix = "_screen"
         elif args.screen_mode == "add_versions":
             addsuffix = "_screen_versions"
+        if args.spoilers != "off":
+            addsuffix += "_spoilers"
         outfilename = os.path.join(
             targetdir, make_filename(filename, "docx", args, addsuffix=addsuffix)
         )
