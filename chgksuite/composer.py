@@ -97,11 +97,11 @@ def unquote(bytestring):
     return urllib.parse.unquote(bytestring.decode("utf8")).encode("utf8")
 
 
-def make_filename(s, ext, nots=False, addsuffix=""):
+def make_filename(s, ext, args, addsuffix=""):
     bn = os.path.splitext(os.path.basename(s))[0]
     if addsuffix:
         bn += addsuffix
-    if nots:
+    if not args.add_ts:
         return bn + "." + ext
     return "{}_{}.{}".format(bn, datetime.datetime.now().strftime("%Y%m%dT%H%M"), ext)
 
@@ -226,9 +226,7 @@ def parse_4s_elem(s):
         try:
             s = s.replace(gr, unquote(gr.encode("utf8")).decode("utf8"))
         except Exception as e:
-            logger.debug(
-                f"error decoding on line {log_wrap(gr)}: {type(e)} {e}\n"
-            )
+            logger.debug(f"error decoding on line {log_wrap(gr)}: {type(e)} {e}\n")
 
     i = 0
     topart = []
@@ -249,9 +247,7 @@ def parse_4s_elem(s):
             if typotools.find_matching_closing_bracket(s, i) is not None:
                 topart.append(typotools.find_matching_closing_bracket(s, i) + 1)
                 i = typotools.find_matching_closing_bracket(s, i)
-        if (
-            s[i : i + len("(PAGEBREAK)")] == "(PAGEBREAK)"
-        ):
+        if s[i : i + len("(PAGEBREAK)")] == "(PAGEBREAK)":
             topart.append(i)
             topart.append(i + len("(PAGEBREAK)"))
         # if (s[i] == '(' and i + len('(sc') < len(s) and ''.join(s[i:
@@ -301,9 +297,7 @@ def parse_4s_elem(s):
             part[1] = part[1].replace("\\.", ".")
             part[1] = part[1].replace("$$$$UNDERSCORE$$$$", "_")
         except Exception as e:
-            sys.stderr.write(
-                f"Error on part {log_wrap(part)}: {type(e)} {e}"
-            )
+            sys.stderr.write(f"Error on part {log_wrap(part)}: {type(e)} {e}")
 
     return parts
 
@@ -727,6 +721,21 @@ class BaseExporter:
         if field == "source" and isinstance(question.get("source" or ""), list):
             return self.labels["question_labels"]["sources"]
         return self.labels["question_labels"][field]
+
+    def remove_square_brackets(self, s):
+        hs = self.labels["question_labels"]["handout_short"]
+        s = re.sub(f"\\[{hs}(.+?)\\]", "{" + hs + "\\1}", s, flags=re.DOTALL)
+        i = 0
+        while "[" in s and "]" in s and i < 10:
+            s = re.sub(" *\\[.+?\\]", "", s, flags=re.DOTALL)
+            s = s.strip()
+            i += 1
+        if i == 10:
+            sys.stderr.write(
+                f"Error replacing square brackets on question: {s}, retries exceeded\n"
+            )
+        s = re.sub("\\{" + hs + "(.+?)\\}", "[" + hs + "\\1]", s, flags=re.DOTALL)
+        return s
 
 
 class DbExporter(BaseExporter):
@@ -1740,8 +1749,9 @@ class DocxExporter(BaseExporter):
         super().__init__(*args, **kwargs)
         self.qcount = 0
 
-    def _docx_format(self, *args):
-        return self.docx_format(*args, **self.dir_kwargs)
+    def _docx_format(self, *args, **kwargs):
+        kwargs.update(self.dir_kwargs)
+        return self.docx_format(*args, **kwargs)
 
     def docx_format(self, el, para, whiten, **kwargs):
         if isinstance(el, list):
@@ -1764,6 +1774,11 @@ class DocxExporter(BaseExporter):
 
         if isinstance(el, str):
             logger.debug("parsing element {}:".format(log_wrap(el)))
+
+            if kwargs.get("remove_accents"):
+                el = el.replace("\u0301", "")
+            if kwargs.get("remove_brackets"):
+                el = self.remove_square_brackets(el)
 
             el = backtick_replace(el)
 
@@ -1805,12 +1820,12 @@ class DocxExporter(BaseExporter):
                 if whiten and args.spoilers == "whiten":
                     r.style = "Whitened"
 
-    def add_question(self, element):
+    def add_question(self, element, skip_qcount=False, screen_mode=False):
         q = element[1]
         p = self.doc.add_paragraph()
         p.paragraph_format.space_before = DocxPt(18)
         p.paragraph_format.keep_together = True
-        if "number" not in q:
+        if "number" not in q and not skip_qcount:
             self.qcount += 1
         if "setcounter" in q:
             self.qcount = int(q["setcounter"])
@@ -1826,12 +1841,24 @@ class DocxExporter(BaseExporter):
 
         if "handout" in q:
             p.add_run("\n[{handout}: ".format(handout=self.get_label(q, "handout")))
-            self._docx_format(q["handout"], p, WHITEN["handout"])
+            self._docx_format(
+                q["handout"],
+                p,
+                WHITEN["handout"],
+                remove_accents=screen_mode,
+                remove_brackets=screen_mode,
+            )
             p.add_run("\n]")
         if not args.noparagraph:
             p.add_run("\n")
 
-        self._docx_format(q["question"], p, False)
+        self._docx_format(
+            q["question"],
+            p,
+            False,
+            remove_accents=screen_mode,
+            remove_brackets=screen_mode,
+        )
 
         if not args.noanswers:
             if args.spoilers == "pagebreak":
@@ -1846,7 +1873,7 @@ class DocxExporter(BaseExporter):
             p.paragraph_format.keep_together = True
             p.paragraph_format.space_before = DocxPt(6)
             p.add_run(f"{self.get_label(q, 'answer')}: ").bold = True
-            self._docx_format(q["answer"], p, True)
+            self._docx_format(q["answer"], p, True, remove_accents=screen_mode)
 
             for field in ["zachet", "nezachet", "comment", "source", "author"]:
                 if field in q:
@@ -1856,7 +1883,13 @@ class DocxExporter(BaseExporter):
                     else:
                         p.add_run("\n")
                     p.add_run(f"{self.get_label(q, field)}: ").bold = True
-                    self._docx_format(q[field], p, WHITEN[field])
+                    self._docx_format(
+                        q[field],
+                        p,
+                        WHITEN[field],
+                        remove_accents=screen_mode,
+                        remove_brackets=screen_mode,
+                    )
 
     def export(self, outfilename):
         logger.debug(args.docx_template)
@@ -1896,7 +1929,18 @@ class DocxExporter(BaseExporter):
                 para.add_run("\n")
 
             if element[0] == "Question":
-                self.add_question(element)
+                if self.args.screen_mode == "add_versions":
+                    para = self.doc.add_paragraph()
+                    para = self.doc.add_paragraph()
+                    para.add_run("Версия для ведущего:").bold = True
+                self.add_question(
+                    element, screen_mode=self.args.screen_mode == "replace_all"
+                )
+                if self.args.screen_mode == "add_versions":
+                    para = self.doc.add_paragraph()
+                    para = self.doc.add_paragraph()
+                    para.add_run("Версия для экрана:").bold = True
+                    self.add_question(element, skip_qcount=True, screen_mode=True)
             prev_element = element
 
         self.doc.save(outfilename)
@@ -1973,22 +2017,6 @@ class PptxExporter(BaseExporter):
                 elif run[0] == "img":
                     pass  # image processing is moved to other places
 
-    def remove_square_brackets(self, s):
-        hs = self.labels["question_labels"]["handout_short"]
-        s = re.sub(f"\\[{hs}(.+?)\\]", "{" + hs + "\\1}", s, flags=re.DOTALL)
-        i = 0
-        while "[" in s and "]" in s and i < 10:
-            s = re.sub(" *\\[.+?\\]", "", s, flags=re.DOTALL)
-            s = s.strip()
-            i += 1
-        if i == 10:
-            sys.stderr.write(
-                f"Error replacing square brackets on question: {s}, retries exceeded\n"
-            )
-        s = re.sub("\\{" + hs + "(.+?)\\}", "[" + hs + "\\1]", s, flags=re.DOTALL)
-        s = s.replace("]\n", "]\n\n")
-        return s
-
     def pptx_process_text(self, s, image=None, strip_brackets=True):
         hs = self.labels["question_labels"]["handout_short"]
         if isinstance(s, list):
@@ -1999,6 +2027,7 @@ class PptxExporter(BaseExporter):
             s = s.replace("\u0301", "")
         if strip_brackets:
             s = self.remove_square_brackets(s)
+            s = s.replace("]\n", "]\n\n")
         if image:
             s = re.sub("\\[" + hs + "(.+?)\\]", "", s, flags=re.DOTALL)
             s = s.strip()
@@ -2387,17 +2416,14 @@ class StatsAdder(BaseExporter):
             + "?includeMasksAndControversials=1"
         )
         return req.json()
-    
+
     @staticmethod
     def custom_csv_to_results(csv_file_path):
         results = []
         with open(csv_file_path, encoding="utf8") as f:
             reader = csv.reader(f)
             for row in itertools.islice(reader, 1, None):
-                val = {
-                    "current": {"name": row[1]},
-                    "mask": "".join(row[3:])
-                }
+                val = {"current": {"name": row[1]}, "mask": "".join(row[3:])}
                 results.append(val)
         return results
 
@@ -2454,7 +2480,7 @@ class StatsAdder(BaseExporter):
             self.patch_question(element[1], message)
             qnumber += 1
         with open(outfilename, "w", encoding="utf8") as f:
-            f.write(compose_4s(self.structure, args=args))
+            f.write(compose_4s(self.structure, args=self.args))
             logger.info(f"Output: {outfilename}")
 
 
@@ -2897,7 +2923,8 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
 
     if args.debug:
         debug_fn = os.path.join(
-            targetdir, make_filename(os.path.basename(filename), "dbg", nots=not args.add_ts)
+            targetdir,
+            make_filename(os.path.basename(filename), "dbg", args),
         )
         with codecs.open(debug_fn, "w", "utf8") as output_file:
             output_file.write(json.dumps(structure, indent=2, ensure_ascii=False))
@@ -2909,23 +2936,25 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
         spoilers = args.spoilers
     else:
         spoilers = "off" if args.nospoilers else "on"
-    logger.info(
-        "Exporting to {}, spoilers are {}...\n".format(
-            args.filetype, spoilers
-        )
-    )
+    logger.info("Exporting to {}, spoilers are {}...\n".format(args.filetype, spoilers))
 
     if args.filetype == "docx":
 
+        if args.screen_mode == "off":
+            addsuffix = ""
+        elif args.screen_mode == "replace_all":
+            addsuffix = "_screen"
+        elif args.screen_mode == "add_versions":
+            addsuffix = "_screen_versions"
         outfilename = os.path.join(
-            targetdir, make_filename(filename, "docx", nots=not args.add_ts)
+            targetdir, make_filename(filename, "docx", args, addsuffix=addsuffix)
         )
         exporter = DocxExporter(structure, args, dir_kwargs)
         exporter.export(outfilename)
 
     if args.filetype == "tex":
         outfilename = os.path.join(
-            tmp_dir, make_filename(filename, "tex", nots=args.add_ts)
+            tmp_dir, make_filename(filename, "tex", args)
         )
         exporter = LatexExporter(structure, args, dir_kwargs)
         exporter.export(outfilename)
@@ -2937,20 +2966,20 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
     if args.filetype == "base":
         exporter = DbExporter(structure, args, dir_kwargs)
         outfilename = os.path.join(
-            targetdir, make_filename(filename, "txt", nots=args.nots)
+            targetdir, make_filename(filename, "txt", args)
         )
         exporter.export(outfilename)
 
     if args.filetype == "redditmd":
         exporter = RedditExporter(structure, args, dir_kwargs)
         outfilename = os.path.join(
-            targetdir, make_filename(filename, "md", nots=not args.add_ts)
+            targetdir, make_filename(filename, "md", args)
         )
         exporter.export(outfilename)
 
     if args.filetype == "pptx":
         outfilename = os.path.join(
-            targetdir, make_filename(filename, "pptx", nots=not args.add_ts)
+            targetdir, make_filename(filename, "pptx", args)
         )
         exporter = PptxExporter(structure, args, dir_kwargs)
         exporter.export(outfilename)
@@ -2958,7 +2987,9 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
     if args.filetype == "add_stats":
         outfilename = os.path.join(
             targetdir,
-            make_filename(filename, "4s", nots=not args.add_ts, addsuffix="_with_stats"),
+            make_filename(
+                filename, "4s", args, addsuffix="_with_stats"
+            ),
         )
         exporter = StatsAdder(structure, args, dir_kwargs)
         exporter.export(outfilename)

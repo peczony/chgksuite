@@ -467,7 +467,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--typography_quotes",
-            default="smart",
+            default="on",
             choices=["smart", "on", "off"],
             help="typography: try to fix quotes.",
             advanced=True,
@@ -497,7 +497,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--typography_accents",
-            default="smart",
+            default="on",
             choices=["smart", "light", "on", "off"],
             help="typography: try to fix accents.",
             advanced=True,
@@ -592,6 +592,16 @@ class ArgparseBuilder:
             default="off",
             help="whether to hide answers behind spoilers.",
             caption="Спойлеры",
+            argtype="radiobutton"
+        )
+        self.add_argument(
+            cmdcompose_docx,
+            "--screen_mode",
+            "-sm",
+            choices=["off", "replace_all", "add_versions"],
+            default="off",
+            help="exporting questions for screen.",
+            caption="Экспорт для экрана",
             argtype="radiobutton"
         )
         self.add_argument(
