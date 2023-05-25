@@ -268,13 +268,13 @@ def compose_4s(structure, args=None):
             tmp = ""
             overrides = element[1].get("overrides") or {}
             if "number" in element[1]:
-                if args.numbers_handling == "default":
+                if not args.numbers_handling or args.numbers_handling == "default":
                     if is_zero(element[1]["number"]):
-                        tmp += "№ " + element[1]["number"] + SEP
+                        tmp += "№ " + str(element[1]["number"]) + SEP
                     elif first_number and tryint(element[1]["number"]) > 1:
-                        tmp += "№№ " + element[1]["number"] + SEP
+                        tmp += "№№ " + str(element[1]["number"]) + SEP
                 elif args.numbers_handling == "all":
-                    tmp += "№ " + element[1]["number"] + SEP
+                    tmp += "№ " + str(element[1]["number"]) + SEP
                 if not is_zero(element[1]["number"]):
                     first_number = False
             for label in QUESTION_LABELS:
