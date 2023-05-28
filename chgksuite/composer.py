@@ -49,6 +49,7 @@ from chgksuite.common import (
     retry_wrapper_factory,
     compose_4s,
     tryint,
+    custom_csv_to_results
 )
 import chgksuite.typotools as typotools
 from chgksuite.typotools import (
@@ -215,10 +216,6 @@ def parse_4s_elem(s):
         gr0 = gr.group(0)
         s = s.replace(gr0, gr0.replace("_", "$$$$UNDERSCORE$$$$"))
 
-    # for gr in re_scaps.finditer(s):
-    #     gr0 = gr.group(0)
-    #     s = s.replace(gr0, '(sc '+gr0.lower()+')')
-
     grs = sorted(
         [match.group(0) for match in re_perc.finditer(s)], key=len, reverse=True
     )
@@ -247,22 +244,29 @@ def parse_4s_elem(s):
             if typotools.find_matching_closing_bracket(s, i) is not None:
                 topart.append(typotools.find_matching_closing_bracket(s, i) + 1)
                 i = typotools.find_matching_closing_bracket(s, i)
+        if (
+            s[i] == "("
+            and i + len("(screen") < len(s)
+            and "".join(s[i : i + len("(screen")]) == "(screen"
+        ):
+            topart.append(i)
+            if typotools.find_matching_closing_bracket(s, i) is not None:
+                topart.append(typotools.find_matching_closing_bracket(s, i) + 1)
+                i = typotools.find_matching_closing_bracket(s, i)
         if s[i : i + len("(PAGEBREAK)")] == "(PAGEBREAK)":
             topart.append(i)
             topart.append(i + len("(PAGEBREAK)"))
-        # if (s[i] == '(' and i + len('(sc') < len(s) and ''.join(s[i:
-        #                     i+len('(sc')])=='(sc'):
-        #     debug_print('sc candidate')
-        #     topart.append(i)
-        #     if not typotools.find_matching_closing_bracket(s, i) is None:
-        #         topart.append(
-        #             typotools.find_matching_closing_bracket(s, i)+1)
-        #         i = typotools.find_matching_closing_bracket(s, i)+2
         i += 1
 
     topart = sorted(topart)
 
     parts = [["", "".join(x.replace("\u6565", ""))] for x in partition(s, topart)]
+
+    def _process(s):
+        s = s.replace("\\_", "_")
+        s = s.replace("\\.", ".")
+        s = s.replace("$$$$UNDERSCORE$$$$", "_")
+        return s
 
     for part in parts:
         if not part[1]:
@@ -284,18 +288,25 @@ def parse_4s_elem(s):
             if len(part[1]) > 4 and part[1][:4] == "(img":
                 if part[1][-1] != ")":
                     part[1] = part[1] + ")"
-                part[1] = typotools.remove_excessive_whitespace(part[1][4:-1])
+                part[1] = part[1][4:-1]
                 part[0] = "img"
                 logger.debug("found img at {}".format(part[1]))
+            if len(part[1]) > 7 and part[1][:7] == "(screen":
+                if part[1][-1] != ")":
+                    part[1] = part[1] + ")"
+                for_print, for_screen = part[1][8:-1].split("|")
+                for_print = _process(for_print)
+                for_screen = _process(for_screen)
+                part[1] = {"for_print": for_print, "for_screen": for_screen}
+                part[0] = "screen"
+                continue
             if len(part[1]) > 3 and part[1][:4] == "(sc":
                 if part[1][-1] != ")":
                     part[1] = part[1] + ")"
-                part[1] = typotools.remove_excessive_whitespace(part[1][3:-1])
+                part[1] = part[1][3:-1]
                 part[0] = "sc"
                 logger.debug("found img at {}".format(log_wrap(part[1])))
-            part[1] = part[1].replace("\\_", "_")
-            part[1] = part[1].replace("\\.", ".")
-            part[1] = part[1].replace("$$$$UNDERSCORE$$$$", "_")
+            part[1] = _process(part[1])
         except Exception as e:
             sys.stderr.write(f"Error on part {log_wrap(part)}: {type(e)} {e}")
 
@@ -795,6 +806,8 @@ class DbExporter(BaseExporter):
                 res += run[1].replace("\n", "\n   ")
             if run[0] == "em":
                 res += run[1]
+            if run[0] == "screen":
+                res += run[1]["for_print"]
             if run[0] == "img":
                 if run[1].startswith(("http://", "https://")):
                     imglink = run[1]
@@ -970,6 +983,8 @@ class RedditExporter(BaseExporter):
         for run in parse_4s_elem(s):
             if run[0] == "":
                 res += run[1]
+            if run[0] == "screen":
+                res += run[1]["for_screen"]
             if run[0] == "em":
                 res += "_{}_".format(run[1])
             if run[0] == "img":
@@ -1092,6 +1107,8 @@ class TelegramExporter(BaseExporter):
         for run in parse_4s_elem(s):
             if run[0] == "":
                 res += run[1]
+            if run[0] == "screen":
+                res += run[1]["for_screen"]
             if run[0] == "em":
                 res += "_{}_".format(run[1])
             if run[0] == "img":
@@ -1640,6 +1657,8 @@ class LatexExporter(BaseExporter):
         for run in parse_4s_elem(s):
             if run[0] == "":
                 res += self.texrepl(run[1])
+            if run[0] == "screen":
+                res += self.texrepl(run[1]["for_print"])
             if run[0] == "em":
                 res += "\\emph{" + self.texrepl(run[1]) + "}"
             if run[0] == "img":
@@ -1791,7 +1810,12 @@ class DocxExporter(BaseExporter):
                         para = self.doc.add_paragraph()
                     else:
                         para = self.doc.add_page_break()
-                if run[0] == "img":
+                elif run[0] == "screen":
+                    if kwargs.get("remove_accents") or kwargs.get("remove_brackets"):
+                        r = para.add_run(replace_no_break_spaces(run[1]["for_screen"]))
+                    else:
+                        r = para.add_run(replace_no_break_spaces(run[1]["for_print"]))
+                elif run[0] == "img":
                     if run[1].endswith(".shtml"):
                         r = para.add_run(
                             "(ТУТ БЫЛА ССЫЛКА НА ПРОТУХШУЮ КАРТИНКУ)\n"
@@ -1817,14 +1841,14 @@ class DocxExporter(BaseExporter):
                         )
                     r.add_text("\n")
                     continue
-
-                r = para.add_run(replace_no_break_spaces(run[1]))
-                if run[0] == "em":
-                    r.italic = True
-                elif run[0] == "sc":
-                    r.small_caps = True
-                if whiten and self.args.spoilers == "whiten":
-                    r.style = "Whitened"
+                else:
+                    r = para.add_run(replace_no_break_spaces(run[1]))
+                    if run[0] == "em":
+                        r.italic = True
+                    elif run[0] == "sc":
+                        r.small_caps = True
+                    if whiten and self.args.spoilers == "whiten":
+                        r.style = "Whitened"
 
     def add_question(self, element, skip_qcount=False, screen_mode=False):
         q = element[1]
@@ -2013,11 +2037,15 @@ class PptxExporter(BaseExporter):
             for run in parse_4s_elem(el):
                 if run[0] in ("", "sc"):
                     r = para.add_run()
-                    r.text = run[1]
+                    r.text = replace_no_break_spaces(run[1])
+                
+                elif run[0] == "screen":
+                    r = para.add_run()
+                    r.text = replace_no_break_spaces(run[1]["for_screen"])
 
                 elif run[0] == "em":
                     r = para.add_run()
-                    r.text = run[1]
+                    r.text = replace_no_break_spaces(run[1])
                     r.italic = True
 
                 elif run[0] == "img":
@@ -2069,12 +2097,12 @@ class PptxExporter(BaseExporter):
         add_line_break = False
         if section:
             r = p.add_run()
-            r.text = self.pptx_process_text(section[0][1])
+            r.text = replace_no_break_spaces(self.pptx_process_text(section[0][1]))
             r.font.size = PptxPt(self.c["text_size_grid"]["section"])
             add_line_break = True
         if editor:
             r = p.add_run()
-            r.text = (
+            r.text = replace_no_break_spaces(
                 ("\n" if add_line_break else "")
                 + self.pptx_process_text(editor[0][1])
                 + "\n"
@@ -2083,7 +2111,7 @@ class PptxExporter(BaseExporter):
         if meta:
             for element in meta:
                 r = p.add_run()
-                r.text = (
+                r.text = replace_no_break_spaces(
                     ("\n" if add_line_break else "")
                     + self.pptx_process_text(element[1])
                     + "\n"
@@ -2423,16 +2451,6 @@ class StatsAdder(BaseExporter):
         )
         return req.json()
 
-    @staticmethod
-    def custom_csv_to_results(csv_file_path):
-        results = []
-        with open(csv_file_path, encoding="utf8") as f:
-            reader = csv.reader(f)
-            for row in itertools.islice(reader, 1, None):
-                val = {"current": {"name": row[1]}, "mask": "".join(row[3:])}
-                results.append(val)
-        return results
-
     def process_tournament(self, results):
         for res in results:
             if not res.get("mask"):
@@ -2466,7 +2484,7 @@ class StatsAdder(BaseExporter):
                 results = self.get_tournament_results(id_)
                 self.process_tournament(results)
         elif self.args.custom_csv:
-            results = self.custom_csv_to_results(self.args.custom_csv)
+            results = custom_csv_to_results(self.args.custom_csv)
             self.process_tournament(results)
         qnumber = 1
         for element in self.structure:
@@ -2857,6 +2875,8 @@ class LjExporter(BaseExporter):
         for run in parse_4s_elem(s):
             if run[0] == "":
                 res += self.htmlrepl(run[1])
+            if run[0] == "screen":
+                res += self.htmlrepl(run[1]["for_screen"])
             if run[0] == "em":
                 res += "<em>" + self.htmlrepl(run[1]) + "</em>"
             if run[0] == "img":
@@ -2961,9 +2981,7 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
         exporter.export(outfilename)
 
     if args.filetype == "tex":
-        outfilename = os.path.join(
-            tmp_dir, make_filename(filename, "tex", args)
-        )
+        outfilename = os.path.join(tmp_dir, make_filename(filename, "tex", args))
         exporter = LatexExporter(structure, args, dir_kwargs)
         exporter.export(outfilename)
 
@@ -2973,31 +2991,23 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
 
     if args.filetype == "base":
         exporter = DbExporter(structure, args, dir_kwargs)
-        outfilename = os.path.join(
-            targetdir, make_filename(filename, "txt", args)
-        )
+        outfilename = os.path.join(targetdir, make_filename(filename, "txt", args))
         exporter.export(outfilename)
 
     if args.filetype == "redditmd":
         exporter = RedditExporter(structure, args, dir_kwargs)
-        outfilename = os.path.join(
-            targetdir, make_filename(filename, "md", args)
-        )
+        outfilename = os.path.join(targetdir, make_filename(filename, "md", args))
         exporter.export(outfilename)
 
     if args.filetype == "pptx":
-        outfilename = os.path.join(
-            targetdir, make_filename(filename, "pptx", args)
-        )
+        outfilename = os.path.join(targetdir, make_filename(filename, "pptx", args))
         exporter = PptxExporter(structure, args, dir_kwargs)
         exporter.export(outfilename)
 
     if args.filetype == "add_stats":
         outfilename = os.path.join(
             targetdir,
-            make_filename(
-                filename, "4s", args, addsuffix="_with_stats"
-            ),
+            make_filename(filename, "4s", args, addsuffix="_with_stats"),
         )
         exporter = StatsAdder(structure, args, dir_kwargs)
         exporter.export(outfilename)
