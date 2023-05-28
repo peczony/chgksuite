@@ -63,7 +63,7 @@ NO_BREAK_SEQUENCES = [
     "что",
     "перед",
 ]
-NO_BREAK_SEQUENCES_LEFT = ["бы", "ли", "же"]
+NO_BREAK_SEQUENCES_LEFT = ["бы", "ли", "же", "—", "–"]
 LETTERS_MAPPING = {"a": "а", "e": "е", "y": "у", "o": "о", "u": "и"}
 for x in list(LETTERS_MAPPING.keys()):
     LETTERS_MAPPING[x.upper()] = LETTERS_MAPPING[x].upper()
@@ -79,6 +79,7 @@ re_url = re.compile(
     re.DOTALL,
 )
 re_percent = re.compile(r"(%[0-9a-fA-F]{2})+")
+re_nbh = re.compile("(^|[^а-яё])(?P<word>[а-яё]{0,3}\\-[а-яё]{0,3})([^а-яё]|$)", flags=re.I)
 
 
 def strings_iterator(str_):
@@ -216,6 +217,10 @@ def replace_no_break_spaces(s):
         r_from = " {sp}([ \u00a0]|$)".format(sp=sp)
         r_to = "\u00a0{sp}\\g<1>".format(sp=sp)
         s = re.sub(r_from, r_to, s)
+    srch = re_nbh.search(s)
+    while srch:
+        s = s.replace(srch.group("word"), srch.group("word").replace("-", "\u2011"))  # non-breaking hyphen
+        srch = re_nbh.search(s)
     return s
 
 
