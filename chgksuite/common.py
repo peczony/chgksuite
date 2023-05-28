@@ -3,6 +3,8 @@
 from __future__ import unicode_literals
 import os
 import sys
+import csv
+import itertools
 import re
 import codecs
 import argparse
@@ -211,6 +213,20 @@ def tryint(s):
         return int(s)
     except (TypeError, ValueError):
         return
+    
+
+def custom_csv_to_results(csv_file_path):
+    results = []
+    with open(csv_file_path, encoding="utf8") as f:
+        reader = csv.reader(f)
+        for row in itertools.islice(reader, 1, None):
+            val = {
+                "team": {"id": tryint(row[0])},
+                "current": {"name": row[1]},
+                "mask": "".join(row[3:]),
+            }
+            results.append(val)
+    return results
 
 
 def compose_4s(structure, args=None):
