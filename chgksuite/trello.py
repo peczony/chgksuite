@@ -117,13 +117,13 @@ def noanswers_line_check(line):
     )
 
 
-RE_LINK = re.compile("\\[(.+?)\\]\\((.+?)\\)")
+RE_LINK = re.compile('\\[(.+?)\\]\\((?P<link>.+?)( "(.+?)")?\\)')
 
 
 def fix_trello_new_editor_links(desc):
     srch = RE_LINK.search(desc)
     while srch:
-        actual_link = srch.group(2).split()[0]
+        actual_link = srch.group("link")
         desc = desc.replace(srch.group(0), actual_link)
         srch = RE_LINK.search(desc)
     return desc
@@ -221,9 +221,11 @@ def gui_trello_download(args, sourcedir):
         qb_doc = Document(template_path)
 
     for card in json_["cards"]:
-        if args.replace_double_line_breaks or args.fix_trello_new_editor:
-            card["desc"] = card["desc"].replace("\n\n", "\n")
-        if args.fix_trello_new_editor:
+        if args.replace_double_line_breaks or args.fix_trello_new_editor == "on":
+            card["desc"] = card["desc"].replace("\n\n", "\n").replace("\\@", "@")
+            card["desc"] = re.sub("\n +", "\n", card["desc"])
+            card["desc"] = card["desc"].replace("```", "")
+        if args.fix_trello_new_editor == "on":
             card["desc"] = fix_trello_new_editor_links(card["desc"])
         list_id = card["idList"]
         list_name = _names[list_id]

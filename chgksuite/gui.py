@@ -918,10 +918,12 @@ class ArgparseBuilder:
             cmdtrello_download,
             "--fix_trello_new_editor",
             "-ftne",
-            action="store_true",
+            choices=["on", "off"],
+            default="on",
             help="This flag fixes mess caused by Trello's new editor "
                 "(introduced in early 2023).",
             caption="Пофиксить новый редактор Трелло",
+            argtype="radiobutton"
         )
         self.add_argument(
             cmdtrello_download,
