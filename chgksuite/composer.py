@@ -1115,6 +1115,7 @@ class TelegramExporter(BaseExporter):
                 if run[1].startswith(("http://", "https://")):
                     res += run[1]
                 else:
+                    res += self.labels["general"].get("cf_image", "см. изображение")
                     parsed_image = parseimg(
                         run[1],
                         dimensions="ems",
