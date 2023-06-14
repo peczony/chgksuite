@@ -18,16 +18,13 @@ from chgksuite.parser import (
     compose_4s,
 )
 from chgksuite.common import DefaultArgs
+from chgksuite.typotools import get_quotes_right
 
-currentdir = os.path.dirname(
-    os.path.abspath(inspect.getfile(inspect.currentframe()))
-)
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 
 
-ljlogin, ljpassword = (
-    open(os.path.join(currentdir, "ljcredentials")).read().split("\t")
-)
+ljlogin, ljpassword = open(os.path.join(currentdir, "ljcredentials")).read().split("\t")
 
 
 def workaround_chgk_parse(filename, **kwargs):
@@ -38,10 +35,25 @@ def workaround_chgk_parse(filename, **kwargs):
     return
 
 
-# def test_parse_empty():
-#     for elem in {'', ' ', ' \n ', '\ufeff'}:
-#         chgk_parse(elem)
-#         parse_4s(elem)
+QUOTE_TEST_CASES = [
+    ('«"Альфа" Бета»', "«„Альфа“ Бета»"),
+    ("«“Альфа” Бета»", "«„Альфа“ Бета»"),
+    ("«„Альфа“ Бета»", "«„Альфа“ Бета»"),
+    ("«Альфа», “Бета”", "«Альфа», «Бета»"),
+    (
+        '"Он сказал: "Привет!". А потом заплакал"',
+        "«Он сказал: „Привет!“. А потом заплакал»",
+    ),
+    (
+        "“Он сказал: “Привет!”. А потом заплакал”",
+        "«Он сказал: „Привет!“. А потом заплакал»",
+    ),
+]
+
+
+@pytest.mark.parametrize("a,expected", QUOTE_TEST_CASES)
+def test_quotes(a, expected):
+    assert get_quotes_right(a) == expected
 
 
 @contextlib.contextmanager
@@ -80,13 +92,9 @@ def test_canonical_equality(parsing_engine):
                         os.path.join(temp_dir, to_parse_fn),
                     ]
                 )
-                with codecs.open(
-                    os.path.join(temp_dir, bn + ".4s"), "r", "utf8"
-                ) as f:
+                with codecs.open(os.path.join(temp_dir, bn + ".4s"), "r", "utf8") as f:
                     parsed = f.read()
-                with codecs.open(
-                    os.path.join(temp_dir, filename), "r", "utf8"
-                ) as f:
+                with codecs.open(os.path.join(temp_dir, filename), "r", "utf8") as f:
                     canonical = f.read()
                 assert normalize(canonical) == normalize(parsed)
 

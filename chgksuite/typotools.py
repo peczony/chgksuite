@@ -161,40 +161,96 @@ def remove_excessive_whitespace(s):
     return s
 
 
+class QuoteFixer:
+
+    def __init__(self, s):
+        self.s = s
+        self.new_s = list(s)
+        self.level = 0
+        self.last_opening_quote = {}
+        self.quote_chars = {}
+
+    def is_opening_quote(self, c, i):
+        if i in self.quote_chars:
+            return self.quote_chars[i] == "opening"
+        return c[i] in ("«", "“", "„")
+    
+    def is_space(self, char):
+        return char in (" ", "\u00a0")
+    
+    def prev(self, c, i):
+        if i < 0:
+            raise Exception("not allowed")
+        if i == 0:
+            return None
+        return c[i - 1]
+    
+    def next(self, c, i):
+        if i >= len(c):
+            raise Exception("not allowed")
+        if i + 1 == len(c):
+            return None
+        return c[i + 1]
+
+    def fix(self):
+        c = self.new_s
+        for i in range(len(c)):
+            if c[i] in ("«", "„"):
+                self.level += 1
+                self.quote_chars[i] = ("opening", self.level, c[i], i)
+                self.last_opening_quote[self.level] = c[i]
+            elif c[i] in ("»", "”"):
+                self.quote_chars[i] = ("closing", self.level, c[i], i)
+                self.level -= 1
+            elif c[i] == '"':
+                if self.level == 0 or (
+                    self.prev(c, i) is None
+                    or (self.is_space(self.prev(c, i)) and (
+                        self.next(c, i) is not None
+                        and not self.is_space(self.next(c, i))
+                    ))
+                ):
+                    self.level += 1
+                    self.quote_chars[i] = ("opening", self.level, c[i], i)
+                    self.last_opening_quote[self.level] = c[i]
+                elif self.last_opening_quote.get(self.level) == '"':
+                    self.quote_chars[i] = ("closing", self.level, c[i], i)
+                    self.level -= 1
+                else:
+                    self.level += 1
+                    self.quote_chars[i] = ("opening", self.level, c[i], i)
+                    self.last_opening_quote[self.level] = c[i]
+            elif c[i] == "“":
+                if self.last_opening_quote.get(self.level) == "„":
+                    self.quote_chars[i] = ("closing", self.level, c[i], i)
+                    self.level -= 1
+                else:
+                    self.level += 1
+                    self.quote_chars[i] = ("opening", self.level, c[i], i)
+        if self.level != 0:
+            return self.s
+        for qc in self.quote_chars:
+            tup = self.quote_chars[qc]
+            if tup[0] == "opening":
+                if tup[1] % 2:
+                    self.new_s[qc] = "«"
+                else:
+                    self.new_s[qc] = "„"
+            elif tup[0] == "closing":
+                if tup[1] % 2:
+                    self.new_s[qc] = "»"
+                else:
+                    self.new_s[qc] = "“"
+            else:
+                raise Exception("not allowed")
+        return "".join(self.new_s)
+
+
 def get_quotes_right(s_in):
     s = s_in
-    s = re.sub(r"[{}]".format("".join(OPENING_QUOTES)), "«", s)
-    s = re.sub(r"[{}]".format("".join(CLOSING_QUOTES)), "»", s)
-    s = re.sub(r'^"', "«", s)
-    s = re.sub(r'"$', "»", s)
-    s = re.sub(r'(\w)(")([^\w]|$)', r"\1»\3", s, flags=re.U)
-    s = re.sub(r'(^|[^\w])(")(\w)', r"\1«\3", s, flags=re.U)
-    s = re.sub(r'([^\w\s])(")([^\w\s])', r"\1»\3", s, flags=re.U)
-    s = re.sub(r'" ', "» ", s)
-    s = re.sub(r' "', " «", s)
-    cntr = 0
 
-    s = list(s)
-    for i, c in enumerate(s):
-        if c == '"':
-            if cntr:
-                s[i] = "»"
-                cntr -= 1
-            else:
-                s[i] = "«"
-                cntr += 1
-
-    cntr = 0
-    for i, c in enumerate(s):
-        if c == "«":
-            cntr += 1
-            if cntr % 2 == 0:
-                s[i] = "„"
-        if c == "»":
-            if cntr % 2 == 0:
-                s[i] = "“"
-            cntr -= 1
-    s = "".join(s)
+    if '"' in s or ("“" in s and "„" not in s):
+        s = QuoteFixer(s).fix()
 
     s = re.sub(r"(\w)'", r"\1’", s, flags=re.U)
     s = re.sub(r"'(\w)", r"‘\1", s, flags=re.U)
