@@ -229,6 +229,10 @@ def custom_csv_to_results(csv_file_path):
     return results
 
 
+def replace_escaped(s):
+    return s.replace("\\[", "[").replace("\\]", "]")
+
+
 def compose_4s(structure, args=None):
     types_mapping = {
         "meta": "# ",

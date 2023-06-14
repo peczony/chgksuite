@@ -46,6 +46,7 @@ from chgksuite.common import (
     log_wrap,
     QUESTION_LABELS,
     check_question,
+    replace_escaped,
     retry_wrapper_factory,
     compose_4s,
     tryint,
@@ -735,6 +736,8 @@ class BaseExporter:
 
     def remove_square_brackets(self, s):
         hs = self.labels["question_labels"]["handout_short"]
+        s = s.replace("\\[", "LEFTSQUAREBRACKET")
+        s = s.replace("\\]", "RIGHTSQUAREBRACKET")
         s = re.sub(f"\\[{hs}(.+?)\\]", "{" + hs + "\\1}", s, flags=re.DOTALL)
         i = 0
         while "[" in s and "]" in s and i < 10:
@@ -746,6 +749,8 @@ class BaseExporter:
                 f"Error replacing square brackets on question: {s}, retries exceeded\n"
             )
         s = re.sub("\\{" + hs + "(.+?)\\}", "[" + hs + "\\1]", s, flags=re.DOTALL)
+        s = s.replace("LEFTSQUAREBRACKET", "[")
+        s = s.replace("RIGHTSQUAREBRACKET", "]")
         return s
 
 
@@ -816,6 +821,7 @@ class DbExporter(BaseExporter):
                 res += "(pic: {})".format(imglink)
         while res.endswith("\n"):
             res = res[:-1]
+        res = replace_escaped(res)
         return res
 
     def base_element_layout(self, e):
@@ -1799,6 +1805,8 @@ class DocxExporter(BaseExporter):
                 el = el.replace("\u0301", "")
             if kwargs.get("remove_brackets"):
                 el = self.remove_square_brackets(el)
+            else:
+                el = replace_escaped(el)
 
             el = backtick_replace(el)
 
@@ -2063,6 +2071,8 @@ class PptxExporter(BaseExporter):
         if strip_brackets:
             s = self.remove_square_brackets(s)
             s = s.replace("]\n", "]\n\n")
+        else:
+            s = replace_escaped(s)
         if image:
             s = re.sub("\\[" + hs + "(.+?)\\]", "", s, flags=re.DOTALL)
             s = s.strip()
