@@ -126,6 +126,8 @@ def fix_trello_new_editor_links(desc):
         actual_link = srch.group("link")
         desc = desc.replace(srch.group(0), actual_link)
         srch = RE_LINK.search(desc)
+    if ' "")' in desc:
+        desc = desc.replace(' "")', "")
     return desc
 
 
@@ -224,6 +226,8 @@ def gui_trello_download(args, sourcedir):
         if args.replace_double_line_breaks or args.fix_trello_new_editor == "on":
             card["desc"] = card["desc"].replace("\n\n", "\n").replace("\\@", "@")
             card["desc"] = re.sub("\n +", "\n", card["desc"])
+            card["desc"] = card["desc"].replace("\n\\-", "\n-")
+            card["desc"] = card["desc"].replace("\\#", "#")
             card["desc"] = card["desc"].replace("```", "")
         if args.fix_trello_new_editor == "on":
             card["desc"] = fix_trello_new_editor_links(card["desc"])
