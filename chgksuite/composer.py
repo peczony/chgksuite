@@ -30,6 +30,7 @@ import pyperclip
 import toml
 from pptx.dml.color import RGBColor
 
+import docx
 from docx import Document
 from docx.shared import Inches, Pt as DocxPt
 from docx.image.exceptions import UnrecognizedImageError
@@ -1858,6 +1859,20 @@ class DocxExporter(BaseExporter):
                         r.small_caps = True
                     if whiten and self.args.spoilers == "whiten":
                         r.style = "Whitened"
+
+    def add_hyperlink(self, paragraph, text, url):
+        # adapted from https://github.com/python-openxml/python-docx/issues/610
+        doc = self.doc
+        run = paragraph.add_run(text)
+        run.style = doc.styles["Hyperlink"]
+        part = paragraph.part
+        r_id = part.relate_to(
+            url, docx.opc.constants.RELATIONSHIP_TYPE.HYPERLINK, is_external=True
+        )
+        hyperlink = docx.oxml.shared.OxmlElement("w:hyperlink")
+        hyperlink.set(docx.oxml.shared.qn("r:id"), r_id)
+        hyperlink.append(run._r)
+        paragraph._p.append(hyperlink)
 
     def add_question(self, element, skip_qcount=False, screen_mode=False):
         q = element[1]
