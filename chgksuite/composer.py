@@ -282,6 +282,7 @@ def parse_4s_elem(s):
                 topart.append(j - 1)
             else:
                 topart.append(j)
+            i = j + 1
         i += 1
 
     topart = sorted(topart)
