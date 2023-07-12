@@ -202,6 +202,13 @@ def partition(alist, indices):
     return [alist[i:j] for i, j in zip([0] + indices, indices + [None])]
 
 
+def starts_either(s, i, variants):
+    for v in variants:
+        if s[i : i + len(v)] == v:
+            return True
+    return False
+
+
 def parse_4s_elem(s):
     def find_next_unescaped(ss, index):
         j = index + 1
@@ -258,6 +265,23 @@ def parse_4s_elem(s):
         if s[i : i + len("(PAGEBREAK)")] == "(PAGEBREAK)":
             topart.append(i)
             topart.append(i + len("(PAGEBREAK)"))
+        if starts_either(s, i, ("http://", "https://")):
+            topart.append(i)
+            j = i + 1
+            bracket_level = 0
+            while j < len(s) and not (
+                s[j].isspace()
+                or s[j] == ")" and bracket_level == 0
+            ):
+                if s[j] == "(":
+                    bracket_level += 1
+                elif s[j] == ")" and bracket_level > 0:
+                    bracket_level -= 1
+                j += 1
+            if s[j - 1] in (",", ".", ";"):
+                topart.append(j - 1)
+            else:
+                topart.append(j)
         i += 1
 
     topart = sorted(topart)
@@ -302,6 +326,8 @@ def parse_4s_elem(s):
                 part[1] = {"for_print": for_print, "for_screen": for_screen}
                 part[0] = "screen"
                 continue
+            if part[1].startswith(("http://", "https://")):
+                part[0] = "hyperlink"
             if len(part[1]) > 3 and part[1][:4] == "(sc":
                 if part[1][-1] != ")":
                     part[1] = part[1] + ")"
@@ -808,7 +834,7 @@ class DbExporter(BaseExporter):
     def baseformat(self, s):
         res = ""
         for run in parse_4s_elem(s):
-            if run[0] == "":
+            if run[0] in ("", "hyperlink"):
                 res += run[1].replace("\n", "\n   ")
             if run[0] == "em":
                 res += run[1]
@@ -988,7 +1014,7 @@ class RedditExporter(BaseExporter):
     def redditformat(self, s):
         res = ""
         for run in parse_4s_elem(s):
-            if run[0] == "":
+            if run[0] in ("", "hyperlink"):
                 res += run[1]
             if run[0] == "screen":
                 res += run[1]["for_screen"]
@@ -1112,7 +1138,7 @@ class TelegramExporter(BaseExporter):
         res = ""
         image = None
         for run in parse_4s_elem(s):
-            if run[0] == "":
+            if run[0] in ("", "hyperlink"):
                 res += run[1]
             if run[0] == "screen":
                 res += run[1]["for_screen"]
@@ -1825,6 +1851,8 @@ class DocxExporter(BaseExporter):
                         r = para.add_run(replace_no_break_spaces(run[1]["for_screen"]))
                     else:
                         r = para.add_run(replace_no_break_spaces(run[1]["for_print"]))
+                elif run[0] == "hyperlink" and not (whiten and self.args.spoilers == "whiten"):
+                    r = self.add_hyperlink(para, run[1], run[1])
                 elif run[0] == "img":
                     if run[1].endswith(".shtml"):
                         r = para.add_run(
@@ -1873,6 +1901,7 @@ class DocxExporter(BaseExporter):
         hyperlink.set(docx.oxml.shared.qn("r:id"), r_id)
         hyperlink.append(run._r)
         paragraph._p.append(hyperlink)
+        return hyperlink
 
     def add_question(self, element, skip_qcount=False, screen_mode=False):
         q = element[1]
@@ -2899,7 +2928,7 @@ class LjExporter(BaseExporter):
     def htmlformat(self, s):
         res = ""
         for run in parse_4s_elem(s):
-            if run[0] == "":
+            if run[0] in ("", "hyperlink"):
                 res += self.htmlrepl(run[1])
             if run[0] == "screen":
                 res += self.htmlrepl(run[1]["for_screen"])
