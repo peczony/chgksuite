@@ -51,7 +51,7 @@ from chgksuite.common import (
     retry_wrapper_factory,
     compose_4s,
     tryint,
-    custom_csv_to_results
+    custom_csv_to_results,
 )
 import chgksuite.typotools as typotools
 from chgksuite.typotools import (
@@ -270,8 +270,7 @@ def parse_4s_elem(s):
             j = i + 1
             bracket_level = 0
             while j < len(s) and not (
-                s[j].isspace()
-                or s[j] == ")" and bracket_level == 0
+                s[j].isspace() or s[j] == ")" and bracket_level == 0
             ):
                 if s[j] == "(":
                     bracket_level += 1
@@ -1090,18 +1089,33 @@ class TelegramExporter(BaseExporter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.chgksuite_dir = get_chgksuite_dir()
-        api_id, api_hash = self.get_api_credentials()
         self.pyrogram = importlib.import_module(
             "pyrogram"
         )  # pyrogram slows down startup quite a bit, so only import it when needed
-        self.app = self.pyrogram.Client(
-            self.args.tgaccount, api_id, api_hash, workdir=self.chgksuite_dir, hide_password=not self.args.no_hide_password
-        )
-        with self.app:
-            logger.debug(self.app.get_me())
+        try:
+            self.init_tg()
+        except self.pyrogram.errors.exceptions.unauthorized_401.AuthKeyUnregistered:
+            filepath = os.path.join(
+                self.chgksuite_dir, self.args.tgaccount + ".session"
+            )
+            if os.path.isfile(filepath):
+                os.remove(filepath)
+            self.init_tg()
         self.qcount = 1
         self.number = 1
         self.tg_heading = None
+
+    def init_tg(self):
+        api_id, api_hash = self.get_api_credentials()
+        self.app = self.pyrogram.Client(
+            self.args.tgaccount,
+            api_id,
+            api_hash,
+            workdir=self.chgksuite_dir,
+            hide_password=not self.args.no_hide_password,
+        )
+        with self.app:
+            logger.debug(self.app.get_me())
 
     def get_api_credentials(self):
         pyrogram_toml_file_path = os.path.join(self.chgksuite_dir, "pyrogram.toml")
@@ -1852,7 +1866,9 @@ class DocxExporter(BaseExporter):
                         r = para.add_run(replace_no_break_spaces(run[1]["for_screen"]))
                     else:
                         r = para.add_run(replace_no_break_spaces(run[1]["for_print"]))
-                elif run[0] == "hyperlink" and not (whiten and self.args.spoilers == "whiten"):
+                elif run[0] == "hyperlink" and not (
+                    whiten and self.args.spoilers == "whiten"
+                ):
                     r = self.add_hyperlink(para, run[1], run[1])
                 elif run[0] == "img":
                     if run[1].endswith(".shtml"):
@@ -2092,7 +2108,7 @@ class PptxExporter(BaseExporter):
                 if run[0] in ("", "sc"):
                     r = para.add_run()
                     r.text = replace_no_break_spaces(run[1])
-                
+
                 elif run[0] == "screen":
                     r = para.add_run()
                     r.text = replace_no_break_spaces(run[1]["for_screen"])
