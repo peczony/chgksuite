@@ -825,6 +825,14 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose_telegram,
+            "--no_hide_password",
+            advanced=True,
+            action="store_true",
+            help="don't hide 2FA password.",
+            caption="Не скрывать пароль 2FA при вводе (включите, если в вашем терминале есть проблемы со вводом пароля)"
+        )
+        self.add_argument(
+            cmdcompose_telegram,
             "--nospoilers",
             "-n",
             action="store_true",

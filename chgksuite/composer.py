@@ -1095,7 +1095,7 @@ class TelegramExporter(BaseExporter):
             "pyrogram"
         )  # pyrogram slows down startup quite a bit, so only import it when needed
         self.app = self.pyrogram.Client(
-            self.args.tgaccount, api_id, api_hash, workdir=self.chgksuite_dir
+            self.args.tgaccount, api_id, api_hash, workdir=self.chgksuite_dir, hide_password=not self.args.no_hide_password
         )
         with self.app:
             logger.debug(self.app.get_me())
