@@ -2,6 +2,6 @@
 
 Система для работы с пакетами ЧГК.
 
-Документация: https://peczony.gitlab.io/chgksuite/
+Документация: https://chgksuite.pecheny.me
 
 Последняя версия в релизах: https://gitlab.com/peczony/chgksuite/-/releases
