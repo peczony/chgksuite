@@ -117,18 +117,67 @@ def noanswers_line_check(line):
     )
 
 
-RE_LINK = re.compile('\\[(.+?)\\]\\((?P<link>.+?)( "(.+?)")?\\)')
+RE_LINK = re.compile('\\]\\(')
+
+def find_and_parse_link(str_, index_):
+    assert str_[index_] == "]"
+    assert str_[index_ + 1] == "("
+    mvr = index_
+    level = 0
+    while mvr:
+        mvr -= 1
+        if str_[mvr] == "]":
+            level += 1
+        elif str_[mvr] == "[":
+            if level:
+                level -= 1
+            else:
+                break
+    if not (mvr >= 0 and str_[mvr] == "["):
+        return
+    first_part = str_[mvr:index_ + 1]
+    mvr = index_ + 1
+    level = 0
+    while mvr < len(str_):
+        mvr += 1
+        if str_[mvr] == "(":
+            level += 1
+        elif str_[mvr] == ")":
+            if level:
+                level -= 1
+            else:
+                break
+    if not (mvr < len(str_) and str_[mvr] == ")"):
+        return
+    second_part = str_[index_ + 1:mvr + 1]
+    if first_part[1:5] == "http" and second_part[1:5] == "http":
+        link = first_part[1:-1]
+    else:
+        link = None
+    return (first_part, second_part, link)
+
 
 
 def fix_trello_new_editor_links(desc):
     srch = RE_LINK.search(desc)
+    result = []
     while srch:
-        actual_link = srch.group("link")
-        desc = desc.replace(srch.group(0), actual_link)
+        span = srch.span()
+        link_parsed = find_and_parse_link(desc, span[0])
+        if link_parsed:
+            together = link_parsed[0] + link_parsed[1]
+            end = desc.find(together) + len(together) + 1
+            result.append(desc[: end].replace(together, link_parsed[2]))
+            desc = desc[end :]
+        else:
+            result.append(desc[: end])
+            desc = desc[end :]
         srch = RE_LINK.search(desc)
-    if ' "")' in desc:
-        desc = desc.replace(' "")', "")
-    return desc
+    if not result:
+        return desc
+    else:
+        result.append(desc)
+    return "".join(result)
 
 
 def process_desc(s, onlyanswers=False, noanswers=False):
