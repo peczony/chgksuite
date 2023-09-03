@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 import codecs
 import base64
-import csv
 from collections import defaultdict, Counter
 import copy
 import contextlib
 import logging
 import importlib
-import itertools
 import datetime
 import hashlib
 import os
@@ -1119,7 +1117,7 @@ class TelegramExporter(BaseExporter):
 
     def get_api_credentials(self):
         pyrogram_toml_file_path = os.path.join(self.chgksuite_dir, "pyrogram.toml")
-        if os.path.exists(pyrogram_toml_file_path):
+        if os.path.exists(pyrogram_toml_file_path) and not self.args.reset_api:
             with open(pyrogram_toml_file_path, "r", encoding="utf8") as f:
                 pyr = toml.load(f)
             return pyr["api_id"], pyr["api_hash"]

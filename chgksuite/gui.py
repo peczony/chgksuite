@@ -825,6 +825,14 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose_telegram,
+            "--reset_api",
+            advanced=True,
+            action="store_true",
+            help="reset api_id/api_hash.",
+            caption="Сбросить api_id/api_hash"
+        )
+        self.add_argument(
+            cmdcompose_telegram,
             "--no_hide_password",
             advanced=True,
             action="store_true",
