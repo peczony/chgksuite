@@ -852,7 +852,7 @@ class ArgparseBuilder:
             "--skip_until",
             type=int,
             help="skip questions until N.",
-            caption="Пропустить вопросы до N-го",
+            caption="Начать выкладывать с N-го вопроса",
         )
         self.add_argument(
             cmdcompose_telegram,
