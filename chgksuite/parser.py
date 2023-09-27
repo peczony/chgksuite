@@ -245,12 +245,13 @@ class ChgkParser:
         strings = []
         self._get_strings(question["question"], strings)
         strings = "\n".join(strings)
-        srch = re.search("Раздаточный материал:([ \n]+)\\[", strings)
+        handout = self.labels["question_labels"]["handout"]
+        srch = re.search(f"{handout}:([ \n]+)\\[", strings, flags=re.DOTALL)
         if srch:
             question["question"] = self._replace(
                 question["question"],
                 srch.group(0),
-                "[Раздаточный материал:" + srch.group(1),
+                f"[{handout}:" + srch.group(1),
             )
 
     def get_single_number_lines(self):
