@@ -27,7 +27,7 @@ from chgksuite.common import (
 import json
 import shlex
 
-LANGS = ["ru", "ua", "by", "en", "uz", "uz_cyr", "custom"]
+LANGS = ["ru", "ua", "by", "by_tar", "en", "uz", "uz_cyr", "custom"]
 
 try:
     basestring

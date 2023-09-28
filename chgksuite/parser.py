@@ -97,6 +97,8 @@ class ChgkParser:
             self.question_stub = f"{{}} – {question_label}."
         else:
             self.question_stub = f"{question_label} {{}}."
+        if self.args.language == "en":
+            self.args.typography_quotes = "off"
 
     def merge_to_previous(self, index):
         target = index - 1
