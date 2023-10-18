@@ -411,14 +411,12 @@ def parse_4s(s, randomize=False):
             debugf.write(log_wrap(structure))
 
     for element in structure:
-
         # find list in element
 
         process_list(element)
 
         if element[0] in QUESTION_LABELS:
             if element[0] in current_question:
-
                 if isinstance(current_question[element[0]], str) and isinstance(
                     element[1], str
                 ):
@@ -446,11 +444,9 @@ def parse_4s(s, randomize=False):
                 current_question[element[0]] = element[1]
 
         elif element[0] == "":
-
             if current_question != {} and set(current_question.keys()) != {
                 "setcounter"
             }:
-
                 try:
                     assert all(
                         (True if label in current_question else False)
@@ -915,7 +911,6 @@ class DbExporter(BaseExporter):
             dct[key] += to_add
 
     def base_format_question(self, q):
-
         if "setcounter" in q:
             self.qcount = int(q["setcounter"])
         res = "Вопрос {}:\n{}\n\n".format(
@@ -938,7 +933,6 @@ class DbExporter(BaseExporter):
         return res
 
     def export(self, outfilename):
-
         result = []
         lasttour = 0
         zeroq = 1
@@ -1115,11 +1109,23 @@ class TelegramExporter(BaseExporter):
         with self.app:
             logger.debug(self.app.get_me())
 
+    def structure_has_stats(self):
+        for element in self.structure:
+            if element[0] == "Question" and "\nВзятия:" in element[1].get("comment"):
+                return True
+        return False
+
     def get_api_credentials(self):
         pyrogram_toml_file_path = os.path.join(self.chgksuite_dir, "pyrogram.toml")
         if os.path.exists(pyrogram_toml_file_path) and not self.args.reset_api:
             with open(pyrogram_toml_file_path, "r", encoding="utf8") as f:
                 pyr = toml.load(f)
+            if (
+                pyr.get("stop_if_no_stats")
+                and not self.structure_has_stats()
+                and not os.environ.get("CHGKSUITE_BYPASS_STATS_CHECK")
+            ):
+                raise Exception("don't publish questions without stats")
             return pyr["api_id"], pyr["api_hash"]
         else:
             print("Please enter you api_id and api_hash.")
@@ -1752,9 +1758,7 @@ class LatexExporter(BaseExporter):
     \\begin{{compactenum}}
     {}
     \\end{{compactenum}}
-    """.format(
-                "\n".join(["\\item {}".format(self.tex_element_layout(x)) for x in e])
-            )
+    """.format("\n".join(["\\item {}".format(self.tex_element_layout(x)) for x in e]))
         return res
 
     def export(self, outfilename):
@@ -1821,7 +1825,6 @@ class DocxExporter(BaseExporter):
 
     def docx_format(self, el, para, whiten, **kwargs):
         if isinstance(el, list):
-
             if len(el) > 1 and isinstance(el[1], list):
                 self.docx_format(el[0], para, whiten, **kwargs)
                 licount = 0
@@ -2702,7 +2705,6 @@ class LjExporter(BaseExporter):
         return result
 
     def _lj_post(self, stru, edit=False, add_params=None):
-
         now = datetime.datetime.now()
         year = now.strftime("%Y")
         month = now.strftime("%m")
@@ -2769,7 +2771,6 @@ class LjExporter(BaseExporter):
         time.sleep(random.randint(7, 12))
 
     def lj_post(self, stru, edit=False):
-
         add_params = {}
         community = self.args.community
         if community:
@@ -3035,7 +3036,6 @@ def process_file(filename, tmp_dir, sourcedir, targetdir):
     logger.info("Exporting to {}, spoilers are {}...\n".format(args.filetype, spoilers))
 
     if args.filetype == "docx":
-
         if args.screen_mode == "off":
             addsuffix = ""
         elif args.screen_mode == "replace_all":
