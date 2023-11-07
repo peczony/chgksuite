@@ -215,10 +215,10 @@ def tryint(s):
         return
     
 
-def custom_csv_to_results(csv_file_path):
+def custom_csv_to_results(csv_file_path, **kwargs):
     results = []
     with open(csv_file_path, encoding="utf8") as f:
-        reader = csv.reader(f)
+        reader = csv.reader(f, **kwargs)
         for row in itertools.islice(reader, 1, None):
             val = {
                 "team": {"id": tryint(row[0])},
