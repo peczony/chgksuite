@@ -2557,7 +2557,9 @@ class StatsAdder(BaseExporter):
                 results = self.get_tournament_results(id_)
                 self.process_tournament(results)
         elif self.args.custom_csv:
-            results = custom_csv_to_results(self.args.custom_csv)
+            results = custom_csv_to_results(
+                self.args.custom_csv, **json.loads(self.args.custom_csv_args)
+            )
             self.process_tournament(results)
         qnumber = 1
         for element in self.structure:

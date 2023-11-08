@@ -36,6 +36,7 @@ except NameError:
 
 debug = False
 
+
 class VarWrapper(object):
     def __init__(self, name, var):
         self.name = name
@@ -177,7 +178,6 @@ class ParserWrapper(object):
         self.advanced_frame.pack_forget()
 
     def add_argument(self, *args, **kwargs):
-
         if kwargs.pop("advanced", False):
             frame = self.advanced_frame
         else:
@@ -364,12 +364,13 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdparse,
-            "--language", "-lang",
+            "--language",
+            "-lang",
             help="language to use while parsing.",
             choices=LANGS,
             default="ru",
             caption="Язык",
-            argtype="radiobutton"
+            argtype="radiobutton",
         )
         self.add_argument(
             cmdparse,
@@ -444,7 +445,13 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--parsing_engine",
-            choices=["pypandoc", "pypandoc_html", "mammoth_bs_prettify", "mammoth_bs_hard_unwrap", "mammoth"],
+            choices=[
+                "pypandoc",
+                "pypandoc_html",
+                "mammoth_bs_prettify",
+                "mammoth_bs_hard_unwrap",
+                "mammoth",
+            ],
             default="mammoth",
             help="old html processing behaviour (before v0.5.5). "
             "Sometimes it will yield better results than the new default.",
@@ -472,7 +479,7 @@ class ArgparseBuilder:
             help="typography: try to fix quotes.",
             advanced=True,
             caption="Типография: кавычки",
-            argtype="radiobutton"
+            argtype="radiobutton",
         )
         self.add_argument(
             cmdparse,
@@ -482,7 +489,7 @@ class ArgparseBuilder:
             help="typography: try to fix dashes.",
             advanced=True,
             caption="Типография: тире",
-            argtype="radiobutton"
+            argtype="radiobutton",
         )
         self.add_argument(
             cmdparse,
@@ -492,7 +499,7 @@ class ArgparseBuilder:
             help="typography: try to fix whitespace.",
             advanced=True,
             caption="Типография: whitespace",
-            argtype="radiobutton"
+            argtype="radiobutton",
         )
         self.add_argument(
             cmdparse,
@@ -502,7 +509,7 @@ class ArgparseBuilder:
             help="typography: try to fix accents.",
             advanced=True,
             caption="Типография: ударения",
-            argtype="radiobutton"
+            argtype="radiobutton",
         )
         self.add_argument(
             cmdparse,
@@ -512,7 +519,7 @@ class ArgparseBuilder:
             help="typography: try to fix percent encoding.",
             advanced=True,
             caption="Типография: %-энкодинг ссылок",
-            argtype="radiobutton"
+            argtype="radiobutton",
         )
         self.add_argument(
             cmdparse,
@@ -522,7 +529,7 @@ class ArgparseBuilder:
             help="handling cases where a line consists of a single number.",
             advanced=True,
             caption="Обработка строчек, состоящих из одного числа",
-            argtype="radiobutton"
+            argtype="radiobutton",
         )
 
         cmdcompose = subparsers.add_parser("compose")
@@ -536,12 +543,13 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose,
-            "--language", "-lang",
+            "--language",
+            "-lang",
             help="language to use while composing.",
             choices=LANGS,
             default="ru",
             caption="Язык",
-            argtype="radiobutton"
+            argtype="radiobutton",
         )
         self.add_argument(
             cmdcompose,
@@ -553,7 +561,8 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose,
-            "--add_ts", "-ts",
+            "--add_ts",
+            "-ts",
             action="store_true",
             help="append timestamp to filenames",
             caption="Добавить временную отметку в имя файла",
@@ -592,7 +601,7 @@ class ArgparseBuilder:
             default="off",
             help="whether to hide answers behind spoilers.",
             caption="Спойлеры",
-            argtype="radiobutton"
+            argtype="radiobutton",
         )
         self.add_argument(
             cmdcompose_docx,
@@ -602,7 +611,7 @@ class ArgparseBuilder:
             default="off",
             help="exporting questions for screen.",
             caption="Экспорт для экрана",
-            argtype="radiobutton"
+            argtype="radiobutton",
         )
         self.add_argument(
             cmdcompose_docx,
@@ -806,14 +815,14 @@ class ArgparseBuilder:
             "--tgchannel",
             required=True,
             help="a channel to post questions to.",
-            caption="Название канала, в который постим"
+            caption="Название канала, в который постим",
         )
         self.add_argument(
             cmdcompose_telegram,
             "--tgchat",
             required=True,
             help="a chat connected to the channel.",
-            caption="Название чата, привязанного к каналу"
+            caption="Название чата, привязанного к каналу",
         )
         self.add_argument(
             cmdcompose_telegram,
@@ -821,7 +830,7 @@ class ArgparseBuilder:
             advanced=True,
             action="store_true",
             help="don't try to post.",
-            caption="Тестовый прогон (не постить в телеграм, только подключиться)"
+            caption="Тестовый прогон (не постить в телеграм, только подключиться)",
         )
         self.add_argument(
             cmdcompose_telegram,
@@ -829,7 +838,7 @@ class ArgparseBuilder:
             advanced=True,
             action="store_true",
             help="reset api_id/api_hash.",
-            caption="Сбросить api_id/api_hash"
+            caption="Сбросить api_id/api_hash",
         )
         self.add_argument(
             cmdcompose_telegram,
@@ -837,7 +846,7 @@ class ArgparseBuilder:
             advanced=True,
             action="store_true",
             help="don't hide 2FA password.",
-            caption="Не скрывать пароль 2FA при вводе (включите, если в вашем терминале есть проблемы со вводом пароля)"
+            caption="Не скрывать пароль 2FA при вводе (включите, если в вашем терминале есть проблемы со вводом пароля)",
         )
         self.add_argument(
             cmdcompose_telegram,
@@ -882,13 +891,21 @@ class ArgparseBuilder:
             "--custom_csv",
             help="custom csv in rating.chgk.info format",
             caption="кастомный csv с результатами в формате rating.chgk.info",
-            argtype="filename"
+            argtype="filename",
+        )
+        self.add_argument(
+            cmdcompose_add_stats,
+            "--custom_csv_args",
+            help="""custom csv arguments in json format (e.g. {"delimiter": ";"})""",
+            default="{}",
+            caption="""кастомные параметры для импорта csv (например, {"delimiter": ";"})""",
+            advanced=True,
         )
         self.add_argument(
             cmdcompose_add_stats,
             "--question_range",
             help="range of question numbers to include.",
-            caption="Диапазон вопросов (например, \"25-36\"), по умолчанию берутся все)",
+            caption='Диапазон вопросов (например, "25-36"), по умолчанию берутся все)',
         )
         self.add_argument(
             cmdcompose_add_stats,
@@ -899,7 +916,6 @@ class ArgparseBuilder:
             help="threshold for naming teams who scored at the question.",
             caption="Граница вывода названий команд",
         )
-
 
         cmdtrello = subparsers.add_parser("trello")
         cmdtrello_subcommands = cmdtrello.add_subparsers(dest="trellosubcommand")
@@ -937,9 +953,9 @@ class ArgparseBuilder:
             choices=["on", "off"],
             default="on",
             help="This flag fixes mess caused by Trello's new editor "
-                "(introduced in early 2023).",
+            "(introduced in early 2023).",
             caption="Пофиксить новый редактор Трелло",
-            argtype="radiobutton"
+            argtype="radiobutton",
         )
         self.add_argument(
             cmdtrello_download,
