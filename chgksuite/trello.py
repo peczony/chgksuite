@@ -164,14 +164,14 @@ def fix_trello_new_editor_links(desc):
     while srch:
         span = srch.span()
         link_parsed = find_and_parse_link(desc, span[0])
-        if link_parsed:
+        if link_parsed and link_parsed[2]:
             together = link_parsed[0] + link_parsed[1]
             end = desc.find(together) + len(together) + 1
             result.append(desc[: end].replace(together, link_parsed[2]))
             desc = desc[end :]
         else:
-            result.append(desc[: end])
-            desc = desc[end :]
+            result.append(desc[: span[1]])
+            desc = desc[span[1] :]
         srch = RE_LINK.search(desc)
     if not result:
         return desc
