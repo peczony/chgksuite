@@ -1,0 +1,23 @@
+[question_labels]
+question = "Pitanje"
+answer = "Odgovor"
+zachet = "Prihvata se"
+nezachet = "Ne prihvata se"
+comment = "Komentar"
+source = "Izvor"
+sources = "Izvori"
+author = "Autor"
+authors = "Autori"
+handout = "Materijal za deljenje"
+handout_short = "Podeljeno"
+
+[general]
+section = "Runda"
+editor = "Urednik"
+date = "Datum"
+questions_in_comments = "Pitanja u komentarima."
+general_impressions_caption = "Opšti utisci"
+handout_for_question = "Materijal za deljenje uz pitanje {}"
+general_impressions_text = "Opšti utisak od paketa — u komentarima na ovu objavu."
+right_answers_for_stats = "Pogodak"
+cf_image = "vidi sliku"
