@@ -1,0 +1,23 @@
+[question_labels]
+question = "Сұрақ"
+answer = "Жауап"
+zachet = "Қабылданатын жауап(тар)"
+nezachet = "Қабылданбайтын жауап(тар)"
+comment = "Түсініктеме"
+source = "Дереккөз"
+sources = "Дереккөздер"
+author = "Автор"
+authors = "Авторлар"
+handout = "Үлестіру материалы"
+handout_short = "Материал"
+
+[general]
+section = "Тур"
+editor = "Редактор"
+date = "Дата"
+questions_in_comments = "Сұрақтар комментарийлерде."
+general_impressions_caption = "Жалпы әсер"
+handout_for_question = "{}-сұрақтың үлестіру материалы"
+general_impressions_text = "Пакеттен алған жалпы әсер — осы пост астындағы комментарийлерде."
+right_answers_for_stats = "Алған сұрақтар"
+cf_image = "суретті қараңыз"
