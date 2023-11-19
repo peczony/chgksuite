@@ -1,12 +1,10 @@
 #!usr/bin/env python
 #! -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from __future__ import division
 import codecs
 import argparse
 from collections import Counter
 
-import chgk_composer
+from chgksuite.composer import parse_4s
 
 parser = argparse.ArgumentParser()
 parser.add_argument('filename')
@@ -15,7 +13,7 @@ args = parser.parse_args()
 authors = Counter()
 
 with codecs.open(args.filename, 'r', 'utf-8') as f:
-    structure = chgk_composer.parse_4s(f.read().replace('\r',''))
+    structure = parse_4s(f.read().replace('\r',''))
 
 for element in structure:
     if element[0] == 'Question':
