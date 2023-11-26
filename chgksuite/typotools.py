@@ -1,32 +1,19 @@
 #!usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-import re
+
 import functools
-import unicodedata
+import re
 import sys
+import unicodedata
+import urllib.parse
 
-try:
-    import urllib
+unquote = urllib.parse.unquote_to_bytes
 
-    unquote = urllib.unquote
-except AttributeError:
-    import urllib.parse
-
-    unquote = urllib.parse.unquote_to_bytes
-try:
-    basestring
-except NameError:
-    basestring = str
-
-OPENING_QUOTES = set(["«", "„", "“"])
-CLOSING_QUOTES = set(["»", "“", "”"])
-QUOTES = OPENING_QUOTES | CLOSING_QUOTES | set(['"', "'"])
 WHITESPACE = set([" ", " ", "\n"])
 PUNCTUATION = set([",", ".", ":", ";", "?", "!"])
 OPENING_BRACKETS = ["[", "(", "{"]
 CLOSING_BRACKETS = ["]", ")", "}"]
-BRACKETS = set(OPENING_BRACKETS) | set(CLOSING_BRACKETS)
 LOWERCASE_RUSSIAN = set(list("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"))
 UPPERCASE_RUSSIAN = set(list("АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"))
 POTENTIAL_ACCENTS = set(list("АОУЫЭЯЕЮИ"))
@@ -79,7 +66,11 @@ re_url = re.compile(
     re.DOTALL,
 )
 re_percent = re.compile(r"(%[0-9a-fA-F]{2})+")
-re_nbh = re.compile("(^|[^а-яё])(?P<word>[а-яё]{0,3}\\-[а-яё]{0,3})([^а-яё]|$)", flags=re.I)
+re_nbh = re.compile(
+    "(^|[^а-яё])(?P<word>[а-яё]{0,3}\\-[а-яё]{0,3})([^а-яё]|$)", flags=re.I
+)
+re_lowercase = re.compile(r"[а-яё]")
+re_uppercase = re.compile(r"[А-ЯЁ]")
 
 
 def strings_iterator(str_):
@@ -162,7 +153,6 @@ def remove_excessive_whitespace(s):
 
 
 class QuoteFixer:
-
     def __init__(self, s):
         self.s = s
         self.new_s = list(s)
@@ -170,21 +160,16 @@ class QuoteFixer:
         self.last_opening_quote = {}
         self.quote_chars = {}
 
-    def is_opening_quote(self, c, i):
-        if i in self.quote_chars:
-            return self.quote_chars[i] == "opening"
-        return c[i] in ("«", "“", "„")
-    
     def is_space(self, char):
         return char in (" ", "\u00a0")
-    
+
     def prev(self, c, i):
         if i < 0:
             raise Exception("not allowed")
         if i == 0:
             return None
         return c[i - 1]
-    
+
     def next(self, c, i):
         if i >= len(c):
             raise Exception("not allowed")
@@ -205,10 +190,13 @@ class QuoteFixer:
             elif c[i] == '"':
                 if self.level == 0 or (
                     self.prev(c, i) is None
-                    or (self.is_space(self.prev(c, i)) and (
-                        self.next(c, i) is not None
-                        and not self.is_space(self.next(c, i))
-                    ))
+                    or (
+                        self.is_space(self.prev(c, i))
+                        and (
+                            self.next(c, i) is not None
+                            and not self.is_space(self.next(c, i))
+                        )
+                    )
                 ):
                     self.level += 1
                     self.quote_chars[i] = ("opening", self.level, c[i], i)
@@ -275,16 +263,11 @@ def replace_no_break_spaces(s):
         s = re.sub(r_from, r_to, s)
     srch = re_nbh.search(s)
     while srch:
-        s = s.replace(srch.group("word"), srch.group("word").replace("-", "\u2011"))  # non-breaking hyphen
+        s = s.replace(
+            srch.group("word"), srch.group("word").replace("-", "\u2011")
+        )  # non-breaking hyphen
         srch = re_nbh.search(s)
     return s
-
-
-def search_accent(s):
-    return re.search("([а-яё])([АОУЫЭЯЕЮИ])([^А-ЯЁ])", s) or re.search(
-        "[^А-ЯЁ]([А-ЯЁ])([АОУЫЭЯЕЮИ])([^А-ЯЁ])", s
-    )
-
 
 
 def detect_accent(s):
@@ -299,13 +282,8 @@ def detect_accent(s):
                     if (
                         word_new[i] in POTENTIAL_ACCENTS
                         and word_new[:i] not in BAD_BEGINNINGS
-                        and (
-                            i == 1 or not word_new[i - 1].isupper()
-                        )
-                        and (
-                            i + 1 == len(word_new)
-                            or not word_new[i + 1].isupper()
-                        )
+                        and (i == 1 or not word_new[i - 1].isupper())
+                        and (i + 1 == len(word_new) or not word_new[i + 1].isupper())
                     ):
                         word_new = (
                             word_new[:i]
@@ -339,7 +317,7 @@ def percent_decode(s):
 
 
 def recursive_typography(s, **kwargs):
-    if isinstance(s, basestring):
+    if isinstance(s, str):
         s = typography(s, **kwargs)
         return s
     elif isinstance(s, list):
@@ -347,7 +325,7 @@ def recursive_typography(s, **kwargs):
         for element in s:
             new_s.append(recursive_typography(element, **kwargs))
         return new_s
-    
+
 
 RE_BAD_CYR_QUOTES = re.compile("“[а-яА-ЯЁё0-9,\\.:!\\? ]+?”")
 RE_BAD_LAT_QUOTES = re.compile("'[a-zA-Z0-9,\\.:!\\? ]+?'")

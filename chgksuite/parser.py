@@ -1,48 +1,47 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import re
-import os
-import sys
-import codecs
-import json
-import subprocess
-import shlex
-import logging
 import base64
+import codecs
 import itertools
-import tempfile
+import json
+import os
+import re
+import shlex
 import shutil
+import subprocess
+import sys
+import tempfile
+
+import bs4
 import chardet
+import dashtable
+import html2text
 import mammoth
 import pypandoc
-import dashtable
 import toml
-import bs4
 from bs4 import BeautifulSoup
 from parse import parse
-import html2text
 
 import chgksuite.typotools as typotools
-from chgksuite.typotools import remove_excessive_whitespace as rew
-from chgksuite.parser_db import chgk_parse_db
 from chgksuite.common import (
-    get_lastdir,
-    set_lastdir,
-    DummyLogger,
-    log_wrap,
+    QUESTION_LABELS,
+    DefaultArgs,
     DefaultNamespace,
     check_question,
-    QUESTION_LABELS,
-    get_source_dirs,
     compose_4s,
+    get_lastdir,
+    init_logger,
+    log_wrap,
+    set_lastdir,
 )
 from chgksuite.composer import gui_compose
+from chgksuite.parser_db import chgk_parse_db
+from chgksuite.typotools import remove_excessive_whitespace as rew
 
 debug = False
 console_mode = False
 
 ENC = sys.stdout.encoding or "utf8"
-CONSOLE_ENC = sys.stdout.encoding or "utf8"
 SEP = os.linesep
 EDITORS = {
     "win32": "notepad",
@@ -53,16 +52,8 @@ EDITORS = {
 TEXTEDITOR = EDITORS[sys.platform]
 
 
-logger = DummyLogger()
-
-
 def make_filename(s):
     return os.path.splitext(s)[0] + ".4s"
-
-
-def debug_print(s):
-    if debug is True:
-        sys.stderr.write(s + SEP)
 
 
 def partition(alist, indices):
@@ -79,16 +70,11 @@ class ChgkParser:
     BADNEXTFIELDS = set(["question", "answer"])
     RE_NUM = re.compile("^([0-9]+)\\.?$")
 
-    def __init__(self, defaultauthor=None, regexes=None, args=None):
+    def __init__(self, defaultauthor=None, args=None, logger=None):
         self.defaultauthor = defaultauthor
-        if not regexes:
-            _, resourcedir = get_source_dirs()
-            regexes_file = os.path.join(resourcedir, "regexes_ru.json")
-            self.regexes = load_regexes(regexes_file)
-        elif isinstance(regexes, str):
-            self.regexes = load_regexes(regexes)
-        elif isinstance(regexes, dict):
-            self.regexes = regexes
+        args = args or DefaultArgs()
+        self.regexes = load_regexes(args.regexes)
+        self.logger = logger or init_logger("parser")
         self.args = args
         with open(self.args.labels_file, encoding="utf8") as f:
             self.labels = toml.load(f)
@@ -318,6 +304,8 @@ class ChgkParser:
         """
 
         regexes = self.regexes
+        debug = self.args.debug
+        logger = self.logger
 
         if self.defaultauthor:
             logger.info(
@@ -488,7 +476,6 @@ class ChgkParser:
         # 5.
 
         for _id, element in enumerate(self.structure):
-
             # remove question numbers
 
             if element[0] == "question":
@@ -647,8 +634,8 @@ class ChgkParser:
         return final_structure
 
 
-def chgk_parse(text, defaultauthor=None, regexes=None, args=None):
-    parser = ChgkParser(defaultauthor=defaultauthor, regexes=regexes, args=args)
+def chgk_parse(text, defaultauthor=None, args=None):
+    parser = ChgkParser(defaultauthor=defaultauthor, args=args)
     return parser.parse(text)
 
 
@@ -656,7 +643,7 @@ class UnknownEncodingException(Exception):
     pass
 
 
-def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", regexes=None, args=None):
+def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", args=None, logger=None):
     raw = open(txtfile, "rb").read()
     if not encoding:
         if chardet.detect(raw)["confidence"] > 0.7:
@@ -669,8 +656,8 @@ def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", regexes=None, args=
             )
     text = raw.decode(encoding)
     if text[0:10] == "Чемпионат:":
-        return chgk_parse_db(text.replace("\r", ""), debug=debug)
-    return chgk_parse(text, defaultauthor=defaultauthor, regexes=regexes, args=args)
+        return chgk_parse_db(text.replace("\r", ""), debug=args.debug, logger=logger)
+    return chgk_parse(text, defaultauthor=defaultauthor, args=args)
 
 
 def generate_imgname(target_dir, ext, prefix=""):
@@ -693,7 +680,7 @@ def ensure_line_breaks(tag):
     tag.extract()
 
 
-def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
+def chgk_parse_docx(docxfile, defaultauthor="", args=None):
     for_ol = {}
 
     def get_number(tag):
@@ -849,15 +836,14 @@ def chgk_parse_docx(docxfile, defaultauthor="", regexes=None, args=None):
         with codecs.open(os.path.join(target_dir, "debug.debug"), "w", "utf8") as dbg:
             dbg.write(txt)
 
-    final_structure = chgk_parse(
-        txt, defaultauthor=defaultauthor, regexes=regexes, args=args
-    )
+    final_structure = chgk_parse(txt, defaultauthor=defaultauthor, args=args)
     return final_structure
 
 
-def chgk_parse_wrapper(path, args, regexes=None):
+def chgk_parse_wrapper(path, args, logger=None):
     abspath = os.path.abspath(path)
     target_dir = os.path.dirname(abspath)
+    logger = logger or init_logger("parser")
     defaultauthor = ""
     if args.defaultauthor:
         defaultauthor = os.path.splitext(os.path.basename(abspath))[0]
@@ -866,12 +852,12 @@ def chgk_parse_wrapper(path, args, regexes=None):
             abspath,
             defaultauthor=defaultauthor,
             encoding=args.encoding,
-            regexes=regexes,
             args=args,
+            logger=logger,
         )
     elif os.path.splitext(abspath)[1] == ".docx":
         final_structure = chgk_parse_docx(
-            abspath, defaultauthor=defaultauthor, regexes=regexes, args=args
+            abspath, defaultauthor=defaultauthor, args=args
         )
     else:
         sys.stderr.write("Error: unsupported file format." + SEP)
@@ -883,38 +869,8 @@ def chgk_parse_wrapper(path, args, regexes=None):
     return outfilename
 
 
-def gui_parse(args, sourcedir):
-
-    global console_mode
-    global __file__  # to fix stupid __file__
-    __file__ = os.path.abspath(__file__)  # handling in python 2
-
-    global debug
-    global logger
-    global regexes
-
-    logger = logging.getLogger("parser")
-    logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler("parser.log", encoding="utf8")
-    fh.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    if debug:
-        ch.setLevel(logging.INFO)
-    else:
-        ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("%(asctime)s | %(message)s")
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
-    logger.addHandler(fh)
-    logger.addHandler(ch)
-
-    regexes = load_regexes(args.regexes)
-
-    if args.debug:
-        debug = True
-
-    if args.filename:
-        console_mode = True
+def gui_parse(args):
+    logger = init_logger("parser", debug=debug)
 
     ld = get_lastdir()
     if args.parsedir:
@@ -928,7 +884,7 @@ def gui_parse(args, sourcedir):
                     outfilename = chgk_parse_wrapper(
                         os.path.join(args.filename, filename),
                         args,
-                        regexes=regexes,
+                        logger=logger,
                     )
                     logger.info(
                         "{} -> {}".format(filename, os.path.basename(outfilename))
@@ -946,7 +902,7 @@ def gui_parse(args, sourcedir):
             print("No file specified.")
             sys.exit(0)
 
-        outfilename = chgk_parse_wrapper(args.filename, args, regexes=regexes)
+        outfilename = chgk_parse_wrapper(args.filename, args)
         if outfilename and not console_mode:
             print(
                 "Please review the resulting file {}:".format(
@@ -964,7 +920,6 @@ def gui_parse(args, sourcedir):
 
 def main():
     print("This program was not designed to run standalone.")
-    input("Press Enter to continue...")
 
 
 if __name__ == "__main__":

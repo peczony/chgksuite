@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+
 import argparse
 import os
 import sys
@@ -13,26 +14,21 @@ try:
 except ImportError:
     TKINTER = False
 
-from chgksuite.parser import gui_parse
-from chgksuite.composer import gui_compose
-from chgksuite.trello import gui_trello
-from chgksuite.version import __version__
-from chgksuite.common import (
-    DefaultNamespace,
-    get_lastdir,
-    ensure_utf8,
-    get_source_dirs,
-)
-
 import json
 import shlex
 
-LANGS = ["ru", "ua", "by", "by_tar", "en", "uz", "uz_cyr", "custom"]
+from chgksuite.common import (
+    DefaultNamespace,
+    ensure_utf8,
+    get_lastdir,
+    get_source_dirs,
+)
+from chgksuite.composer import gui_compose
+from chgksuite.parser import gui_parse
+from chgksuite.trello import gui_trello
+from chgksuite.version import __version__
 
-try:
-    basestring
-except NameError:
-    basestring = (str, bytes)
+LANGS = ["ru", "ua", "by", "by_tar", "en", "uz", "uz_cyr", "custom"]
 
 debug = False
 
@@ -1029,6 +1025,10 @@ def app():
         parser = ParserWrapper(parser, lastdir=ld)
     ArgparseBuilder(parser, use_wrapper).build()
     args = DefaultNamespace(parser.parse_args())
+    if use_wrapper:
+        args.console_mode = False
+    else:
+        args.console_mode = True
 
     if args.language in LANGS:
         if args.action == "parse":
@@ -1044,7 +1044,7 @@ def app():
         with open(args.config, "r") as f:
             config = json.load(f)
         for key in config:
-            if not isinstance(config[key], basestring):
+            if not isinstance(config[key], str):
                 val = config[key]
             elif os.path.isfile(config[key]):
                 val = os.path.abspath(config[key])
@@ -1060,8 +1060,8 @@ def app():
 
     args.passthrough = False
     if args.action == "parse":
-        gui_parse(args, sourcedir=sourcedir)
+        gui_parse(args)
     if args.action == "compose":
-        gui_compose(args, sourcedir=sourcedir)
+        gui_compose(args)
     if args.action == "trello":
-        gui_trello(args, sourcedir=sourcedir)
+        gui_trello(args)

@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-import os
-import sys
+import argparse
+import codecs
 import csv
 import itertools
-import re
-import codecs
-import argparse
-import time
 import json
-
+import logging
+import os
+import re
+import sys
+import time
 
 QUESTION_LABELS = [
     "handout",
@@ -28,6 +27,25 @@ SEP = os.linesep
 ENC = sys.stdout.encoding or "utf8"
 
 lastdir = os.path.join(os.path.dirname(os.path.abspath("__file__")), "lastdir")
+
+
+def init_logger(logger_name, debug=False):
+    logger = logging.getLogger(logger_name)
+    if not logger.handlers:
+        logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler(f"{logger_name}.log", encoding="utf8")
+        fh.setLevel(logging.DEBUG)
+        ch = logging.StreamHandler()
+        if debug:
+            ch.setLevel(logging.DEBUG)
+        else:
+            ch.setLevel(logging.INFO)
+        formatter = logging.Formatter("%(asctime)s | %(message)s")
+        fh.setFormatter(formatter)
+        ch.setFormatter(formatter)
+        logger.addHandler(fh)
+        logger.addHandler(ch)
+    return logger
 
 
 def get_chgksuite_dir():
@@ -48,19 +66,21 @@ def get_source_dirs():
 
 
 class DefaultArgs:
-    links = "unwrap"
+    console_mode = True
+    debug = False
     fix_spans = False
+    labels_file = os.path.join(get_source_dirs()[1], "labels_ru.toml")
+    language = "ru"
+    links = "unwrap"
     numbers_handling = "default"
     parsing_engine = "mammoth"
-    language = "ru"
+    regexes = os.path.join(get_source_dirs()[1], "regexes_ru.json")
+    single_number_line_handling = "smart"
     typography_accents = "on"
     typography_dashes = "on"
+    typography_percent = "on"
     typography_quotes = "on"
     typography_whitespace = "on"
-    typography_percent = "on"
-    regexes = os.path.join(get_source_dirs()[1], "regexes_ru.json")
-    labels_file = os.path.join(get_source_dirs()[1], "labels_ru.toml")
-    single_number_line_handling = "smart"
 
     def __getattr__(self, attribute):
         try:
@@ -78,12 +98,6 @@ def set_lastdir(path):
     lastdir = os.path.join(chgksuite_dir, "lastdir")
     with codecs.open(lastdir, "w", "utf8") as f:
         f.write(path)
-
-
-def bring_to_front(root):
-    root.lift()
-    root.attributes("-topmost", True)
-    root.after_idle(root.attributes, "-topmost", False)
 
 
 def get_lastdir():
@@ -122,16 +136,16 @@ def ensure_utf8(s):
 
 
 class DummyLogger(object):
-    def info(self, s):
+    def info(self, *args, **kwargs):
         pass
 
-    def debug(self, s):
+    def debug(self, *args, **kwargs):
         pass
 
-    def error(self, s):
+    def error(self, *args, **kwargs):
         pass
 
-    def warning(self, s):
+    def warning(self, *args, **kwargs):
         pass
 
 
@@ -152,11 +166,6 @@ class DefaultNamespace(argparse.Namespace):
             return
 
 
-def on_close(root):
-    root.quit()
-    root.destroy()
-
-
 def log_wrap(s, pretty_print=True):
     try_to_unescape = True
     if pretty_print and isinstance(s, (dict, list)):
@@ -169,26 +178,6 @@ def log_wrap(s, pretty_print=True):
         except UnicodeEncodeError:
             pass
     return s.encode(ENC, errors="replace").decode(ENC)
-
-
-def toggle_factory(intvar, strvar, root):
-    def toggle():
-        if intvar.get() == 0:
-            intvar.set(1)
-        else:
-            intvar.set(0)
-        root.ret[strvar] = bool(intvar.get())
-
-    return toggle
-
-
-def button_factory(strvar, value, root):
-    def button():
-        root.ret[strvar] = value
-        root.quit()
-        root.destroy()
-
-    return button
 
 
 def check_question(question, logger=None):
@@ -213,7 +202,7 @@ def tryint(s):
         return int(s)
     except (TypeError, ValueError):
         return
-    
+
 
 def custom_csv_to_results(csv_file_path, **kwargs):
     results = []
