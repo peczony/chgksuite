@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 #! -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from __future__ import division
 import codecs
 import os
-import sys
 import inspect
 import tempfile
 import shutil

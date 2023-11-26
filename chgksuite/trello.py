@@ -1,19 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import sys
-import os
-import re
-import json
 import codecs
-import requests
+import json
+import os
 import pdb
+import re
+import sys
 import webbrowser
 from collections import defaultdict
+
+import requests
+
 from chgksuite.common import (
-    get_lastdir,
-    set_lastdir,
-    log_wrap,
     get_chgksuite_dir,
+    get_lastdir,
+    get_source_dirs,
+    log_wrap,
+    set_lastdir,
 )
 
 API = "https://trello.com/1"
@@ -117,7 +120,8 @@ def noanswers_line_check(line):
     )
 
 
-RE_LINK = re.compile('\\]\\(')
+RE_LINK = re.compile("\\]\\(")
+
 
 def find_and_parse_link(str_, index_):
     assert str_[index_] == "]"
@@ -135,7 +139,7 @@ def find_and_parse_link(str_, index_):
                 break
     if not (mvr >= 0 and str_[mvr] == "["):
         return
-    first_part = str_[mvr:index_ + 1]
+    first_part = str_[mvr : index_ + 1]
     mvr = index_ + 1
     level = 0
     while mvr < len(str_):
@@ -149,13 +153,12 @@ def find_and_parse_link(str_, index_):
                 break
     if not (mvr < len(str_) and str_[mvr] == ")"):
         return
-    second_part = str_[index_ + 1:mvr + 1]
+    second_part = str_[index_ + 1 : mvr + 1]
     if first_part[1:5] == "http" and second_part[1:5] == "http":
         link = first_part[1:-1]
     else:
         link = None
     return (first_part, second_part, link)
-
 
 
 def fix_trello_new_editor_links(desc):
@@ -167,8 +170,8 @@ def fix_trello_new_editor_links(desc):
         if link_parsed and link_parsed[2]:
             together = link_parsed[0] + link_parsed[1]
             end = desc.find(together) + len(together) + 1
-            result.append(desc[: end].replace(together, link_parsed[2]))
-            desc = desc[end :]
+            result.append(desc[:end].replace(together, link_parsed[2]))
+            desc = desc[end:]
         else:
             result.append(desc[: span[1]])
             desc = desc[span[1] :]
@@ -415,9 +418,9 @@ def get_token(tokenpath):
     return token
 
 
-def gui_trello(args, sourcedir=None):
+def gui_trello(args):
     csdir = get_chgksuite_dir()
-    resourcedir = os.path.join(sourcedir, "resources")
+    sourcedir, resourcedir = get_source_dirs()
     tokenpath = os.path.join(csdir, ".trello_token")
     if not os.path.isfile(tokenpath):
         token = get_token(tokenpath)
