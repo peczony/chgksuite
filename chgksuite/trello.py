@@ -438,12 +438,3 @@ def gui_trello(args):
         gui_trello_upload(args, sourcedir)
     elif args.trellosubcommand == "token":
         get_token(tokenpath)
-
-
-def main():
-    print("This program was not designed to run standalone.")
-    input("Press Enter to continue...")
-
-
-if __name__ == "__main__":
-    main()

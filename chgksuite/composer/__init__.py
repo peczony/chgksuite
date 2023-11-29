@@ -167,9 +167,6 @@ def process_file(filename, tmp_dir, targetdir, args=None, logger=None):
         exporter = TelegramExporter(structure, args, dir_kwargs)
         exporter.export()
 
-    if not args.console_mode:
-        input("Press Enter to continue...")
-
 
 def main():
     print("This program was not designed to run standalone.")

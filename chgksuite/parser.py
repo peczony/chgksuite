@@ -887,7 +887,6 @@ def gui_parse(args):
                     logger.info(
                         "{} -> {}".format(filename, os.path.basename(outfilename))
                     )
-            input("Press Enter to continue...")
 
         else:
             print("No directory specified.")
@@ -909,17 +908,8 @@ def gui_parse(args):
             )
             texteditor = load_settings().get("editor") or EDITORS[sys.platform]
             subprocess.call(shlex.split('{} "{}"'.format(texteditor, outfilename)))
-            input("Press Enter to continue...")
         if args.passthrough:
             cargs = DefaultNamespace()
             cargs.action = "compose"
             cargs.filename = outfilename
             gui_compose(cargs)
-
-
-def main():
-    print("This program was not designed to run standalone.")
-
-
-if __name__ == "__main__":
-    main()
