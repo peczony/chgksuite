@@ -10,6 +10,9 @@ import os
 import re
 import sys
 import time
+from pathlib import Path
+
+import toml
 
 QUESTION_LABELS = [
     "handout",
@@ -53,6 +56,14 @@ def get_chgksuite_dir():
     if not os.path.isdir(chgksuite_dir):
         os.mkdir(chgksuite_dir)
     return chgksuite_dir
+
+
+def load_settings():
+    chgksuite_dir = get_chgksuite_dir()
+    settings_file = os.path.join(chgksuite_dir, "settings.toml")
+    if not os.path.isfile(settings_file):
+        return {}
+    return toml.loads(Path(settings_file).read_text("utf8"))
 
 
 def get_source_dirs():

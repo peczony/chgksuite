@@ -31,6 +31,7 @@ from chgksuite.common import (
     compose_4s,
     get_lastdir,
     init_logger,
+    load_settings,
     log_wrap,
     set_lastdir,
 )
@@ -46,7 +47,6 @@ EDITORS = {
     "linux": "xdg-open",  # python3
     "darwin": "open -t",
 }
-TEXTEDITOR = EDITORS[sys.platform]
 
 
 def make_filename(s):
@@ -907,7 +907,8 @@ def gui_parse(args):
                     make_filename(args.filename)
                 )
             )
-            subprocess.call(shlex.split('{} "{}"'.format(TEXTEDITOR, outfilename)))
+            texteditor = load_settings().get("editor") or EDITORS[sys.platform]
+            subprocess.call(shlex.split('{} "{}"'.format(texteditor, outfilename)))
             input("Press Enter to continue...")
         if args.passthrough:
             cargs = DefaultNamespace()
