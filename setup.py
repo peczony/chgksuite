@@ -40,6 +40,7 @@ setup(
             "resources/*.toml",
             "resources/*.tex",
             "resources/*.sty",
+            "composer/*.py"
         ]
     },
     entry_points={"console_scripts": ["chgksuite = chgksuite.__main__:main"]},
