@@ -38,9 +38,6 @@ from chgksuite.composer import gui_compose
 from chgksuite.parser_db import chgk_parse_db
 from chgksuite.typotools import remove_excessive_whitespace as rew
 
-debug = False
-console_mode = False
-
 ENC = sys.stdout.encoding or "utf8"
 SEP = os.linesep
 EDITORS = {
@@ -681,6 +678,7 @@ def ensure_line_breaks(tag):
 
 
 def chgk_parse_docx(docxfile, defaultauthor="", args=None):
+    args = args or DefaultArgs()
     for_ol = {}
 
     def get_number(tag):
@@ -715,7 +713,7 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
         )
         bsoup = BeautifulSoup(input_docx, "html.parser")
 
-        if debug:
+        if args.debug:
             with codecs.open(
                 os.path.join(target_dir, "debug.pydocx"), "w", "utf8"
             ) as dbg:
@@ -785,7 +783,7 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
                     tag.string = tag["href"]
                     tag.unwrap()
 
-        if debug:
+        if args.debug:
             with codecs.open(
                 os.path.join(target_dir, "debug_raw.html"), "w", "utf8"
             ) as dbg:
@@ -832,7 +830,7 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
     )
     txt = re.sub(r"_ *_", "", txt)  # fix bad italic from Word
 
-    if debug:
+    if args.debug:
         with codecs.open(os.path.join(target_dir, "debug.debug"), "w", "utf8") as dbg:
             dbg.write(txt)
 
@@ -870,7 +868,7 @@ def chgk_parse_wrapper(path, args, logger=None):
 
 
 def gui_parse(args):
-    logger = init_logger("parser", debug=debug)
+    logger = init_logger("parser", debug=args.debug)
 
     ld = get_lastdir()
     if args.parsedir:
@@ -903,7 +901,7 @@ def gui_parse(args):
             sys.exit(0)
 
         outfilename = chgk_parse_wrapper(args.filename, args)
-        if outfilename and not console_mode:
+        if outfilename and not args.console_mode:
             print(
                 "Please review the resulting file {}:".format(
                     make_filename(args.filename)
