@@ -383,6 +383,8 @@ class BaseExporter:
             num = question.get("number") or number
             if self.args.language in ("uz", "uz_cyr"):
                 return f"{num} – {lbl}"
+            elif self.args.language == "kz":
+                return f"{num}-{lbl}"
             else:
                 return f"{lbl} {num}"
         if field in (question.get("overrides") or {}):
