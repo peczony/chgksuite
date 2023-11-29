@@ -31,7 +31,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    packages=["chgksuite"],
+    packages=["chgksuite", "chgksuite.composer"],
     package_data={
         "chgksuite": [
             "resources/*.json",
@@ -40,7 +40,6 @@ setup(
             "resources/*.toml",
             "resources/*.tex",
             "resources/*.sty",
-            "composer/*.py"
         ]
     },
     entry_points={"console_scripts": ["chgksuite = chgksuite.__main__:main"]},
