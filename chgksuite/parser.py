@@ -723,6 +723,7 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
             tag.extract()
         for br in bsoup.find_all("br"):
             br.replace_with("\n")
+        imgpaths = []
         for tag in bsoup.find_all("img"):
             if args.parsing_engine == "pypandoc_html":
                 src = tag["src"].replace("$$$UNDERSCORE$$$", "_")
@@ -741,7 +742,9 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
                     imgpath = os.path.basename(imgname)
                 else:
                     imgpath = "BROKEN_IMAGE"
-            tag.insert_before("(img {})".format(imgpath))
+            tag.insert_before(f"IMGPATH({len(imgpaths)})")
+            imgpath_formatted = "(img {})".format(imgpath)
+            imgpaths.append(imgpath_formatted)
             tag.extract()
         for tag in bsoup.find_all("p"):
             ensure_line_breaks(tag)
@@ -829,6 +832,8 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
         .replace("$$$UNDERSCORE$$$", "\\_")
     )
     txt = re.sub(r"_ *_", "", txt)  # fix bad italic from Word
+    for i, elem in enumerate(imgpaths):
+        txt = txt.replace(f"IMGPATH({i})", elem)
 
     if args.debug:
         with codecs.open(os.path.join(target_dir, "debug.debug"), "w", "utf8") as dbg:
