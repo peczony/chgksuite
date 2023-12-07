@@ -17,7 +17,7 @@ import toml
 from PIL import Image
 
 import chgksuite.typotools as typotools
-from chgksuite.common import get_chgksuite_dir, init_logger, log_wrap
+from chgksuite.common import get_chgksuite_dir, init_logger, log_wrap, DummyLogger
 from chgksuite.typotools import re_lowercase, re_percent, re_uppercase, re_url
 
 
@@ -226,16 +226,19 @@ def starts_either(s, i, variants):
     return False
 
 
+def find_next_unescaped(ss, index):
+    j = index + 1
+    while j < len(ss):
+        if ss[j] == "\\" and j + 2 < len(ss):
+            j += 2
+        if ss[j] == ss[index]:
+            return j
+        j += 1
+    return -1
+
+
 def _parse_4s_elem(s, logger=None):
-    def find_next_unescaped(ss, index):
-        j = index + 1
-        while j < len(ss):
-            if ss[j] == "\\" and j + 2 < len(ss):
-                j += 2
-            if ss[j] == ss[index]:
-                return j
-            j += 1
-        return -1
+    logger = logger or DummyLogger()
 
     s = s.replace("\\_", "$$$$UNDERSCORE$$$$")
     for gr in re_url.finditer(s):
