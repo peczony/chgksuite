@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import base64
 import codecs
+import datetime
 import itertools
 import json
 import os
@@ -61,6 +62,31 @@ def load_regexes(regexfile):
     with codecs.open(regexfile, "r", "utf8") as f:
         regexes = json.loads(f.read())
     return {k: re.compile(v) for k, v in regexes.items()}
+
+
+DATE_RE1 = re.compile("[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}")
+DATE_RE2 = re.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+
+def check_date(match, parse_string):
+    try:
+        parsed = datetime.datetime.strptime(match.group(0), parse_string).date()
+        today = datetime.date.today()
+        if parsed.year >= 1980 and (parsed < today or (parsed - today).days <= 365):
+            return True
+        else:
+            return False
+    except (TypeError, ValueError):
+        return False
+
+
+def search_for_date(str_):
+    for match in DATE_RE1.finditer(str_):
+        if check_date(match, "%d.%m.%Y"):
+            return match
+    for match in DATE_RE2.finditer(str_):
+        if check_date(match, "%Y-%m-%d"):
+            return match
 
 
 class ChgkParser:
@@ -614,9 +640,16 @@ class ChgkParser:
                 final_structure.insert(0, ["ljheading", final_structure[0][1]])
             i = 0
             while not datedefined and i < fq:
-                if regexes["date2"].search(final_structure[i][1]):
+                srch = regexes["date2"].search(final_structure[i][1])
+                if srch and len(srch.group(0)) >= len(final_structure[i][1]) / 10:
                     final_structure[i][0] = "date"
                     datedefined = True
+                    break
+                srch = search_for_date(final_structure[i][1])
+                if srch and len(srch.group(0)) >= len(final_structure[i][1]) / 10:
+                    final_structure[i][0] = "date"
+                    datedefined = True
+                    break
                 i += 1
         except ValueError:
             pass
