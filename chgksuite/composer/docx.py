@@ -228,9 +228,9 @@ class DocxExporter(BaseExporter):
                     page_break_before_heading = True
                 if para is None:
                     para = self.doc.paragraphs[0]
-                    para.add_run(element[1])
                 else:
-                    para = self.doc.add_paragraph(element[1])
+                    para = self.doc.add_paragraph()
+                self._docx_format(element[1], para, False)
                 if element[0] == "heading" and page_break_before_heading:
                     para.paragraph_format.page_break_before = True
                 if element[0] == "section":
