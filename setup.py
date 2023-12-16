@@ -21,7 +21,7 @@ setup(
     name="chgksuite",
     version=get_version(),
     author="Alexander Pecheny",
-    author_email="peczony@gmail.com",
+    author_email="ap@pecheny.me",
     description="A package for chgk automation",
     long_description=long_description,
     long_description_content_type="text/markdown",
