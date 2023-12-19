@@ -25,6 +25,7 @@ from chgksuite.composer.pptx import PptxExporter
 from chgksuite.composer.reddit import RedditExporter
 from chgksuite.composer.stats import StatsAdder
 from chgksuite.composer.telegram import TelegramExporter
+from chgksuite.composer.openquiz import OpenquizExporter
 
 
 def gui_compose(args, logger=None):
@@ -166,6 +167,11 @@ def process_file(filename, tmp_dir, targetdir, args=None, logger=None):
     if args.filetype == "telegram":
         exporter = TelegramExporter(structure, args, dir_kwargs)
         exporter.export()
+
+    if args.filetype == "openquiz":
+        outfilename = os.path.join(targetdir, make_filename(filename, "json", args))
+        exporter = OpenquizExporter(structure, args, dir_kwargs)
+        exporter.export(outfilename)
 
 
 def main():

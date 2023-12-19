@@ -912,6 +912,15 @@ class ArgparseBuilder:
             help="threshold for naming teams who scored at the question.",
             caption="Граница вывода названий команд",
         )
+        cmdcompose_openquiz = cmdcompose_filetype.add_parser("openquiz")
+        self.add_argument(
+            cmdcompose_openquiz,
+            "filename",
+            nargs="*",
+            help="file(s) to compose from.",
+            caption="Имя 4s-файла",
+            filetypes=[("chgksuite markup files", "*.4s")],
+        )
 
         cmdtrello = subparsers.add_parser("trello")
         cmdtrello_subcommands = cmdtrello.add_subparsers(dest="trellosubcommand")
