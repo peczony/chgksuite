@@ -28,7 +28,7 @@ from chgksuite.parser import gui_parse
 from chgksuite.trello import gui_trello
 from chgksuite.version import __version__
 
-LANGS = ["by", "by_tar", "en", "kz_cyr", "ru", "ua", "uz", "uz_cyr"] + ["custom"]
+LANGS = ["by", "by_tar", "en", "kz_cyr", "ru", "sr", "ua", "uz", "uz_cyr"] + ["custom"]
 
 debug = False
 
