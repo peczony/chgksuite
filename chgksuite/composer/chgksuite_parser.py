@@ -1,8 +1,9 @@
 import codecs
 import random
 import re
+from collections import Counter
 
-from chgksuite.common import QUESTION_LABELS, check_question, log_wrap, init_logger
+from chgksuite.common import QUESTION_LABELS, check_question, init_logger, log_wrap
 from chgksuite.typotools import remove_excessive_whitespace as rew
 
 REQUIRED_LABELS = set(["question", "answer"])
@@ -62,6 +63,21 @@ def process_list(element):
         element[1] = inner_list
 
 
+RE_COUNTER = re.compile("4SCOUNTER([0-9a-zA-Z_]*)")
+
+
+def replace_counters(string_):
+    dd = Counter()
+    match = RE_COUNTER.search(string_)
+    while match:
+        span = match.span()
+        counter_id = match.group(1)
+        dd[counter_id] += 1
+        string_ = string_[: span[0]] + str(dd[counter_id]) + string_[span[1] :]
+        match = RE_COUNTER.search(string_)
+    return string_
+
+
 def parse_4s(s, randomize=False, debug=False, logger=None):
     logger = logger or init_logger("composer")
     mapping = {
@@ -90,6 +106,8 @@ def parse_4s(s, randomize=False, debug=False, logger=None):
 
     with codecs.open("raw.debug", "w", "utf8") as debugf:
         debugf.write(log_wrap(s.split("\n")))
+
+    s = replace_counters(s)
 
     for line in s.split("\n"):
         if rew(line) == "":
