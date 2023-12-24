@@ -1022,18 +1022,7 @@ class ArgparseBuilder:
         cmdtrello_subcommands.add_parser("token")
 
 
-def app():
-    sourcedir, resourcedir = get_source_dirs()
-
-    if isinstance(sourcedir, bytes):
-        sourcedir = sourcedir.decode("utf8")
-    ld = get_lastdir()
-    parser = argparse.ArgumentParser(prog="chgksuite")
-    use_wrapper = len(sys.argv) == 1 and TKINTER
-    if use_wrapper:
-        parser = ParserWrapper(parser, lastdir=ld)
-    ArgparseBuilder(parser, use_wrapper).build()
-    args = DefaultNamespace(parser.parse_args())
+def single_action(args, use_wrapper, resourcedir):
     if use_wrapper:
         args.console_mode = False
     else:
@@ -1074,3 +1063,24 @@ def app():
         gui_compose(args)
     if args.action == "trello":
         gui_trello(args)
+
+
+def app():
+    sourcedir, resourcedir = get_source_dirs()
+
+    if isinstance(sourcedir, bytes):
+        sourcedir = sourcedir.decode("utf8")
+    ld = get_lastdir()
+    use_wrapper = len(sys.argv) == 1 and TKINTER
+    if use_wrapper:
+        while True:
+            parser = argparse.ArgumentParser(prog="chgksuite")
+            parser = ParserWrapper(parser, lastdir=ld)
+            ArgparseBuilder(parser, use_wrapper).build()
+            args = DefaultNamespace(parser.parse_args())
+            single_action(args, False, resourcedir)
+    else:
+        parser = argparse.ArgumentParser(prog="chgksuite")
+        ArgparseBuilder(parser, use_wrapper).build()
+        args = DefaultNamespace(parser.parse_args())
+        single_action(args, False, resourcedir)
