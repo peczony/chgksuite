@@ -685,9 +685,10 @@ def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", args=None, logger=N
                 "or resave with a less exotic encoding".format(txtfile)
             )
     text = raw.decode(encoding)
+    text = text.replace("\r", "")
     if text[0:10] == "Чемпионат:":
         return chgk_parse_db(text.replace("\r", ""), debug=args.debug, logger=logger)
-    return chgk_parse(text, defaultauthor=defaultauthor, args=args)
+    return chgk_parse(text.replace("_", "\\_"), defaultauthor=defaultauthor, args=args)
 
 
 def generate_imgname(target_dir, ext, prefix=""):
@@ -829,10 +830,9 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
             ) as dbg:
                 dbg.write(bsoup.prettify())
 
-        h = html2text.HTML2Text()
-        h.body_width = 0
-
         if args.parsing_engine == "mammoth_bs_prettify":
+            h = html2text.HTML2Text()
+            h.body_width = 0
             html2text_input = bsoup.prettify()
             txt = h.handle(html2text_input)
         elif args.parsing_engine == "mammoth_hard_unwrap":
