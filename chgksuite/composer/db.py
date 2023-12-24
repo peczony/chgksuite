@@ -74,7 +74,7 @@ class DbExporter(BaseExporter):
         for run in self.parse_4s_elem(s):
             if run[0] in ("", "hyperlink"):
                 res += run[1].replace("\n", "\n   ")
-            if run[0] == "em":
+            if run[0] == "italic":
                 res += run[1]
             if run[0] == "screen":
                 res += run[1]["for_print"]

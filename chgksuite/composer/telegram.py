@@ -95,8 +95,10 @@ class TelegramExporter(BaseExporter):
                 res += run[1]
             if run[0] == "screen":
                 res += run[1]["for_screen"]
-            if run[0] == "em":
-                res += "_{}_".format(run[1])
+            if run[0] == "strike":
+                res += f"~~{run[1]}~~"
+            if "italic" in run[0]:
+                res += f"_{run[1]}_"
             if run[0] == "img":
                 if run[1].startswith(("http://", "https://")):
                     res += run[1]

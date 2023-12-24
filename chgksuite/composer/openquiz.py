@@ -55,7 +55,7 @@ class OpenquizExporter(BaseExporter):
         images = []
         s = self.remove_square_brackets(s)
         for run in self.parse_4s_elem(s):
-            if run[0] in ("", "hyperlink", "em"):
+            if run[0] in ("", "hyperlink", "italic"):
                 res += run[1]
             elif run[0] == "screen":
                 res += run[1]["for_screen"]

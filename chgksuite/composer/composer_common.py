@@ -226,12 +226,12 @@ def starts_either(s, i, variants):
     return False
 
 
-def find_next_unescaped(ss, index):
-    j = index + 1
+def find_next_unescaped(ss, index, length=1):
+    j = index + length
     while j < len(ss):
         if ss[j] == "\\" and j + 2 < len(ss):
             j += 2
-        if ss[j] == ss[index]:
+        if ss[j:j+length] == ss[index:index+length]:
             return j
         j += 1
     return -1
@@ -241,9 +241,11 @@ def _parse_4s_elem(s, logger=None):
     logger = logger or DummyLogger()
 
     s = s.replace("\\_", "$$$$UNDERSCORE$$$$")
+    s = s.replace("\\~", "$$$$TILDE$$$$")
     for gr in re_url.finditer(s):
         gr0 = gr.group(0)
         s = s.replace(gr0, gr0.replace("_", "$$$$UNDERSCORE$$$$"))
+        s = s.replace(gr0, gr0.replace("~", "$$$$TILDE$$$$"))
 
     grs = sorted(
         [match.group(0) for match in re_percent.finditer(s)], key=len, reverse=True
@@ -257,12 +259,16 @@ def _parse_4s_elem(s, logger=None):
     i = 0
     topart = []
     while i < len(s):
-        if s[i] == "_" and (i == 0 or s[i - 1] not in {"\\", "\u6565"}):
-            logger.debug("found _ at {} of line {}".format(i, s))
+        if s[i] in ("_", "~"):
+            logger.debug("found {} at {} of line {}".format(s[i], i, s))
+            j = i + 1
+            while s[j] == s[i]:
+                j += 1
+            length = j - i
             topart.append(i)
-            if find_next_unescaped(s, i) != -1:
-                topart.append(find_next_unescaped(s, i) + 1)
-                i = find_next_unescaped(s, i) + 2
+            if find_next_unescaped(s, i, length) != -1:
+                topart.append(find_next_unescaped(s, i, length) + length)
+                i = find_next_unescaped(s, i, length) + length + 1
                 continue
         if (
             s[i] == "("
@@ -312,22 +318,33 @@ def _parse_4s_elem(s, logger=None):
         s = s.replace("\\_", "_")
         s = s.replace("\\.", ".")
         s = s.replace("$$$$UNDERSCORE$$$$", "_")
+        s = s.replace("$$$$TILDE$$$$", "~")
         return s
 
     for part in parts:
         if not part[1]:
             continue
         try:
-            if part[1][-1] == "_":
-                part[1] = part[1][1:]
-                part[0] = "em"
-            if not part[1]:
-                continue
-            if part[1][-1] == "_":
-                part[1] = part[1][:-1]
-                part[0] = "em"
-            if not part[1]:
-                continue
+            if part[1].startswith("_") and part[1].endswith("_"):
+                j = 1
+                while part[1][j] == part[1][-j-1]:
+                    j += 1
+                part[1] = part[1][j:-j]
+                if j == 1:
+                    part[0] = "italic"
+                elif j == 2:
+                    part[0] = "bold"
+                elif j == 3:
+                    part[0] = "underline"
+                elif j == 4:
+                    part[0] = "italicbold"
+                elif j == 5:
+                    part[0] = "boldunderline"
+                elif j >= 6:
+                    part[0] = "italicboldunderline"
+            if part[1].startswith("~") and part[1].endswith("~"):
+                part[0] = "strike"
+                part[1] = part[1][1:-1]
             if part[1] == "(PAGEBREAK)":
                 part[0] = "pagebreak"
                 part[1] = ""

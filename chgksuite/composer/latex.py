@@ -142,7 +142,7 @@ class LatexExporter(BaseExporter):
                 res += self.texrepl(run[1])
             if run[0] == "screen":
                 res += self.texrepl(run[1]["for_print"])
-            if run[0] == "em":
+            if run[0] == "italic":
                 res += "\\emph{" + self.texrepl(run[1]) + "}"
             if run[0] == "img":
                 parsed_image = parseimg(

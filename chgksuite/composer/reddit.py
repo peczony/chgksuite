@@ -44,7 +44,7 @@ class RedditExporter(BaseExporter):
                 res += run[1]
             if run[0] == "screen":
                 res += run[1]["for_screen"]
-            if run[0] == "em":
+            if run[0] == "italic":
                 res += "_{}_".format(run[1])
             if run[0] == "img":
                 if run[1].startswith(("http://", "https://")):

@@ -76,21 +76,27 @@ class PptxExporter(BaseExporter):
             el = backtick_replace(el)
 
             for run in self.parse_4s_elem(el):
-                if run[0] in ("", "sc"):
-                    r = para.add_run()
-                    r.text = r_sp(run[1])
-
-                elif run[0] == "screen":
+                if run[0] == "screen":
                     r = para.add_run()
                     r.text = r_sp(run[1]["for_screen"])
 
-                elif run[0] == "em":
+                elif run[0] == "strike":
                     r = para.add_run()
                     r.text = r_sp(run[1])
-                    r.italic = True
+                    r.font.strike = True  # TODO: doesn't work as of 2023-12-24, cf. https://github.com/scanny/python-pptx/issues/339
 
                 elif run[0] == "img":
                     pass  # image processing is moved to other places
+
+                else:
+                    r = para.add_run()
+                    r.text = r_sp(run[1])
+                    if "italic" in run[0]:
+                        r.font.italic = True
+                    if "bold" in run[0]:
+                        r.font.bold = True
+                    if "underline" in run[0]:
+                        r.font.underline = True
 
     def pptx_process_text(
         self, s, image=None, strip_brackets=True, replace_spaces=True

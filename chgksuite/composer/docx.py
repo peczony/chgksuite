@@ -111,9 +111,15 @@ class DocxExporter(BaseExporter):
                     if kwargs.get("replace_no_break_spaces"):
                         text = replace_no_break_spaces(text)
                     r = para.add_run(text)
-                    if run[0] == "em":
+                    if "italic" in run[0]:
                         r.italic = True
-                    elif run[0] == "sc":
+                    if "bold" in run[0]:
+                        r.bold = True
+                    if "underline" in run[0]:
+                        r.underline = True
+                    if run[0] == "strike":
+                        r.font.strike = True
+                    if run[0] == "sc":
                         r.small_caps = True
                     if whiten and self.args.spoilers == "whiten":
                         r.style = "Whitened"

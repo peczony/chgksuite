@@ -339,13 +339,19 @@ class LjExporter(BaseExporter):
     def htmlformat(self, s, replace_spaces=True):
         res = ""
         for run in self.parse_4s_elem(s):
-            if run[0] in ("", "hyperlink"):
-                res += self.htmlrepl(run[1])
             if run[0] == "screen":
                 res += self.htmlrepl(run[1]["for_screen"])
-            if run[0] == "em":
+            elif run[0] == "pagebreak":
+                pass
+            elif run[0] == "strike":
+                res += "<s>" + self.htmlrepl(run[1]) + "</s>"
+            elif run[0] == "bold":
+                res += "<b>" + self.htmlrepl(run[1]) + "</b>"
+            elif run[0] == "underline":
+                res += "<u>" + self.htmlrepl(run[1]) + "</u>"
+            elif run[0] == "italic":
                 res += "<em>" + self.htmlrepl(run[1]) + "</em>"
-            if run[0] == "img":
+            elif run[0] == "img":
                 parsed_image = parseimg(
                     run[1],
                     dimensions="pixels",
@@ -364,6 +370,8 @@ class LjExporter(BaseExporter):
                     "" if h == -1 else " height={}".format(h),
                     imgfile,
                 )
+            else:
+                res += self.htmlrepl(run[1])
         if replace_spaces:
             res = replace_no_break_spaces(res)
         return res
