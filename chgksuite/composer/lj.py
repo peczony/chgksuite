@@ -351,6 +351,8 @@ class LjExporter(BaseExporter):
                 res += "<u>" + self.htmlrepl(run[1]) + "</u>"
             elif run[0] == "italic":
                 res += "<em>" + self.htmlrepl(run[1]) + "</em>"
+            elif run[0] == "linebreak":
+                res += "<br>"
             elif run[0] == "img":
                 parsed_image = parseimg(
                     run[1],

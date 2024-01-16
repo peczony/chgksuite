@@ -80,6 +80,9 @@ class PptxExporter(BaseExporter):
                     r = para.add_run()
                     r.text = r_sp(run[1]["for_screen"])
 
+                elif run[0] == "linebreak":
+                    r = para.add_run("\n")
+
                 elif run[0] == "strike":
                     r = para.add_run()
                     r.text = r_sp(run[1])

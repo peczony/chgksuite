@@ -231,7 +231,7 @@ def find_next_unescaped(ss, index, length=1):
     while j < len(ss):
         if ss[j] == "\\" and j + 2 < len(ss):
             j += 2
-        if ss[j:j+length] == ss[index:index+length]:
+        if ss[j : j + length] == ss[index : index + length]:
             return j
         j += 1
     return -1
@@ -291,6 +291,9 @@ def _parse_4s_elem(s, logger=None):
         if s[i : i + len("(PAGEBREAK)")] == "(PAGEBREAK)":
             topart.append(i)
             topart.append(i + len("(PAGEBREAK)"))
+        if s[i : i + len("(LINEBREAK)")] == "(LINEBREAK)":
+            topart.append(i)
+            topart.append(i + len("(LINEBREAK)"))
         if starts_either(s, i, ("http://", "https://")):
             topart.append(i)
             j = i + 1
@@ -327,7 +330,7 @@ def _parse_4s_elem(s, logger=None):
         try:
             if part[1].startswith("_") and part[1].endswith("_"):
                 j = 1
-                while part[1][j] == part[1][-j-1]:
+                while j < len(part[1]) and part[1][j] == "_" and part[1][-j - 1] == "_":
                     j += 1
                 part[1] = part[1][j:-j]
                 if j == 1:
@@ -347,6 +350,9 @@ def _parse_4s_elem(s, logger=None):
                 part[1] = part[1][1:-1]
             if part[1] == "(PAGEBREAK)":
                 part[0] = "pagebreak"
+                part[1] = ""
+            if part[1] == "(LINEBREAK)":
+                part[0] = "linebreak"
                 part[1] = ""
             if len(part[1]) > 4 and part[1][:4] == "(img":
                 if part[1][-1] != ")":
@@ -373,7 +379,7 @@ def _parse_4s_elem(s, logger=None):
                 logger.debug("found img at {}".format(log_wrap(part[1])))
             part[1] = _process(part[1])
         except Exception as e:
-            sys.stderr.write(f"Error on part {log_wrap(part)}: {type(e)} {e}")
+            sys.stderr.write(f"Error on part {log_wrap(part)}: {type(e)} {e}\n")
 
     return parts
 

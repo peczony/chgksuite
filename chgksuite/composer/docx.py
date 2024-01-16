@@ -68,6 +68,8 @@ class DocxExporter(BaseExporter):
                         para = self.doc.add_paragraph()
                     else:
                         para = self.doc.add_page_break()
+                elif run[0] == "linebreak":
+                    para.add_run("\n")
                 elif run[0] == "screen":
                     if kwargs.get("remove_accents") or kwargs.get("remove_brackets"):
                         text = run[1]["for_screen"]
@@ -110,7 +112,10 @@ class DocxExporter(BaseExporter):
                     text = run[1]
                     if kwargs.get("replace_no_break_spaces"):
                         text = replace_no_break_spaces(text)
-                    r = para.add_run(text)
+                    try:
+                        r = para.add_run(text)
+                    except:
+                        import pdb; pdb.set_trace()
                     if "italic" in run[0]:
                         r.italic = True
                     if "bold" in run[0]:

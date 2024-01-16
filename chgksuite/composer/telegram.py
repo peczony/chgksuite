@@ -99,6 +99,8 @@ class TelegramExporter(BaseExporter):
                 res += f"~~{run[1]}~~"
             if "italic" in run[0]:
                 res += f"_{run[1]}_"
+            if run[0] == "linebreak":
+                res += "\n"
             if run[0] == "img":
                 if run[1].startswith(("http://", "https://")):
                     res += run[1]
