@@ -202,6 +202,8 @@ class PptxExporter(BaseExporter):
             self._process_block(block)
 
     def set_question_number(self, slide, number):
+        if self.args.disable_numbers:
+            return
         qntextbox = self.get_textbox_qnumber(slide)
         qtf = qntextbox.text_frame
         qtf_p = self.init_paragraph(qtf)

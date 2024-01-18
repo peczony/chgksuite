@@ -776,6 +776,14 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose_pptx,
+            "--disable_numbers",
+            help="do not put question numbers on slides.",
+            advanced=False,
+            caption="Не добавлять номера вопросов",
+            action="store_true",
+        )
+        self.add_argument(
+            cmdcompose_pptx,
             "--pptx_config",
             help="a pptx config file.",
             advanced=True,
