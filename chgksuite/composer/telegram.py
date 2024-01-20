@@ -476,6 +476,13 @@ class TelegramExporter(BaseExporter):
             ),
             (images_q or []) + (images_a or []),
         )
+    
+    @staticmethod
+    def is_valid_tg_identifier(str_):
+        str_ = str_.strip()
+        if not str_.startswith("-"):
+            return
+        return tryint(str_)
 
     def export(self):
         self.section_links = []
@@ -485,19 +492,26 @@ class TelegramExporter(BaseExporter):
         with self.app:
             self.channel_dialog = None
             self.chat_dialog = None
-            for dialog in self.app.get_dialogs():
-                if (dialog.chat.title or "").strip() == self.args.tgchannel.strip():
-                    self.channel_dialog = dialog
-                if (dialog.chat.title or "").strip() == self.args.tgchat.strip():
-                    self.chat_dialog = dialog
-                if self.channel_dialog is not None and self.chat_dialog is not None:
-                    break
-            if not self.channel_dialog:
-                raise Exception("Channel not found, please check provided name")
-            if not self.chat_dialog:
-                raise Exception("Linked chat not found, please check provided name")
-            self.channel_id = self.channel_dialog.chat.id
-            self.chat_id = self.chat_dialog.chat.id
+            if (
+                self.is_valid_tg_identifier(self.args.tgchannel)
+                and self.is_valid_tg_identifier(self.args.tgchat)
+            ):
+                self.channel_id = self.is_valid_tg_identifier(self.args.tgchannel)
+                self.chat_id = self.is_valid_tg_identifier(self.args.tgchat)
+            else:
+                for dialog in self.app.get_dialogs():
+                    if (dialog.chat.title or "").strip() == self.args.tgchannel.strip():
+                        self.channel_dialog = dialog
+                    if (dialog.chat.title or "").strip() == self.args.tgchat.strip():
+                        self.chat_dialog = dialog
+                    if self.channel_dialog is not None and self.chat_dialog is not None:
+                        break
+                if not self.channel_dialog:
+                    raise Exception("Channel not found, please check provided name")
+                if not self.chat_dialog:
+                    raise Exception("Linked chat not found, please check provided name")
+                self.channel_id = self.channel_dialog.chat.id
+                self.chat_id = self.chat_dialog.chat.id
             for pair in self.structure:
                 self.tg_process_element(pair)
             if self.buffer_texts or self.buffer_images:
