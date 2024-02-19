@@ -943,6 +943,12 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdtrello_download,
+            "--lists",
+            help="Download only specified lists.",
+            caption="Скачать только указанные списки (через запятую)",
+        )
+        self.add_argument(
+            cmdtrello_download,
             "--si",
             action="store_true",
             help="This flag includes card captions "

@@ -267,6 +267,10 @@ def gui_trello_download(args, sourcedir):
     for list_ in open_lists:
         _names[list_["id"]] = list_["name"].replace("/", "_")
         _list_counters[list_["id"]] = 0
+    if args.lists:
+        good_lists = [x.strip() for x in args.lists.split(",")]
+    else:
+        good_lists = None
 
     if args.si:
         _docs = defaultdict(lambda: Document(template_path))
@@ -285,7 +289,11 @@ def gui_trello_download(args, sourcedir):
             card["desc"] = fix_trello_new_editor_links(card["desc"])
         list_id = card["idList"]
         list_name = _names[list_id]
-        if card.get("closed") or list_name is None:
+        if (
+            card.get("closed")
+            or list_name is None
+            or (good_lists and list_name not in good_lists)
+        ):
             continue
 
         _list_counters[list_id] += 1
