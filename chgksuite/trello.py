@@ -42,8 +42,8 @@ def upload_file(filepath, trello):
     for card in cards:
         caption = "вопрос"
         if re.search("\n! (.+?)\r?\n", card):
-            caption = re.search("\n! (.+?)\.?\r?\n", card).group(1)
-            if trello["author"] and re.search("\n@ (.+?)\.?\r?\n", card):
+            caption = re.search("\n! (.+?)\\.?\r?\n", card).group(1)
+            if trello["author"] and re.search("\n@ (.+?)\\.?\r?\n", card):
                 caption += " {}".format(re.search("\n@ (.+?)\r?\n", card).group(1))
 
         req = requests.post(
