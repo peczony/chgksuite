@@ -357,8 +357,9 @@ class PptxExporter(BaseExporter):
         if number is not None:
             self.set_question_number(slide, number)
         p = self.init_paragraph(tf, text=handout)
-        r = p.add_run()
-        r.text = self.pptx_process_text(handout)
+        self.pptx_format(
+            self.pptx_process_text(handout), p, tf, slide
+        )
 
     def process_question_text(self, q):
         image = self._get_image_from_4s(q["question"])
