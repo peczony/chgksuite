@@ -92,6 +92,7 @@ def search_for_date(str_):
 class ChgkParser:
     BADNEXTFIELDS = set(["question", "answer"])
     RE_NUM = re.compile("^([0-9]+)\\.?$")
+    RE_NUM_START = re.compile("^([0-9]+)\\.")
 
     def __init__(self, defaultauthor=None, args=None, logger=None):
         self.defaultauthor = defaultauthor
@@ -304,6 +305,15 @@ class ChgkParser:
             for line in single_number_lines:
                 self.patch_single_number_line(line)
 
+    def do_enumerate_hack(self):
+        prev_nonzero_type = None
+        for el in self.structure:
+            if not el[0] and prev_nonzero_type is not None and prev_nonzero_type == "author" and self.RE_NUM_START.search(el[1]):
+                el[0] = "question"
+                el[1] = self.RE_NUM_START.sub("", el[1]).strip()
+            if el[0]:
+                prev_nonzero_type = el[0]
+
     def parse(self, text):
         """
         Parsing rationale: every Question has two required fields: 'question' and
@@ -360,6 +370,7 @@ class ChgkParser:
             if "answer" in elements and not fragment[0][0]:
                 fragment[0][0] = "question"
         self.structure = list(itertools.chain(*fragments))
+        self.do_enumerate_hack()
         for el in self.structure:
             if el[0] == "handout":
                 el[0] = "question"
