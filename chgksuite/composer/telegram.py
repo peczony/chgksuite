@@ -302,6 +302,8 @@ class TelegramExporter(BaseExporter):
         return res
 
     def make_chunk(self, texts, images):
+        if isinstance(texts, str):
+            texts = [texts]
         if images:
             im, images = images[0], images[1:]
             threshold = 1024
