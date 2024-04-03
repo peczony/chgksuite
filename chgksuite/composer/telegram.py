@@ -98,7 +98,7 @@ class TelegramExporter(BaseExporter):
             if run[0] == "strike":
                 res += f"~~{run[1]}~~"
             if "italic" in run[0]:
-                res += f"_{run[1]}_"
+                res += f"__{run[1]}__"
             if run[0] == "linebreak":
                 res += "\n"
             if run[0] == "img":
