@@ -893,8 +893,8 @@ class ArgparseBuilder:
         self.add_argument(
             cmdcompose_add_stats,
             "--custom_csv",
-            help="custom csv in rating.chgk.info format",
-            caption="кастомный csv с результатами в формате rating.chgk.info",
+            help="custom csv/xlsx in rating.chgk.info format",
+            caption="кастомный csv/xlsx с результатами в формате rating.chgk.info",
             argtype="filename",
         )
         self.add_argument(
