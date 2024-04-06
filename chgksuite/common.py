@@ -239,7 +239,7 @@ def xlsx_to_results(xlsx_file_path):
     results = []
     tours = sorted(tour_len)
     for team_tup in res_by_tour:
-        team_id, team_name, team_tup
+        team_id, team_name = team_tup
         mask = []
         for tour in tours:
             team_res = res_by_tour[team_tup].get(tour) or []
