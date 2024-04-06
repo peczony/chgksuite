@@ -10,8 +10,10 @@ import os
 import re
 import sys
 import time
+from collections import defaultdict
 from pathlib import Path
 
+import openpyxl
 import toml
 
 QUESTION_LABELS = [
@@ -213,6 +215,49 @@ def tryint(s):
         return int(s)
     except (TypeError, ValueError):
         return
+
+
+def xlsx_to_results(xlsx_file_path):
+    wb = openpyxl.load_workbook(xlsx_file_path)
+    sheet = wb.active
+    first = True
+    res_by_tour = defaultdict(lambda: defaultdict(list))
+    tour_len = defaultdict(lambda: 0)
+    for row in sheet.iter_rows(values_only=True):
+        if first:
+            assert row[1] == "Название"
+            assert row[3] == "Тур"
+            first = False
+            continue
+        team_id = row[0]
+        team_name = row[1]
+        tour = row[3]
+        results = [x for x in row[4:] if x is not None]
+        rlen = len(results)
+        tour_len[tour] = max(tour_len[tour], rlen)
+        res_by_tour[(team_id, team_name)][tour] = results
+    results = []
+    tours = sorted(tour_len)
+    for team_tup in res_by_tour:
+        team_id, team_name, team_tup
+        mask = []
+        for tour in tours:
+            team_res = res_by_tour[team_tup].get(tour) or []
+            if len(team_res) < tour_len[tour]:
+                team_res += [0] * (tour_len[tour] - len(team_res))
+            for element in team_res:
+                if element in (1, 0):
+                    mask.append(str(element))
+                else:
+                    mask.append("0")
+        results.append(
+            {
+                "team": {"id": team_id},
+                "current": {"name": team_name},
+                "mask": "".join(mask),
+            }
+        )
+    return results
 
 
 def custom_csv_to_results(csv_file_path, **kwargs):

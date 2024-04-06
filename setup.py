@@ -50,6 +50,7 @@ setup(
         "dateparser",
         "html2text",
         "mammoth",
+        "openpyxl",
         "parse",
         "Pillow",
         "ply",

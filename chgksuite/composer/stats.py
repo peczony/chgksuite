@@ -3,7 +3,7 @@ from collections import Counter, defaultdict
 
 import requests
 
-from chgksuite.common import custom_csv_to_results, compose_4s
+from chgksuite.common import compose_4s, custom_csv_to_results, xlsx_to_results
 from chgksuite.composer.composer_common import BaseExporter
 
 
@@ -65,9 +65,13 @@ class StatsAdder(BaseExporter):
                 results = self.get_tournament_results(id_)
                 self.process_tournament(results)
         elif self.args.custom_csv:
-            results = custom_csv_to_results(
-                self.args.custom_csv, **json.loads(self.args.custom_csv_args)
-            )
+            filename = self.args.custom_csv
+            if filename.lower().endswith(".csv"):
+                results = custom_csv_to_results(
+                    self.args.custom_csv, **json.loads(self.args.custom_csv_args)
+                )
+            elif filename.lower().endswith(".xlsx"):
+                results = xlsx_to_results(self.args.custom_csv)
             self.process_tournament(results)
         qnumber = 1
         for element in self.structure:
