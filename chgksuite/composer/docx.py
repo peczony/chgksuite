@@ -249,7 +249,16 @@ class DocxExporter(BaseExporter):
                         para.paragraph_format.page_break_before = True
                     else:
                         firsttour = False
-                para.alignment = 1
+                if element[0] == "heading":
+                    for st in self.doc.styles:
+                        if st.name == "Heading 1":
+                            break
+                    para.style = st
+                elif element[0] == "section":
+                    for st in self.doc.styles:
+                        if st.name == "Heading 2":
+                            break
+                    para.style = st
                 para.paragraph_format.keep_with_next = True
                 para.add_run("\n")
 
