@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib
 
 import bs4
 import chardet
@@ -158,14 +159,17 @@ class ChgkParser:
                     self.merge_to_previous(i + 1)
             i += 1
 
+    def remove_formatting(self, str_):
+        return str_.replace("_", "")
+
     def apply_regexes(self, st):
         i = 0
         regexes = self.regexes
         while i < len(st):
             matching_regexes = {
-                (regex, regexes[regex].search(st[i][1]).start(0))
+                (regex, regexes[regex].search(self.remove_formatting(st[i][1])).start(0))
                 for regex in set(regexes) - {"number", "date2"}
-                if regexes[regex].search(st[i][1])
+                if regexes[regex].search(self.remove_formatting(st[i][1]))
             }
 
             # If more than one regex matches string, split it and
@@ -308,7 +312,12 @@ class ChgkParser:
     def do_enumerate_hack(self):
         prev_nonzero_type = None
         for el in self.structure:
-            if not el[0] and prev_nonzero_type is not None and prev_nonzero_type == "author" and self.RE_NUM_START.search(el[1]):
+            if (
+                not el[0]
+                and prev_nonzero_type is not None
+                and prev_nonzero_type == "author"
+                and self.RE_NUM_START.search(el[1])
+            ):
                 el[0] = "question"
                 el[1] = self.RE_NUM_START.sub("", el[1]).strip()
             if el[0]:
@@ -715,11 +724,10 @@ def ensure_line_breaks(tag):
     if tag.text:
         str_ = tag.string or "".join(list(tag.strings))
         if not str_.startswith("\n"):
-            str_ = "\n" + str_
+            tag.insert(0, "\n")
         if not str_.endswith("\n"):
-            str_ = str_ + "\n"
-        tag.insert_before(str_)
-    tag.extract()
+            tag.append("\n")
+    tag.unwrap()
 
 
 def chgk_parse_docx(docxfile, defaultauthor="", args=None):
@@ -793,15 +801,26 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
             tag.extract()
         for tag in bsoup.find_all("p"):
             ensure_line_breaks(tag)
+
         for tag in bsoup.find_all("b"):
+            if args.preserve_formatting:
+                tag.insert(0, "__")
+                tag.append("__")
             tag.unwrap()
         for tag in bsoup.find_all("strong"):
+            if args.preserver_formatting:
+                tag.insert(0, "__")
+                tag.append("__")
             tag.unwrap()
         for tag in bsoup.find_all("i"):
-            tag.string = "_" + tag.get_text() + "_"
+            if args.preserve_formatting:
+                tag.insert(0, "_")
+                tag.append("_")
             tag.unwrap()
         for tag in bsoup.find_all("em"):
-            tag.string = "_" + tag.get_text() + "_"
+            if args.preserve_formatting:
+                tag.insert(0, "_")
+                tag.append("_")
             tag.unwrap()
         if args.fix_spans:
             for tag in bsoup.find_all("span"):
@@ -822,7 +841,19 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
             tag.extract()
         if args.links == "unwrap":
             for tag in bsoup.find_all("a"):
-                tag.unwrap()
+                if tag.get_text().startswith("http"):
+                    tag.unwrap()
+                elif (
+                    tag.get("href")
+                    and tag["href"].startswith("http")
+                    and tag.get_text().strip() not in tag["href"]
+                    and (
+                        urllib.parse.unquote(tag.get_text().strip())
+                        not in urllib.parse.unquote(tag["href"])
+                    )
+                ):
+                    tag.string = f"{tag.get_text()} ({tag['href']})"
+                    tag.unwrap()
         elif args.links == "old":
             for tag in bsoup.find_all("a"):
                 if not tag.string or rew(tag.string) == "":

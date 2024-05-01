@@ -386,6 +386,15 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdparse,
+            "--preserve_formatting",
+            "-pf",
+            action="store_true",
+            help="Preserve bold and italic.",
+            caption="Сохранять полужирный и курсив",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdparse,
             "--encoding",
             default=None,
             help="Encoding of text file " "(use if auto-detect fails).",

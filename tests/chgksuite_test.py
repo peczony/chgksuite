@@ -1,24 +1,30 @@
 #!/usr/bin/env python
 #! -*- coding: utf-8 -*-
 import codecs
-import os
-import inspect
-import tempfile
-import shutil
 import contextlib
+import inspect
+import json
+import os
+import shutil
 import subprocess
+import tempfile
+
 import pytest
 
+from chgksuite.common import DefaultArgs
 from chgksuite.parser import (
-    chgk_parse_txt,
     chgk_parse_docx,
+    chgk_parse_txt,
     compose_4s,
 )
-from chgksuite.common import DefaultArgs
 from chgksuite.typotools import get_quotes_right
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
+
+
+with open(os.path.join(currentdir, "settings.json")) as f:
+    settings = json.loads(f.read())
 
 
 ljlogin, ljpassword = open(os.path.join(currentdir, "ljcredentials")).read().split("\t")
@@ -47,8 +53,8 @@ QUOTE_TEST_CASES = [
     ),
     (
         "Все вопросы тура написаны по одному источнику — книге Натальи Эдуардовны Манусаджян «Применение соматопсихотерапии во время тренировок по „Что? Где? Когда?“ как метода развития креативности мышления».",
-        "Все вопросы тура написаны по одному источнику — книге Натальи Эдуардовны Манусаджян «Применение соматопсихотерапии во время тренировок по „Что? Где? Когда?“ как метода развития креативности мышления»."
-    )
+        "Все вопросы тура написаны по одному источнику — книге Натальи Эдуардовны Манусаджян «Применение соматопсихотерапии во время тренировок по „Что? Где? Когда?“ как метода развития креативности мышления».",
+    ),
 ]
 
 
@@ -68,9 +74,8 @@ def normalize(string):
     return string.replace("\r\n", "\n")
 
 
-CANON_FILENAMES = [
-    fn for fn in os.listdir(currentdir) if fn.endswith(".canon")
-]
+CANON_FILENAMES = [fn for fn in os.listdir(currentdir) if fn.endswith(".canon")]
+
 
 @pytest.mark.parametrize("filename", CANON_FILENAMES)
 def test_canonical_equality(parsing_engine, filename):
@@ -94,6 +99,8 @@ def test_canonical_equality(parsing_engine, filename):
             parsing_engine,
             os.path.join(temp_dir, to_parse_fn),
         ]
+        if to_parse_fn in settings and settings[to_parse_fn].get("cmdline_args"):
+            call_args.extend(settings[to_parse_fn]["cmdline_args"])
         subprocess.call(call_args, timeout=5)
         with codecs.open(os.path.join(temp_dir, bn + ".4s"), "r", "utf8") as f:
             parsed = f.read()
@@ -101,10 +108,12 @@ def test_canonical_equality(parsing_engine, filename):
             canonical = f.read()
         assert normalize(canonical) == normalize(parsed)
 
+
 TO_DOCX_FILENAMES = [
     fn for fn in os.listdir(currentdir) if fn.endswith((".docx", ".txt"))
 ]
 TO_DOCX_FILENAMES.remove("balt09-1.txt")  # TODO: rm this line once dns is fixed
+
 
 @pytest.mark.parametrize("filename", TO_DOCX_FILENAMES)
 def test_docx_composition(filename):
