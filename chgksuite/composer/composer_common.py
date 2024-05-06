@@ -310,7 +310,7 @@ def _parse_4s_elem(s, logger=None):
                 topart.append(j - 1)
             else:
                 topart.append(j)
-            i = j + 1
+            i = j
         i += 1
 
     topart = sorted(topart)
