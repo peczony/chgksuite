@@ -828,10 +828,13 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
         for h in ["h1", "h2", "h3", "h4"]:
             for tag in bsoup.find_all(h):
                 ensure_line_breaks(tag)
+        to_append = []
         for tag in bsoup.find_all("li"):
             if tag.parent and tag.parent.name == "ol":
                 num = get_number(tag.parent)
-                tag.string = f"{num}. " + tag.get_text()
+                to_append.append((tag, f"{num}. "))
+        for (tag, prefix) in to_append:
+            tag.insert(0, prefix)
             ensure_line_breaks(tag)
         for tag in bsoup.find_all("table"):
             table = dashtable.html2md(str(tag))
