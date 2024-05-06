@@ -299,6 +299,7 @@ class TelegramExporter(BaseExporter):
             res = res[:-3] + "||"
         if self.args.nospoilers:
             res = res.replace("||", "")
+        res = res.replace("`", "'")  # hack so spoilers don't break
         return res
 
     def make_chunk(self, texts, images):
