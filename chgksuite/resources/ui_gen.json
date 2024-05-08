@@ -1,0 +1,10 @@
+{
+    "name": "action",
+    "caption": "Действие",
+    "commands": [{"name": "parse", "params": [
+        {"name": "filename", "caption": "Имя файла", "type": "filepicker", "extensions": "*.docx,*.txt"}
+    ]}, {"name": "compose", "params": [
+        {"name": "filename", "caption": "Имя файла", "type": "filepicker", "extensions": "*.4s"}
+    ]}],
+    "params": [{"name": "--debug", "short": "-d", "type": "checkbox", "advanced": true}]
+}
