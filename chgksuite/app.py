@@ -20,7 +20,7 @@ def open_browser():
 
 
 def run_app():
-    Timer(2, open_browser).start()
+    Timer(1, open_browser).start()
     app.run(host="0.0.0.0", port=PORT, debug=bool(os.environ.get("DEBUG")))
 
 
