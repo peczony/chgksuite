@@ -55,7 +55,7 @@ PREFIX = """\
 </head>
 <body>
 <h1>chgksuite v{__version__}</h1>
-<form>
+<form action="/" method="post" enctype="multipart/form-data">
 """.replace("{__version__}", __version__)
 
 SUFFIX = """</body></html>"""
@@ -71,17 +71,23 @@ FILEPICKER_STUB = """\
 <label for="{id_}"></label>{caption} ({extensions})<input
     type="file"
     id="{id_}"
-    accept="{extensions}" />
+    name="{id_}"
+    accept="{extensions}" /><br>
 """
 CHECKBOX_STUB = """\
-<input id="{id_}" type="checkbox"><label for="{id_}">{caption}</label>
+<input id="{id_}" name="{id_}" type="checkbox"><label for="{id_}">{caption}</label><br>
 """
+TEXT_STUB = """<label for="{id_}">{caption}</label><input id="{id_}" name="{id_}" value="{value}"><br>"""
+MANDATORY_CHOOSE = """<option value="">--Выберите вариант--</option><br>"""
 DROPDOWN_STUB = """\
-<label for="{id_}">Действие:</label><select id="{id_}">
-    <option value="">--Выберите вариант--</option>
+<label for="{id_}">{caption}:</label><select id="{id_}" name="{id_}">
+    {mandatory_choose}
     {options}
-</select>
+</select><br>
 """
+
+def make_options(options):
+    return "\n    ".join("""<option value="{option}">{option}</option>""".format(option=option) for option in options)
 
 """
 // JavaScript function that executes when user selects a value in a dropdown
@@ -139,6 +145,20 @@ class UiNode:
                         id_=id_, caption=caption, extensions=param["extensions"]
                     )
                 )
+            elif param["type"] == "dropdown":
+                frame.append(
+                    DROPDOWN_STUB.format(
+                        id_=id_, caption=caption, options=make_options(param["choices"]), mandatory_choose=""
+                    )
+                )
+            elif param["type"] == "text":
+                frame.append(
+                    TEXT_STUB.format(
+                        id_=id_,
+                        caption=caption,
+                        value=param.get("default") or "",
+                    )
+                )
             elif param["type"] == "checkbox":
                 frame.append(CHECKBOX_STUB.format(id_=id_, caption=caption))
         commands = []
@@ -160,12 +180,8 @@ class UiNode:
         if commands:
             id_ = self.name + (".select")
             self.get_root().action_selectors.append(id_)
-            options = [
-                f"""<option value="{command}">{command}</option>"""
-                for command in commands
-            ]
             self.main_frame = [
-                DROPDOWN_STUB.format(id_=id_, options="\n    ".join(options))
+                DROPDOWN_STUB.format(id_=id_, options=make_options(commands), caption=self.json["caption"], mandatory_choose=MANDATORY_CHOOSE)
             ] + self.main_frame
 
     def render(self):

@@ -2,7 +2,7 @@ import os
 import webbrowser
 from threading import Timer
 
-from flask import Flask, render_template_string
+from flask import Flask, request, render_template_string
 
 from chgksuite.ui_gen import render_ui
 
@@ -10,8 +10,10 @@ app = Flask("chgksuite", static_folder="resources")
 PORT = 1992
 
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 def route():
+    if request.form:
+        print(request.form.to_dict())
     return render_template_string(render_ui())
 
 

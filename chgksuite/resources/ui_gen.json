@@ -1,10 +1,232 @@
 {
     "name": "action",
     "caption": "Действие",
-    "commands": [{"name": "parse", "params": [
-        {"name": "filename", "caption": "Имя файла", "type": "filepicker", "extensions": "*.docx,*.txt"}
-    ]}, {"name": "compose", "params": [
-        {"name": "filename", "caption": "Имя файла", "type": "filepicker", "extensions": "*.4s"}
-    ]}],
-    "params": [{"name": "--debug", "short": "-d", "type": "checkbox", "advanced": true}]
+    "commands": [
+        {
+            "name": "parse",
+            "params": [
+                {
+                    "name": "filename",
+                    "caption": "Имя файла",
+                    "type": "filepicker",
+                    "extensions": "*.docx,*.txt",
+                    "help": "file to parse.",
+                    "nargs": "?"
+                },
+                {
+                    "name": "--language",
+                    "short": "-lang",
+                    "caption": "Язык",
+                    "type": "dropdown",
+                    "choices": [
+                        "ru",
+                        "by",
+                        "by_tar",
+                        "en",
+                        "kz_cyr",
+                        "sr",
+                        "ua",
+                        "uz",
+                        "uz_cyr",
+                        "custom"
+                    ],
+                    "help": "language to use while parsing."
+                },
+                {
+                    "name": "--labels_file",
+                    "help": "i18n config",
+                    "caption": "Конфиг для интернационализации",
+                    "advanced": true,
+                    "type": "filepicker",
+                    "extensions": "*.toml"
+                },
+                {
+                    "name": "--defaultauthor",
+                    "help": "pick default author from filename where author is missing.",
+                    "caption": "Дописать отсутствующего автора из имени файла",
+                    "advanced": true,
+                    "type": "checkbox"
+                },
+                {
+                    "name": "--preserve_formatting",
+                    "short": "-pf",
+                    "help": "Preserve bold and italic.",
+                    "caption": "Сохранять полужирный и курсив",
+                    "advanced": true,
+                    "type": "checkbox"
+                },
+                {
+                    "name": "--encoding",
+                    "help": "Encoding of text file (use if auto-detect fails).",
+                    "caption": "Кодировка",
+                    "advanced": true,
+                    "type": "text"
+                },
+                {
+                    "name": "--regexes",
+                    "help": "A file containing regexes (the default is regexes_ru.json).",
+                    "caption": "Файл с регулярными выражениями",
+                    "advanced": true,
+                    "type": "filepicker",
+                    "extensions": "*.json"
+                },
+                {
+                    "name": "--links",
+                    "caption": "Стратегия обработки ссылок",
+                    "type": "dropdown",
+                    "choices": [
+                        "unwrap", "old"
+                    ],
+                    "help": "hyperlinks handling strategy. Unwrap just leaves links as presented in the text, unchanged. Old is behaviour from versions up to v0.5.3: replace link with its href value."
+                },
+                {
+                    "name": "--fix_spans",
+                    "help": "try to unwrap all <span> tags. Can help fix weird Word formatting.",
+                    "caption": "Исправить теги <span>",
+                    "advanced": true,
+                    "type": "checkbox"
+                },
+                {
+                    "name": "--no_image_prefix",
+                    "help": "don't make image prefix from filename",
+                    "caption": "Не создавать префикс для файлов с картинками из имени файла",
+                    "advanced": true,
+                    "type": "checkbox"
+                },
+                {
+                    "name": "--parsing_engine",
+                    "caption": "Способ парсинга HTML",
+                    "type": "dropdown",
+                    "choices": [
+                        "mammoth",
+                        "mammoth_bs_hard_unwrap",
+                        "mammoth_bs_prettify",
+                        "pypandoc",
+                        "pypandoc_html"
+                    ],
+                    "advanced": true,
+                    "help": "HTML parsing engine. Default is mammoth, might try others if mammoth doesn't work."
+                },
+                {
+                    "name": "--numbers_handling",
+                    "caption": "Стратегия обработки номеров вопросов",
+                    "type": "dropdown",
+                    "choices": [
+                        "default",
+                        "all",
+                        "none"
+                    ],
+                    "advanced": true,
+                    "help": "question numbers handling strategy. Default preserves zero questions and numbering if the first question has number > 1, omits number otherwise. All preserves all numbers, none omits all numbers (was default behaviour pre-0.8.0.)"
+                },
+                {
+                    "name": "--typography_quotes",
+                    "caption": "Типографика: кавычки",
+                    "type": "dropdown",
+                    "choices": [
+                        "on",
+                        "off",
+                        "smart"
+                    ],
+                    "advanced": true,
+                    "help": "typography: try to fix quotes."
+                },
+                {
+                    "name": "--typography_dashes",
+                    "caption": "Типографика: тире",
+                    "type": "dropdown",
+                    "choices": [
+                        "on",
+                        "off"
+                    ],
+                    "advanced": true,
+                    "help": "typography: try to fix dashes."
+                },
+                {
+                    "name": "--typography_whitespace",
+                    "caption": "Типографика: whitespace",
+                    "type": "dropdown",
+                    "choices": [
+                        "on",
+                        "off"
+                    ],
+                    "advanced": true,
+                    "help": "typography: try to fix whitespace."
+                },
+                {
+                    "name": "--typography_accents",
+                    "caption": "Типографика: ударения",
+                    "type": "dropdown",
+                    "choices": [
+                        "on",
+                        "off",
+                        "smart",
+                        "light"
+                    ],
+                    "advanced": true,
+                    "help": "typography: try to fix accents."
+                },
+                {
+                    "name": "--typography_percent",
+                    "caption": "Типографика: %-энкодинг ссылок",
+                    "type": "dropdown",
+                    "choices": [
+                        "on",
+                        "off"
+                    ],
+                    "advanced": true,
+                    "help": "typography: try to fix percent encoding."
+                },
+                {
+                    "name": "--single_number_line_handling",
+                    "caption": "Обработка строчек, состоящих из одного числа",
+                    "type": "dropdown",
+                    "choices": [
+                        "on",
+                        "smart",
+                        "off"
+                    ],
+                    "advanced": true,
+                    "help": "handling cases where a line consists of a single number."
+                }
+
+            ]
+        },
+        {
+            "name": "compose",
+            "params": [
+                {
+                    "name": "filename",
+                    "caption": "Имя файла",
+                    "type": "filepicker",
+                    "extensions": "*.4s"
+                }
+            ]
+        }
+    ],
+    "params": [
+        {
+            "name": "--debug",
+            "short": "-d",
+            "type": "checkbox",
+            "advanced": true,
+            "help": "Print and save some debug info.",
+            "caption": "Отладочная информация"
+        },
+        {
+            "name": "--config",
+            "short": "-c",
+            "type": "filepicker",
+            "advanced": true,
+            "help": "a config file to store default args values.",
+            "caption": "Файл конфигурации",
+            "extensions": "*.json"
+        },
+        {
+            "name": "--version",
+            "short": "-v",
+            "type": "version",
+            "advanced": true
+        }
+    ]
 }
