@@ -31,6 +31,8 @@ LANGS = ["by", "by_tar", "en", "kz_cyr", "ru", "sr", "ua", "uz", "uz_cyr"] + ["c
 
 debug = False
 
+Q_SPACE = 2
+
 
 class VarWrapper(object):
     def __init__(self, name, var):
@@ -99,10 +101,12 @@ class ParserWrapper(object):
             self.parent.children.append(self)
             self.frame = QtWidgets.QWidget(self.parent.frame)
             self.layout = QtWidgets.QVBoxLayout(self.frame)
+            self.layout.setSpacing(Q_SPACE)
             self.parent.layout.addWidget(self.frame)
             self.frame.hide()
             self.advanced_frame = QtWidgets.QWidget(self.parent.advanced_frame)
             self.advanced_layout = QtWidgets.QVBoxLayout(self.advanced_frame)
+            self.advanced_layout.setSpacing(Q_SPACE)
             self.parent.advanced_layout.addWidget(self.advanced_frame)
             self.advanced_frame.hide()
         else:
@@ -163,24 +167,31 @@ class ParserWrapper(object):
     def toggle_advanced_frame(self):
         value = self.advanced_checkbox_var.isChecked()
         self.advanced_frame.setVisible(value)
+        self.window.resize(self.window.minimumSizeHint())
 
     def init_qt(self):
         self.app = QtWidgets.QApplication(sys.argv)
         self.window = QtWidgets.QWidget()
         self.window.setWindowTitle("chgksuite v{}".format(__version__))
-        self.window.resize(600, 300)
         self.window_layout = QtWidgets.QVBoxLayout(self.window)
+        self.window_layout.setSpacing(Q_SPACE)
+        self.window_layout.setContentsMargins(1, 1, 1, 1)
         self.frame = QtWidgets.QWidget()
         self.layout = QtWidgets.QVBoxLayout(self.frame)
+        self.layout.setSpacing(Q_SPACE)
+        self.layout.setContentsMargins(1, 1, 1, 1)
         self.button_frame = QtWidgets.QWidget()
         self.button_layout = QtWidgets.QVBoxLayout(self.button_frame)
+        self.button_layout.setSpacing(Q_SPACE)
+        self.button_layout.setContentsMargins(1, 1, 1, 1)
         self.advanced_frame = QtWidgets.QWidget()
         self.advanced_layout = QtWidgets.QVBoxLayout(self.advanced_frame)
+        self.advanced_layout.setSpacing(Q_SPACE)
+        self.advanced_layout.setContentsMargins(1, 1, 1, 1)
         self.window_layout.addWidget(self.frame)
         self.window_layout.addWidget(self.button_frame)
         self.window_layout.addWidget(self.advanced_frame)
         self.ok_button = QtWidgets.QPushButton("Запустить")
-        self.ok_button.setFixedSize(150, 50)
         self.ok_button.clicked.connect(self.ok_button_press)
         self.button_layout.addWidget(self.ok_button)
         self.advanced_checkbox_var = QtWidgets.QCheckBox("Показать дополнительные настройки")
@@ -217,6 +228,8 @@ class ParserWrapper(object):
             var.set("false")
             innerframe = QtWidgets.QWidget(frame)
             innerlayout = QtWidgets.QHBoxLayout(innerframe)
+            innerlayout.setSpacing(Q_SPACE)
+            innerlayout.setContentsMargins(1, 1, 1, 1)
             checkbutton = QtWidgets.QCheckBox(caption, innerframe)
             innerlayout.addWidget(checkbutton)
             layout.addWidget(innerframe)
@@ -230,6 +243,8 @@ class ParserWrapper(object):
             var.set(kwargs["default"])
             innerframe = QtWidgets.QWidget(frame)
             innerlayout = QtWidgets.QHBoxLayout(innerframe)
+            innerlayout.setSpacing(Q_SPACE)
+            innerlayout.setContentsMargins(1, 1, 1, 1)
             label = QtWidgets.QLabel(caption, innerframe)
             innerlayout.addWidget(label)
             button_group = QtWidgets.QButtonGroup(innerframe)
@@ -251,6 +266,8 @@ class ParserWrapper(object):
             var = QString()
             innerframe = QtWidgets.QWidget(frame)
             innerlayout = QtWidgets.QHBoxLayout(innerframe)
+            innerlayout.setSpacing(Q_SPACE)
+            innerlayout.setContentsMargins(1, 1, 1, 1)
             label = QtWidgets.QLabel(caption, innerframe)
             innerlayout.addWidget(label)
             label = QtWidgets.QLabel(text, innerframe)
@@ -274,6 +291,8 @@ class ParserWrapper(object):
             var.set(kwargs.get("default") or "")
             innerframe = QtWidgets.QWidget(frame)
             innerlayout = QtWidgets.QHBoxLayout(innerframe)
+            innerlayout.setSpacing(Q_SPACE)
+            innerlayout.setContentsMargins(1, 1, 1, 1)
             label = QtWidgets.QLabel(caption, innerframe)
             innerlayout.addWidget(label)
             entry_show = "*" if "password" in args[0] else ""
@@ -324,6 +343,7 @@ class SubparsersWrapper(object):
         self.parent.layout.addWidget(self.frame)
         self.parsers = []
         self.layout = QtWidgets.QHBoxLayout(self.frame)
+        self.layout.setSpacing(Q_SPACE)
 
     def add_parser(self, *args, **kwargs):
         caption = kwargs.pop("caption", None) or args[0]
