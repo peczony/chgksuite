@@ -112,10 +112,7 @@ class DocxExporter(BaseExporter):
                     text = run[1]
                     if kwargs.get("replace_no_break_spaces"):
                         text = replace_no_break_spaces(text)
-                    try:
-                        r = para.add_run(text)
-                    except:
-                        import pdb; pdb.set_trace()
+                    r = para.add_run(text)
                     if "italic" in run[0]:
                         r.italic = True
                     if "bold" in run[0]:
@@ -182,6 +179,7 @@ class DocxExporter(BaseExporter):
             False,
             remove_accents=screen_mode,
             remove_brackets=screen_mode,
+            replace_no_break_spaces=True,
         )
 
         if not self.args.noanswers:
@@ -197,7 +195,13 @@ class DocxExporter(BaseExporter):
             p.paragraph_format.keep_together = True
             p.paragraph_format.space_before = DocxPt(6)
             p.add_run(f"{self.get_label(q, 'answer')}: ").bold = True
-            self._docx_format(q["answer"], p, True, remove_accents=screen_mode)
+            self._docx_format(
+                q["answer"],
+                p,
+                True,
+                remove_accents=screen_mode,
+                replace_no_break_spaces=True,
+            )
 
             for field in ["zachet", "nezachet", "comment", "source", "author"]:
                 if field in q:

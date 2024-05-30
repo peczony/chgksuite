@@ -50,10 +50,11 @@ class OpenquizExporter(BaseExporter):
             imglink = uploaded_image["data"]["link"]
             return imglink
 
-    def oqformat(self, s):
+    def oqformat(self, s, remove_brackets=True):
         res = ""
         images = []
-        s = self.remove_square_brackets(s)
+        if remove_brackets:
+            s = self.remove_square_brackets(s)
         for run in self.parse_4s_elem(s):
             if run[0] in ("", "hyperlink", "italic"):
                 res += run[1]
@@ -79,26 +80,25 @@ class OpenquizExporter(BaseExporter):
             re_hs = re.search("\\[" + hs + ".+?: ?(.+)\\]", res, flags=re.DOTALL)
             if re_hs:
                 res = res.replace(re_hs.group(0), re_hs.group(1))
-        res = res.replace("\n", "  \n")
         res = replace_no_break_spaces(res)
         res = res.replace("\u0301", "")
         return (res, images)
 
-    def make_split(self, question, join=False):
+    def make_split(self, string_or_list, join=False):
         result = None
-        if isinstance(question, list):
-            if len(question) == 1:
-                result = question[0]
-            if isinstance(question[1], list):
-                inner_list = question[1]
+        if isinstance(string_or_list, list):
+            if len(string_or_list) == 1:
+                result = string_or_list[0]
+            if isinstance(string_or_list[1], list):
+                inner_list = string_or_list[1]
                 inner_list = [f"{i + 1}. {s}" for i, s in enumerate(inner_list)]
-                inner_list[0] = question[0] + "\n" + inner_list[0]
+                inner_list[0] = string_or_list[0] + "\n" + inner_list[0]
                 result = inner_list
             else:
-                inner_list = [f"{i + 1}. {s}" for i, s in enumerate(question[1])]
+                inner_list = [f"{i + 1}. {s}" for i, s in enumerate(string_or_list)]
                 result = inner_list
         else:
-            result = question
+            result = string_or_list
         if join and isinstance(result, list):
             return "\n".join(result)
         else:
@@ -116,7 +116,7 @@ class OpenquizExporter(BaseExporter):
             result["Single"]["Question"]["Split"] = split
         else:
             split, question_images = self.oqformat(split)
-            result["Single"]["Question"]["Solid"] = split
+            result["Single"]["Question"]["Solid"] = split.strip()
         if question_images:
             result["Single"]["QuestionMedia"] = MEDIA_STUB.copy()
             result["Single"]["QuestionMedia"]["Key"] = question_images[0]
@@ -128,8 +128,26 @@ class OpenquizExporter(BaseExporter):
         if "zachet" in question:
             zachet = self.make_split(question["zachet"], join=True)
             answer += "\n" + zachet
+        answer = re.sub(", *", "\n", answer)
+        answer = answer.replace(".\n", "\n")
+        if answer.endswith("."):
+            answer = answer[:-1]
+        answer = answer.split("\n")
+        answer = [x.strip() for x in answer if x.strip() != "точный ответ"]
+        re_brackets = "\\[.+\\]"
+        for i, x in enumerate(answer):
+            copied = x
+            srch = re.search(re_brackets, copied)
+            if srch:
+                answer[i] = x.replace("[", "").replace("]", "")
+            while srch:
+                copied = copied.replace(srch.group(0), "")
+                srch = re.search(re_brackets, copied)
+            if copied != x:
+                answer.insert(i + 1, copied.strip())
+        answer = "\n".join(answer)
         answer_images = []
-        formatted, images = self.oqformat(answer)
+        formatted, images = self.oqformat(answer, remove_brackets=False)
         answer_images.extend(images)
         result["Single"]["Answer"]["OpenAnswer"] = formatted
         if "comment" in question:
@@ -150,9 +168,9 @@ class OpenquizExporter(BaseExporter):
         return result
 
     def export(self, outfilename):
-        questions_tours = [q for q in self.structure if q[0] in ("Question", "tour")]
+        questions_tours = [q for q in self.structure if q[0] in ("Question", "section")]
         for i, el in enumerate(questions_tours):
-            if i + 1 == len(questions_tours) or questions_tours[i + 1][0] == "tour":
+            if i + 1 == len(questions_tours) or questions_tours[i + 1][0] == "section":
                 el[1]["end_of_tour"] = True
         questions = [q[1] for q in questions_tours if q[0] == "Question"]
         result = []
