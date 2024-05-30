@@ -54,6 +54,7 @@ setup(
         "parse",
         "Pillow",
         "ply",
+        "PyQt6",
         "pypandoc",
         "pyperclip",
         "pyrogram",

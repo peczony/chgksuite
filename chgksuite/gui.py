@@ -170,27 +170,23 @@ class ParserWrapper(object):
         self.window.setWindowTitle("chgksuite v{}".format(__version__))
         self.window.resize(600, 300)
         self.window_layout = QtWidgets.QVBoxLayout(self.window)
-        self.mainframe = QtWidgets.QWidget(self.window)
-        self.window_layout.addWidget(self.mainframe)
-        self.layout = QtWidgets.QVBoxLayout(self.mainframe)
-        self.frame = QtWidgets.QWidget(self.mainframe)
-        self.layout.addWidget(self.frame)
-        self.button_frame = QtWidgets.QWidget(self.mainframe)
-        self.layout.addWidget(self.button_frame)
-        self.ok_button = QtWidgets.QPushButton("Запустить", self.button_frame)
+        self.frame = QtWidgets.QWidget()
+        self.layout = QtWidgets.QVBoxLayout(self.frame)
+        self.button_frame = QtWidgets.QWidget()
+        self.button_layout = QtWidgets.QVBoxLayout(self.button_frame)
+        self.advanced_frame = QtWidgets.QWidget()
+        self.advanced_layout = QtWidgets.QVBoxLayout(self.advanced_frame)
+        self.window_layout.addWidget(self.frame)
+        self.window_layout.addWidget(self.button_frame)
+        self.window_layout.addWidget(self.advanced_frame)
+        self.ok_button = QtWidgets.QPushButton("Запустить")
         self.ok_button.setFixedSize(150, 50)
         self.ok_button.clicked.connect(self.ok_button_press)
-        self.button_layout = QtWidgets.QVBoxLayout(self.button_frame)
         self.button_layout.addWidget(self.ok_button)
-        self.advanced_checkbox_var = QtWidgets.QCheckBox(
-            "Показать дополнительные настройки", self.button_frame
-        )
+        self.advanced_checkbox_var = QtWidgets.QCheckBox("Показать дополнительные настройки")
         self.advanced_checkbox_var.stateChanged.connect(self.toggle_advanced_frame)
         self.button_layout.addWidget(self.advanced_checkbox_var)
-        self.advanced_frame = QtWidgets.QWidget(self.mainframe)
-        self.layout.addWidget(self.advanced_frame)
         self.advanced_frame.hide()
-        self.advanced_layout = QtWidgets.QVBoxLayout(self.advanced_frame)
 
     def add_argument(self, *args, **kwargs):
         if kwargs.pop("advanced", False):
@@ -239,6 +235,8 @@ class ParserWrapper(object):
             button_group = QtWidgets.QButtonGroup(innerframe)
             for ch in kwargs["choices"]:
                 radio = QtWidgets.QRadioButton(ch, innerframe)
+                if ch == kwargs["default"]:
+                    radio.setChecked(True)
                 button_group.addButton(radio)
                 radio.toggled.connect(
                     lambda checked, var=var, ch=ch: var.set(ch) if checked else None
@@ -301,6 +299,10 @@ class ParserWrapper(object):
             child.advanced_frame.hide()
         self.frame.show()
         self.advanced_frame.show()
+        parent = self.parent
+        while parent.parent:
+            parent = parent.parent
+        parent.window.resize(parent.window.minimumSizeHint())
 
     def parse_args(self, *args, **kwargs):
         argv = sys.argv[1:]
