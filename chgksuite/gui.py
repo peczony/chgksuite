@@ -7,8 +7,7 @@ import os
 import sys
 
 try:
-    import tkinter as tk
-    import tkinter.filedialog as filedialog
+    from PyQt6 import QtWidgets, QtCore
 
     TKINTER = True
 except ImportError:
@@ -39,6 +38,30 @@ class VarWrapper(object):
         self.var = var
 
 
+class QString:
+    def __init__(self):
+        self.value = None
+
+    def set(self, value):
+        self.value = value
+
+    def get(self):
+        return self.value
+
+
+class RadioGroupVar:
+    def __init__(self):
+        self.radio_buttons = []
+
+    def append(self, rb, value):
+        self.radio_buttons.append((value, rb))
+
+    def get(self):
+        for val, rb in self.radio_buttons:
+            if rb.isChecked():
+                return val
+
+
 class OpenFileDialog(object):
     def __init__(self, label, var, folder=False, lastdir=None, filetypes=None):
         self.label = label
@@ -48,38 +71,42 @@ class OpenFileDialog(object):
         self.filetypes = filetypes
 
     def __call__(self):
-        function = (
-            filedialog.askdirectory if self.folder else filedialog.askopenfilename
-        )
-        kwargs = {}
-        if self.lastdir:
-            kwargs["initialdir"] = self.lastdir
-        if self.filetypes:
-            kwargs["filetypes"] = self.filetypes
-        output = function(**kwargs)
-        if isinstance(output, bytes):
-            output = output.decode("utf8")
+        if self.folder:
+            output = QtWidgets.QFileDialog.getExistingDirectory(
+                None, "Select Folder", self.lastdir or ""
+            )
+        else:
+            output, _ = QtWidgets.QFileDialog.getOpenFileName(
+                None,
+                "Select File",
+                self.lastdir or "",
+                ";;".join(
+                    [
+                        "{} ({})".format(ft[0], " ".join(ft[1]))
+                        for ft in (self.filetypes or [])
+                    ]
+                ),
+            )
         self.var.set(output or "")
-        self.label.config(text=(output or "").split(ensure_utf8(os.sep))[-1])
+        self.label.setText(os.path.basename(output or ""))
 
 
 class ParserWrapper(object):
     def __init__(self, parser, parent=None, lastdir=None):
         self.parent = parent
-        if self.parent and not lastdir:
-            self.lastdir = self.parent.lastdir
-        else:
-            self.lastdir = lastdir
+        self.lastdir = lastdir if not parent else parent.lastdir
         if self.parent:
             self.parent.children.append(self)
-            self.frame = tk.Frame(self.parent.frame)
-            self.frame.pack()
-            self.frame.pack_forget()
-            self.advanced_frame = tk.Frame(self.parent.advanced_frame)
-            self.advanced_frame.pack()
-            self.advanced_frame.pack_forget()
+            self.frame = QtWidgets.QWidget(self.parent.frame)
+            self.layout = QtWidgets.QVBoxLayout(self.frame)
+            self.parent.layout.addWidget(self.frame)
+            self.frame.hide()
+            self.advanced_frame = QtWidgets.QWidget(self.parent.advanced_frame)
+            self.advanced_layout = QtWidgets.QVBoxLayout(self.advanced_frame)
+            self.parent.advanced_layout.addWidget(self.advanced_frame)
+            self.advanced_frame.hide()
         else:
-            self.init_tk()
+            self.init_qt()
         self.parser = parser
         self.subparsers_var = None
         self.cmdline_call = None
@@ -92,6 +119,7 @@ class ParserWrapper(object):
             result.append((var.name, var.var.get()))
         if self.subparsers_var:
             chosen_parser_name = self.subparsers_var.get()
+
             chosen_parser = [
                 x
                 for x in self.subparsers.parsers
@@ -130,60 +158,56 @@ class ParserWrapper(object):
 
     def ok_button_press(self):
         self.cmdline_call = self.build_command_line_call()
-        self.tk.quit()
-        self.tk.destroy()
+        self.window.close()
 
     def toggle_advanced_frame(self):
-        value = self.advanced_checkbox_var.get()
-        if value == "true":
-            self.advanced_frame.pack()
-        else:
-            self.advanced_frame.pack_forget()
+        value = self.advanced_checkbox_var.isChecked()
+        self.advanced_frame.setVisible(value)
 
-    def init_tk(self):
-        self.tk = tk.Tk()
-        self.tk.title("chgksuite v{}".format(__version__))
-        self.tk.minsize(600, 300)
-        self.tk.eval("tk::PlaceWindow . center")
-        self.mainframe = tk.Frame(self.tk)
-        self.mainframe.pack(side="top")
-        self.frame = tk.Frame(self.mainframe)
-        self.frame.pack(side="top")
-        self.button_frame = tk.Frame(self.mainframe)
-        self.button_frame.pack(side="top")
-        self.ok_button = tk.Button(
-            self.button_frame,
-            text="Запустить",
-            command=self.ok_button_press,
-            width=15,
-            height=2,
+    def init_qt(self):
+        self.app = QtWidgets.QApplication(sys.argv)
+        self.window = QtWidgets.QWidget()
+        self.window.setWindowTitle("chgksuite v{}".format(__version__))
+        self.window.resize(600, 300)
+        self.window_layout = QtWidgets.QVBoxLayout(self.window)
+        self.mainframe = QtWidgets.QWidget(self.window)
+        self.window_layout.addWidget(self.mainframe)
+        self.layout = QtWidgets.QVBoxLayout(self.mainframe)
+        self.frame = QtWidgets.QWidget(self.mainframe)
+        self.layout.addWidget(self.frame)
+        self.button_frame = QtWidgets.QWidget(self.mainframe)
+        self.layout.addWidget(self.button_frame)
+        self.ok_button = QtWidgets.QPushButton("Запустить", self.button_frame)
+        self.ok_button.setFixedSize(150, 50)
+        self.ok_button.clicked.connect(self.ok_button_press)
+        self.button_layout = QtWidgets.QVBoxLayout(self.button_frame)
+        self.button_layout.addWidget(self.ok_button)
+        self.advanced_checkbox_var = QtWidgets.QCheckBox(
+            "Показать дополнительные настройки", self.button_frame
         )
-        self.ok_button.pack(side="top")
-        self.advanced_checkbox_var = tk.StringVar()
-        self.toggle_advanced_checkbox = tk.Checkbutton(
-            self.button_frame,
-            text="Показать дополнительные настройки",
-            onvalue="true",
-            offvalue="false",
-            variable=self.advanced_checkbox_var,
-            command=self.toggle_advanced_frame,
-        )
-        self.toggle_advanced_checkbox.pack(side="top")
-        self.advanced_frame = tk.Frame(self.mainframe)
-        self.advanced_frame.pack(side="top")
-        self.advanced_frame.pack_forget()
+        self.advanced_checkbox_var.stateChanged.connect(self.toggle_advanced_frame)
+        self.button_layout.addWidget(self.advanced_checkbox_var)
+        self.advanced_frame = QtWidgets.QWidget(self.mainframe)
+        self.layout.addWidget(self.advanced_frame)
+        self.advanced_frame.hide()
+        self.advanced_layout = QtWidgets.QVBoxLayout(self.advanced_frame)
 
     def add_argument(self, *args, **kwargs):
         if kwargs.pop("advanced", False):
             frame = self.advanced_frame
+            layout = self.advanced_layout
         else:
             frame = self.frame
+            layout = self.layout
+
         if kwargs.pop("hide", False):
             self.parser.add_argument(*args, **kwargs)
             return
+
         caption = kwargs.pop("caption", None) or args[0]
         argtype = kwargs.pop("argtype", None)
         filetypes = kwargs.pop("filetypes", None)
+
         if not argtype:
             if kwargs.get("action") == "store_true":
                 argtype = "checkbutton"
@@ -191,81 +215,98 @@ class ParserWrapper(object):
                 argtype = args[0]
             else:
                 argtype = "entry"
+
         if argtype == "checkbutton":
-            var = tk.StringVar()
+            var = QString()
             var.set("false")
-            innerframe = tk.Frame(frame)
-            innerframe.pack(side="top")
-            checkbutton = tk.Checkbutton(
-                innerframe, text=caption, variable=var, onvalue="true", offvalue="false"
+            innerframe = QtWidgets.QWidget(frame)
+            innerlayout = QtWidgets.QHBoxLayout(innerframe)
+            checkbutton = QtWidgets.QCheckBox(caption, innerframe)
+            innerlayout.addWidget(checkbutton)
+            layout.addWidget(innerframe)
+            checkbutton.stateChanged.connect(
+                lambda state, var=var: var.set("true" if state else "false")
             )
-            checkbutton.pack(side="left")
             self.vars.append(VarWrapper(name=args[0], var=var))
+
         elif argtype == "radiobutton":
-            var = tk.StringVar()
+            var = QString()
             var.set(kwargs["default"])
-            innerframe = tk.Frame(frame)
-            innerframe.pack(side="top")
-            label = tk.Label(innerframe, text=caption)
-            label.pack(side="left")
+            innerframe = QtWidgets.QWidget(frame)
+            innerlayout = QtWidgets.QHBoxLayout(innerframe)
+            label = QtWidgets.QLabel(caption, innerframe)
+            innerlayout.addWidget(label)
+            button_group = QtWidgets.QButtonGroup(innerframe)
             for ch in kwargs["choices"]:
-                radio = tk.Radiobutton(
-                    innerframe,
-                    text=ch,
-                    variable=var,
-                    value=ch,
+                radio = QtWidgets.QRadioButton(ch, innerframe)
+                button_group.addButton(radio)
+                radio.toggled.connect(
+                    lambda checked, var=var, ch=ch: var.set(ch) if checked else None
                 )
-                radio.pack(side="left")
+                innerlayout.addWidget(radio)
+            layout.addWidget(innerframe)
             self.vars.append(VarWrapper(name=args[0], var=var))
+
         elif argtype in {"filename", "folder"}:
             text = "(имя файла)" if argtype == "filename" else "(имя папки)"
             button_text = "Открыть файл" if argtype == "filename" else "Открыть папку"
-            var = tk.StringVar()
-            innerframe = tk.Frame(frame)
-            innerframe.pack(side="top")
-            label = tk.Label(innerframe, text=caption)
-            label.pack(side="left")
-            label = tk.Label(innerframe, text=text)
-            ofd_kwargs = dict(folder=argtype == "folder", lastdir=self.lastdir)
-            if filetypes:
-                ofd_kwargs["filetypes"] = filetypes
-            button = tk.Button(
-                innerframe,
-                text=button_text,
-                command=OpenFileDialog(label, var, **ofd_kwargs),
+            var = QString()
+            innerframe = QtWidgets.QWidget(frame)
+            innerlayout = QtWidgets.QHBoxLayout(innerframe)
+            label = QtWidgets.QLabel(caption, innerframe)
+            innerlayout.addWidget(label)
+            label = QtWidgets.QLabel(text, innerframe)
+            innerlayout.addWidget(label)
+            button = QtWidgets.QPushButton(button_text, innerframe)
+            button.clicked.connect(
+                OpenFileDialog(
+                    label,
+                    var,
+                    folder=argtype == "folder",
+                    lastdir=self.lastdir,
+                    filetypes=filetypes,
+                )
             )
-            button.pack(side="left")
-            label.pack(side="left")
+            innerlayout.addWidget(button)
+            layout.addWidget(innerframe)
             self.vars.append(VarWrapper(name=args[0], var=var))
+
         elif argtype == "entry":
-            var = tk.StringVar()
+            var = QString()
             var.set(kwargs.get("default") or "")
-            innerframe = tk.Frame(frame)
-            innerframe.pack(side="top")
-            tk.Label(innerframe, text=caption).pack(side="left")
+            innerframe = QtWidgets.QWidget(frame)
+            innerlayout = QtWidgets.QHBoxLayout(innerframe)
+            label = QtWidgets.QLabel(caption, innerframe)
+            innerlayout.addWidget(label)
             entry_show = "*" if "password" in args[0] else ""
-            entry = tk.Entry(innerframe, textvariable=var, show=entry_show)
-            entry.pack(side="left")
+            entry = QtWidgets.QLineEdit(innerframe)
+            entry.setText(str(var.get()))
+            if entry_show:
+                entry.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
+            innerlayout.addWidget(entry)
+            layout.addWidget(innerframe)
+            entry.textChanged.connect(var.set)
             self.vars.append(VarWrapper(name=args[0], var=var))
         self.parser.add_argument(*args, **kwargs)
 
     def add_subparsers(self, *args, **kwargs):
         subparsers = self.parser.add_subparsers(*args, **kwargs)
-        self.subparsers_var = tk.StringVar()
+        self.subparsers_var = RadioGroupVar()
         self.subparsers = SubparsersWrapper(subparsers, parent=self)
         return self.subparsers
 
     def show_frame(self):
         for child in self.parent.children:
-            child.frame.pack_forget()
-            child.advanced_frame.pack_forget()
-        self.frame.pack(side="top")
-        self.advanced_frame.pack(side="top")
+            child.frame.hide()
+            child.advanced_frame.hide()
+        self.frame.show()
+        self.advanced_frame.show()
 
     def parse_args(self, *args, **kwargs):
         argv = sys.argv[1:]
         if not argv:
-            self.tk.mainloop()
+            self.window.show()
+            self.app.exec()
             if self.cmdline_call:
                 return self.parser.parse_args(self.cmdline_call)
             else:
@@ -277,23 +318,22 @@ class SubparsersWrapper(object):
     def __init__(self, subparsers, parent):
         self.subparsers = subparsers
         self.parent = parent
-        self.frame = tk.Frame(self.parent.frame)
-        self.frame.pack(side="top")
+        self.frame = QtWidgets.QWidget(self.parent.frame)
+        self.parent.layout.addWidget(self.frame)
         self.parsers = []
+        self.layout = QtWidgets.QHBoxLayout(self.frame)
 
     def add_parser(self, *args, **kwargs):
         caption = kwargs.pop("caption", None) or args[0]
         parser = self.subparsers.add_parser(*args, **kwargs)
         pw = ParserWrapper(parser=parser, parent=self.parent)
         self.parsers.append(pw)
-        radio = tk.Radiobutton(
-            self.frame,
-            text=caption,
-            variable=self.parent.subparsers_var,
-            value=args[0],
-            command=pw.show_frame,
+        radio = QtWidgets.QRadioButton(caption, self.frame)
+        self.parent.subparsers_var.append(radio, args[0])
+        radio.toggled.connect(
+            lambda checked, pw=pw: pw.show_frame() if checked else None
         )
-        radio.pack(side="left")
+        self.layout.addWidget(radio)
         return pw
 
 
@@ -358,6 +398,7 @@ class ArgparseBuilder:
             caption="Имя файла",
             filetypes=[("chgksuite parsable files", ("*.docx", "*.txt"))],
         )
+
         self.add_argument(
             cmdparse,
             "--language",
