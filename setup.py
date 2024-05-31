@@ -48,7 +48,6 @@ setup(
         "chardet",
         "dashtable",
         "dateparser",
-        "html2text",
         "mammoth",
         "openpyxl",
         "parse",

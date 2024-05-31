@@ -453,7 +453,6 @@ class ArgparseBuilder:
             choices=[
                 "pypandoc",
                 "pypandoc_html",
-                "mammoth_bs_prettify",
                 "mammoth_bs_hard_unwrap",
                 "mammoth",
             ],

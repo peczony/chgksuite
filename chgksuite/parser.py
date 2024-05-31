@@ -17,7 +17,6 @@ import urllib
 import bs4
 import chardet
 import dashtable
-import html2text
 import mammoth
 import pypandoc
 import toml
@@ -875,12 +874,7 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
             ) as dbg:
                 dbg.write(bsoup.prettify())
 
-        if args.parsing_engine == "mammoth_bs_prettify":
-            h = html2text.HTML2Text()
-            h.body_width = 0
-            html2text_input = bsoup.prettify()
-            txt = h.handle(html2text_input)
-        elif args.parsing_engine == "mammoth_hard_unwrap":
+        if args.parsing_engine == "mammoth_hard_unwrap":
             for tag in bsoup:
                 if isinstance(tag, bs4.element.Tag):
                     tag.unwrap()
