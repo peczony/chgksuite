@@ -5,15 +5,6 @@ from __future__ import unicode_literals
 import argparse
 import os
 import sys
-
-try:
-    import tkinter as tk
-    import tkinter.filedialog as filedialog
-
-    TKINTER = True
-except ImportError:
-    TKINTER = False
-
 import json
 import shlex
 
@@ -1089,21 +1080,8 @@ def single_action(args, use_wrapper, resourcedir):
 
 
 def app():
-    sourcedir, resourcedir = get_source_dirs()
-
-    if isinstance(sourcedir, bytes):
-        sourcedir = sourcedir.decode("utf8")
-    ld = get_lastdir()
-    use_wrapper = len(sys.argv) == 1 and TKINTER
-    if use_wrapper:
-        while True:
-            parser = argparse.ArgumentParser(prog="chgksuite")
-            parser = ParserWrapper(parser, lastdir=ld)
-            ArgparseBuilder(parser, use_wrapper).build()
-            args = DefaultNamespace(parser.parse_args())
-            single_action(args, False, resourcedir)
-    else:
-        parser = argparse.ArgumentParser(prog="chgksuite")
-        ArgparseBuilder(parser, use_wrapper).build()
-        args = DefaultNamespace(parser.parse_args())
-        single_action(args, False, resourcedir)
+    _, resourcedir = get_source_dirs()
+    parser = argparse.ArgumentParser(prog="chgksuite")
+    ArgparseBuilder(parser, False).build()
+    args = DefaultNamespace(parser.parse_args())
+    single_action(args, False, resourcedir)
