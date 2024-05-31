@@ -461,7 +461,7 @@ class ArgparseBuilder:
             help="old html processing behaviour (before v0.5.5). "
             "Sometimes it will yield better results than the new default.",
             advanced=True,
-            caption="BeautifulSoup prettify",
+            caption="HTML parsing engine",
         )
         self.add_argument(
             cmdparse,
