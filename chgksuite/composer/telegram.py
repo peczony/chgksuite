@@ -154,6 +154,7 @@ class TelegramExporter(BaseExporter):
                 caption=caption,
                 parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
                 reply_to_message_id=reply_to_message_id,
+                disable_notification=True,
             )
             if text:
                 time.sleep(2)
@@ -171,6 +172,7 @@ class TelegramExporter(BaseExporter):
                 parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
                 disable_web_page_preview=True,
                 reply_to_message_id=reply_to_message_id,
+                disable_notification=True,
             )
         return msg
 
