@@ -21,6 +21,11 @@ from chgksuite.common import (
 
 API = "https://trello.com/1"
 re_bi = re.compile(r"trello\.com/b/(.+?)(/|$)")
+TRELLO_URL = (
+    "https://trello.com/1/connect"
+    "?key=1d4fe71dd193855686196e7768aa4b05"
+    "&name=Chgk&scope=read,write&response_type=token"
+)
 
 
 def upload_file(filepath, trello):
@@ -414,12 +419,11 @@ def get_board_id(path=None):
     return board_id
 
 
-def get_token(tokenpath):
-    webbrowser.open(
-        "https://trello.com/1/connect"
-        "?key=1d4fe71dd193855686196e7768aa4b05"
-        "&name=Chgk&scope=read,write&response_type=token"
-    )
+def get_token(tokenpath, args):
+    if args.no_browser:
+        print(f"Please open in browser the following url: {TRELLO_URL}")
+    else:
+        webbrowser.open(TRELLO_URL)
     token = input("Please paste the obtained token: ").rstrip()
     with codecs.open(tokenpath, "w", "utf8") as f:
         f.write(token)
@@ -445,4 +449,4 @@ def gui_trello(args):
     elif args.trellosubcommand == "upload":
         gui_trello_upload(args, sourcedir)
     elif args.trellosubcommand == "token":
-        get_token(tokenpath)
+        get_token(tokenpath, args)

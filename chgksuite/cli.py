@@ -1032,7 +1032,14 @@ class ArgparseBuilder:
             caption="Дописать авторов в заголовок карточки",
         )
 
-        cmdtrello_subcommands.add_parser("token")
+        cmdtrello_token = cmdtrello_subcommands.add_parser("token")
+        self.add_argument(
+            cmdtrello_token,
+            "--no-browser",
+            action="store_true",
+            help="Don't try to open in browser",
+            caption="Не открывать браузер",
+        )
 
 
 def single_action(args, use_wrapper, resourcedir):
