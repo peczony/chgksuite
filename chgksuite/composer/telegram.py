@@ -262,7 +262,9 @@ class TelegramExporter(BaseExporter):
                 self.buffer_images = []
             posts = self.tg_format_question(pair[1], number=number)
             self.post_wrapper(posts)
-        elif self.args.skip_until and self.number < self.args.skip_until:
+        elif self.args.skip_until and (
+            not tryint(self.number) or tryint(self.number) < self.args.skip_until
+        ):
             self.logger.info(f"skipping element {pair[0]}")
             return
         elif pair[0] == "heading":
