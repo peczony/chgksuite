@@ -1,4 +1,5 @@
 import json
+import os
 from collections import Counter, defaultdict
 
 import requests
@@ -65,14 +66,21 @@ class StatsAdder(BaseExporter):
                 results = self.get_tournament_results(id_)
                 self.process_tournament(results)
         elif self.args.custom_csv:
-            filename = self.args.custom_csv
-            if filename.lower().endswith(".csv"):
-                results = custom_csv_to_results(
-                    self.args.custom_csv, **json.loads(self.args.custom_csv_args)
-                )
-            elif filename.lower().endswith(".xlsx"):
-                results = xlsx_to_results(self.args.custom_csv)
-            self.process_tournament(results)
+            filenames = self.args.custom_csv
+            if "," not in filenames:
+                filenames = [filenames]
+            elif all([os.path.isfile(x) for x in filenames.split(",")]):
+                filenames = filenames.split(",")
+            else:
+                filenames = [filenames]
+            for filename in filenames:
+                if filename.lower().endswith(".csv"):
+                    results = custom_csv_to_results(
+                        filename, **json.loads(self.args.custom_csv_args)
+                    )
+                elif filename.lower().endswith(".xlsx"):
+                    results = xlsx_to_results(filename)
+                self.process_tournament(results)
         qnumber = 1
         for element in self.structure:
             if element[0] != "Question" or str(element[1].get("number")).startswith(
