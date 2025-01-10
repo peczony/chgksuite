@@ -435,7 +435,7 @@ def gui_trello(args):
     sourcedir, resourcedir = get_source_dirs()
     tokenpath = os.path.join(csdir, ".trello_token")
     if not os.path.isfile(tokenpath):
-        token = get_token(tokenpath)
+        token = get_token(tokenpath, args)
     else:
         with codecs.open(tokenpath, "r", "utf8") as f:
             token = f.read().rstrip()
