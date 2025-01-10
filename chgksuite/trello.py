@@ -434,6 +434,9 @@ def gui_trello(args):
     csdir = get_chgksuite_dir()
     sourcedir, resourcedir = get_source_dirs()
     tokenpath = os.path.join(csdir, ".trello_token")
+    if args.trellosubcommand == "token":
+        get_token(tokenpath, args)
+        sys.exit(1)
     if not os.path.isfile(tokenpath):
         token = get_token(tokenpath, args)
     else:
@@ -448,5 +451,3 @@ def gui_trello(args):
         gui_trello_download(args, sourcedir)
     elif args.trellosubcommand == "upload":
         gui_trello_upload(args, sourcedir)
-    elif args.trellosubcommand == "token":
-        get_token(tokenpath, args)
