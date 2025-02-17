@@ -87,21 +87,44 @@ class TelegramExporter(BaseExporter):
                     res.append(res_)
                 return "\n".join(res), images
 
+    def tg_replace_chars(self, str_):
+        if not self.args.disable_asterisks_processing:
+            str_ = str_.replace("*", "&#42;")
+        str_ = str_.replace("_", "&#95;")
+        str_ = str_.replace(">", "&gt;")
+        str_ = str_.replace("<", "&lt;")
+        return str_
+
     def tgformat(self, s):
         res = ""
         image = None
+        tgr = self.tg_replace_chars
+
         for run in self.parse_4s_elem(s):
-            if run[0] in ("", "hyperlink"):
+            if run[0] == "":
+                res += tgr(run[1])
+            elif run[0] == "hyperlink":
                 res += run[1]
-            if run[0] == "screen":
-                res += run[1]["for_screen"]
-            if run[0] == "strike":
-                res += f"~~{run[1]}~~"
-            if "italic" in run[0]:
-                res += f"__{run[1]}__"
-            if run[0] == "linebreak":
+            elif run[0] == "screen":
+                res += tgr(run[1]["for_screen"])
+            elif run[0] == "strike":
+                res += f"<s>{tgr(run[1])}</s>"
+            elif (
+                "italic" in run[0]
+                or "bold" in run[0]
+                or "underline" in run[0]
+            ):
+                chunk = tgr(run[1])
+                if "italic" in run[0]:
+                    chunk = f"<i>{chunk}</i>"
+                if "bold" in run[0]:
+                    chunk = f"<b>{chunk}</b>"
+                if "underline" in run[0]:
+                    chunk = f"<u>{chunk}</u>"
+                res += chunk
+            elif run[0] == "linebreak":
                 res += "\n"
-            if run[0] == "img":
+            elif run[0] == "img":
                 if run[1].startswith(("http://", "https://")):
                     res += run[1]
                 else:
@@ -117,10 +140,10 @@ class TelegramExporter(BaseExporter):
                         image = imgfile
                     else:
                         raise Exception(f"image {run[1]} doesn't exist")
+            else:
+                raise Exception(f"unsupported tag `{run[0]}` in telegram export")
         while res.endswith("\n"):
             res = res[:-1]
-        if "*" in res and not self.args.disable_asterisks_processing:
-            res = res.replace("*", "&#42;")
         return res, image
 
     def tg_element_layout(self, e):
@@ -152,7 +175,7 @@ class TelegramExporter(BaseExporter):
                 chat_id,
                 photo,
                 caption=caption,
-                parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
+                parse_mode=self.pyrogram.enums.ParseMode.HTML,
                 reply_to_message_id=reply_to_message_id,
                 disable_notification=True,
             )
@@ -162,14 +185,14 @@ class TelegramExporter(BaseExporter):
                     chat_id,
                     msg.id,
                     text=text,
-                    parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
+                    parse_mode=self.pyrogram.enums.ParseMode.HTML,
                     disable_web_page_preview=True,
                 )
         else:
             msg = self.app.send_message(
                 chat_id,
                 text,
-                parse_mode=self.pyrogram.enums.ParseMode.MARKDOWN,
+                parse_mode=self.pyrogram.enums.ParseMode.HTML,
                 disable_web_page_preview=True,
                 reply_to_message_id=reply_to_message_id,
                 disable_notification=True,
@@ -197,6 +220,8 @@ class TelegramExporter(BaseExporter):
     def post(self, posts):
         if self.args.dry_run:
             self.logger.info("skipping posting due to dry run")
+            for post in posts:
+                self.logger.info(post)
             return
         messages = []
         text, im = posts[0]
@@ -271,7 +296,7 @@ class TelegramExporter(BaseExporter):
             text, images = self.tg_element_layout(pair[1])
             if not self.tg_heading:
                 self.tg_heading = text
-            self.buffer_texts.append(f"**{text}**")
+            self.buffer_texts.append(f"<b>{text}</b>")
             self.buffer_images.extend(images)
         elif pair[0] == "section":
             if self.buffer_texts or self.buffer_images:
@@ -280,7 +305,7 @@ class TelegramExporter(BaseExporter):
                 self.buffer_texts = []
                 self.buffer_images = []
             text, images = self.tg_element_layout(pair[1])
-            self.buffer_texts.append(f"**{text}**")
+            self.buffer_texts.append(f"<b>{text}</b>")
             self.buffer_images.extend(images)
             self.section = True
         else:
@@ -292,17 +317,19 @@ class TelegramExporter(BaseExporter):
 
     def assemble(self, list_, lb_after_first=False):
         list_ = [x for x in list_ if x]
-        list_ = [x.strip() for x in list_ if not x.startswith("\n||")]
+        list_ = [x.strip() for x in list_ if not x.startswith(("\n</spoiler>", "\n<spoiler>"))]
         if lb_after_first:
             list_[0] = list_[0] + "\n"
         res = "\n".join(list_)
-        res = res.replace("\n||\n", "\n||")
+        res = res.replace("\n</spoiler>\n", "\n</spoiler>")
+        res = res.replace("\n<spoiler>\n", "\n<spoiler>")
         while res.endswith("\n"):
             res = res[:-1]
-        if res.endswith("\n||"):
-            res = res[:-3] + "||"
+        if res.endswith("\n</spoiler>"):
+            res = res[:-3] + "</spoiler>"
         if self.args.nospoilers:
-            res = res.replace("||", "")
+            res = res.replace("<spoiler>", "")
+            res = res.replace("</spoiler>", "")
         res = res.replace("`", "'")  # hack so spoilers don't break
         return res
 
@@ -333,9 +360,9 @@ class TelegramExporter(BaseExporter):
             threshold_ = threshold - 3
             chunk = texts[0][:threshold_]
             rest = texts[0][threshold_:]
-            if texts[0].endswith("||"):
-                chunk += "||"
-                rest = "||" + rest
+            if texts[0].endswith("</spoiler>"):
+                chunk += "</spoiler>"
+                rest = "<spoiler>" + rest
             texts[0] = rest
             return chunk, im, texts, images
 
@@ -353,11 +380,11 @@ class TelegramExporter(BaseExporter):
         if self.args.nospoilers:
             res = s_
         elif t == "both":
-            res = "||" + s_ + "||"
+            res = "<spoiler>" + s_ + "</spoiler>"
         elif t == "left":
-            res = "||" + s_
+            res = "<spoiler>" + s_
         elif t == "right":
-            res = s_ + "||"
+            res = s_ + "</spoiler>"
         return res
 
     @staticmethod
@@ -369,7 +396,7 @@ class TelegramExporter(BaseExporter):
 
     def tg_format_question(self, q, number=None):
         txt_q, images_q = self.tgyapper(q["question"])
-        txt_q = "**{}:** {}  \n".format(
+        txt_q = "<b>{}:</b> {}  \n".format(
             self.get_label(q, "question", number=number),
             txt_q,
         )
@@ -378,7 +405,7 @@ class TelegramExporter(BaseExporter):
         images_a = []
         txt_a, images_ = self.tgyapper(q["answer"])
         images_a.extend(images_)
-        txt_a = "**{}:** {}".format(self.get_label(q, "answer"), txt_a)
+        txt_a = "<b>{}:</b> {}".format(self.get_label(q, "answer"), txt_a)
         txt_z = ""
         txt_nz = ""
         txt_comm = ""
@@ -387,23 +414,23 @@ class TelegramExporter(BaseExporter):
         if "zachet" in q:
             txt_z, images_ = self.tgyapper(q["zachet"])
             images_a.extend(images_)
-            txt_z = "**{}:** {}".format(self.get_label(q, "zachet"), txt_z)
+            txt_z = "<b>{}:</b> {}".format(self.get_label(q, "zachet"), txt_z)
         if "nezachet" in q:
             txt_nz, images_ = self.tgyapper(q["nezachet"])
             images_a.extend(images_)
-            txt_nz = "**{}:** {}".format(self.get_label(q, "nezachet"), txt_nz)
+            txt_nz = "<b>{}:</b> {}".format(self.get_label(q, "nezachet"), txt_nz)
         if "comment" in q:
             txt_comm, images_ = self.tgyapper(q["comment"])
             images_a.extend(images_)
-            txt_comm = "**{}:** {}".format(self.get_label(q, "comment"), txt_comm)
+            txt_comm = "<b>{}:</b> {}".format(self.get_label(q, "comment"), txt_comm)
         if "source" in q:
             txt_s, images_ = self.tgyapper(q["source"])
             images_a.extend(images_)
-            txt_s = f"**{self.get_label(q, 'source')}:** {txt_s}"
+            txt_s = f"<b>{self.get_label(q, 'source')}:</b> {txt_s}"
         if "author" in q:
             txt_au, images_ = self.tgyapper(q["author"])
             images_a.extend(images_)
-            txt_au = f"**{self.get_label(q, 'author')}:** {txt_au}"
+            txt_au = f"<b>{self.get_label(q, 'author')}:</b> {txt_au}"
         q_threshold = 2048 if not images_q else 1024
         full_question = self.assemble(
             [
@@ -483,7 +510,7 @@ class TelegramExporter(BaseExporter):
             ),
             (images_q or []) + (images_a or []),
         )
-    
+
     @staticmethod
     def is_valid_tg_identifier(str_):
         str_ = str_.strip()
@@ -499,10 +526,9 @@ class TelegramExporter(BaseExporter):
         with self.app:
             self.channel_dialog = None
             self.chat_dialog = None
-            if (
-                self.is_valid_tg_identifier(self.args.tgchannel)
-                and self.is_valid_tg_identifier(self.args.tgchat)
-            ):
+            if self.is_valid_tg_identifier(
+                self.args.tgchannel
+            ) and self.is_valid_tg_identifier(self.args.tgchat):
                 self.channel_id = self.is_valid_tg_identifier(self.args.tgchannel)
                 self.chat_id = self.is_valid_tg_identifier(self.args.tgchat)
             else:
@@ -529,7 +555,7 @@ class TelegramExporter(BaseExporter):
             if not self.args.skip_until:
                 navigation_text = [self.labels["general"]["general_impressions_text"]]
                 if self.tg_heading:
-                    navigation_text = [f"**{self.tg_heading}**", ""] + navigation_text
+                    navigation_text = [f"<b>{self.tg_heading}</b>", ""] + navigation_text
                 for i, link in enumerate(self.section_links):
                     navigation_text.append(
                         f"{self.labels['general']['section']} {i + 1}: {link}"
