@@ -189,5 +189,5 @@ def test_inline_image():
         shutil.copy(os.path.join(currentdir, "test.jpg"), temp_dir)
         img_parsed = parseimg(img[0][1], tmp_dir=temp_dir)
     assert img_parsed["inline"]
-    assert img_parsed["imgfile"] == "test.jpg"
+    assert os.path.basename(img_parsed["imgfile"]) == "test.jpg"
     assert compose_4s(structure, DefaultArgs()).strip() == TEST_INLINE_IMAGE.strip()
