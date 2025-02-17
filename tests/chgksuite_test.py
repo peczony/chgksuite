@@ -17,6 +17,8 @@ from chgksuite.parser import (
     chgk_parse_txt,
     compose_4s,
 )
+from chgksuite.composer.chgksuite_parser import parse_4s
+from chgksuite.composer.composer_common import _parse_4s_elem, parseimg
 from chgksuite.typotools import get_quotes_right
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -167,3 +169,25 @@ def test_tex_composition():
                     ]
                 )
                 assert 0 == code
+
+
+TEST_INLINE_IMAGE = """\
+? какой-то Тест вопроса с (img inline test.jpg) инлайн картинкой.
+! какой-то ответ
+/ какой-то комментарий
+^ какой-то источник
+@ какой-то автор"""
+
+
+def test_inline_image():
+    structure = parse_4s(TEST_INLINE_IMAGE)
+    question = structure[0][1]["question"]
+    question_parsed = _parse_4s_elem(question)
+    img = [x for x in question_parsed if x[0] == "img"]
+    assert len(img) == 1
+    with make_temp_directory(dir=".") as temp_dir:
+        shutil.copy(os.path.join(currentdir, "test.jpg"), temp_dir)
+        img_parsed = parseimg(img[0][1], tmp_dir=temp_dir)
+    assert img_parsed["inline"]
+    assert os.path.basename(img_parsed["imgfile"]) == "test.jpg"
+    assert compose_4s(structure, DefaultArgs()).strip() == TEST_INLINE_IMAGE.strip()

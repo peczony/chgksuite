@@ -133,11 +133,14 @@ def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
     imgfile = sp[-1]
     imgfile = search_for_imgfile(imgfile, tmp_dir, targetdir)
     size = imgsize(imgfile)
+    big, inline = False, False
     if "big" in sp:
         big = True
         sp = [x for x in sp if x != "big"]
-    else:
-        big = False
+
+    if "inline" in sp:
+        inline = True
+        sp = [x for x in sp if x != "inline"]
 
     if len(sp) == 1:
         width, height = convert_size(*size, dimensions=dimensions)
@@ -158,6 +161,7 @@ def parseimg(s, dimensions="pixels", tmp_dir=None, targetdir=None):
         "width": width,
         "height": height,
         "big": big,
+        "inline": inline,
     }
 
 

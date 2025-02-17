@@ -97,16 +97,27 @@ class DocxExporter(BaseExporter):
                     imgfile = parsed_image["imgfile"]
                     width = parsed_image["width"]
                     height = parsed_image["height"]
-                    r = para.add_run("\n")
+                    inline = parsed_image["inline"]
+                    if inline:
+                        r = para.add_run("")
+                    else:
+                        r = para.add_run("\n")
+
                     try:
-                        r.add_picture(
-                            imgfile, width=Inches(width), height=Inches(height)
-                        )
+                        if inline:
+                            r.add_picture(
+                                imgfile, height=Inches(1./6)  # Height is based on docx template
+                            )
+                        else:
+                            r.add_picture(
+                                imgfile, width=Inches(width), height=Inches(height)
+                            )
                     except UnrecognizedImageError:
                         sys.stderr.write(
                             f"python-docx can't recognize header for {imgfile}\n"
                         )
-                    r.add_text("\n")
+                    if not inline:
+                        r = para.add_run("\n")
                     continue
                 else:
                     text = run[1]
@@ -223,7 +234,6 @@ class DocxExporter(BaseExporter):
     def export(self, outfilename):
         self.logger.debug(self.args.docx_template)
         self.doc = Document(self.args.docx_template)
-        para = None
         self.logger.debug(log_wrap(self.structure))
 
         firsttour = True
