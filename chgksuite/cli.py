@@ -11,7 +11,6 @@ import shlex
 from chgksuite.common import (
     DefaultNamespace,
     ensure_utf8,
-    get_lastdir,
     get_source_dirs,
 )
 from chgksuite.composer import gui_compose
@@ -579,6 +578,13 @@ class ArgparseBuilder:
             advanced=True,
             caption="Файл-образец",
             argtype="filename",
+        )
+        self.add_argument(
+            cmdcompose_docx,
+            "--font_face",
+            help="font face to use in the document",
+            advanced=True,
+            caption="Шрифт",
         )
         self.add_argument(
             cmdcompose_docx,

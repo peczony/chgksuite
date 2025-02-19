@@ -78,10 +78,24 @@ class DocxExporter(BaseExporter):
                     if kwargs.get("replace_no_break_spaces"):
                         text = replace_no_break_spaces(text)
                     r = para.add_run(text)
+                    if self.args.font_face:
+                        r.font.name = self.args.font_face
                 elif run[0] == "hyperlink" and not (
                     whiten and self.args.spoilers == "whiten"
                 ):
                     r = self.add_hyperlink(para, run[1], run[1])
+                    if self.args.font_face:
+                        run_element = r.xpath('.//w:r')[0]
+                        rPr = run_element.xpath('.//w:rPr')
+                        if not rPr:
+                            rPr = docx.oxml.shared.OxmlElement('w:rPr')
+                            run_element.append(rPr)
+                        else:
+                            rPr = rPr[0]
+                        rFonts = docx.oxml.shared.OxmlElement('w:rFonts')
+                        rFonts.set(docx.oxml.shared.qn('w:ascii'), self.args.font_face)
+                        rFonts.set(docx.oxml.shared.qn('w:hAnsi'), self.args.font_face)
+                        rPr.append(rFonts)
                 elif run[0] == "img":
                     if run[1].endswith(".shtml"):
                         r = para.add_run(
@@ -124,6 +138,8 @@ class DocxExporter(BaseExporter):
                     if kwargs.get("replace_no_break_spaces"):
                         text = replace_no_break_spaces(text)
                     r = para.add_run(text)
+                    if self.args.font_face:
+                        r.font.name = self.args.font_face
                     if "italic" in run[0]:
                         r.italic = True
                     if "bold" in run[0]:
@@ -161,7 +177,7 @@ class DocxExporter(BaseExporter):
             self.qcount += 1
         if "setcounter" in q:
             self.qcount = int(q["setcounter"])
-        p.add_run(
+        r = p.add_run(
             "{question}. ".format(
                 question=self.get_label(
                     q,
@@ -169,7 +185,10 @@ class DocxExporter(BaseExporter):
                     number=self.qcount if "number" not in q else q["number"],
                 )
             )
-        ).bold = True
+        )
+        r.bold = True
+        if self.args.font_face:
+            r.font.name = self.args.font_face
 
         if "handout" in q:
             p.add_run("\n[{handout}: ".format(handout=self.get_label(q, "handout")))
