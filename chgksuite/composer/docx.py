@@ -1,4 +1,9 @@
+import os
+import shutil
 import sys
+import tempfile
+import xml.etree.ElementTree as ET
+import zipfile
 
 import docx
 from docx import Document
@@ -20,10 +25,54 @@ WHITEN = {
 }
 
 
+def replace_font_in_docx(template_path, new_font):
+    """Replace Arial fonts with specified font in docx template"""
+    temp_dir = tempfile.mkdtemp()
+    template_name = os.path.basename(template_path)
+    temp_template = os.path.join(temp_dir, template_name)
+    shutil.copy2(template_path, temp_template)
+
+    temp_zip = os.path.join(temp_dir, "template.zip")
+    os.rename(temp_template, temp_zip)
+    with zipfile.ZipFile(temp_zip, "r") as zip_ref:
+        zip_ref.extractall(temp_dir)
+    os.remove(temp_zip)
+
+    for root, _, files in os.walk(temp_dir):
+        for file in files:
+            if file.endswith(".xml"):
+                file_path = os.path.join(root, file)
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+
+                    content = content.replace("Arial Unicode MS", new_font)
+                    content = content.replace("Arial", new_font)
+
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        f.write(content)
+                except UnicodeError:
+                    continue
+
+    shutil.make_archive(temp_template, "zip", temp_dir)
+    os.rename(temp_template + ".zip", temp_template)
+    return temp_template
+
+
 class DocxExporter(BaseExporter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.qcount = 0
+
+        if self.args.font_face:
+            self.args.docx_template = replace_font_in_docx(
+                self.args.docx_template, self.args.font_face
+            )
+
+    def __del__(self):
+        # Cleanup temp directory if it exists
+        if hasattr(self, "temp_dir") and os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
 
     def _docx_format(self, *args, **kwargs):
         kwargs.update(self.dir_kwargs)
@@ -106,7 +155,10 @@ class DocxExporter(BaseExporter):
                     try:
                         if inline:
                             r.add_picture(
-                                imgfile, height=Inches(1./6)  # Height is based on docx template
+                                imgfile,
+                                height=Inches(
+                                    1.0 / 6
+                                ),  # Height is based on docx template
                             )
                         else:
                             r.add_picture(

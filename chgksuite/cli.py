@@ -582,6 +582,13 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose_docx,
+            "--font_face",
+            help="font face to use in the document.",
+            advanced=True,
+            caption="Шрифт",
+        )
+        self.add_argument(
+            cmdcompose_docx,
             "filename",
             nargs="*",
             help="file(s) to compose from.",
