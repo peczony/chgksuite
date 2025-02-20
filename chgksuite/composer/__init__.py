@@ -122,7 +122,7 @@ def process_file(filename, tmp_dir, targetdir, args=None, logger=None):
             addsuffix = ""
         elif args.screen_mode == "replace_all":
             addsuffix = "_screen"
-        elif args.screen_mode == "add_versions":
+        elif args.screen_mode in ["add_versions", "add_versions_columns"]:
             addsuffix = "_screen_versions"
         if args.spoilers != "off":
             addsuffix += "_spoilers"

@@ -2,12 +2,13 @@ import os
 import shutil
 import sys
 import tempfile
-import xml.etree.ElementTree as ET
 import zipfile
 
 import docx
 from docx import Document
 from docx.image.exceptions import UnrecognizedImageError
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from docx.shared import Inches
 from docx.shared import Pt as DocxPt
 
@@ -204,11 +205,134 @@ class DocxExporter(BaseExporter):
         paragraph._p.append(hyperlink)
         return hyperlink
 
-    def add_question(self, element, skip_qcount=False, screen_mode=False):
+    def add_question(
+        self,
+        element, skip_qcount=False, screen_mode=False,
+        external_para=None
+    ):
         q = element[1]
-        p = self.doc.add_paragraph()
+        if external_para is None:
+            p = self.doc.add_paragraph()
+        else:
+            p = external_para
         p.paragraph_format.space_before = DocxPt(18)
         p.paragraph_format.keep_together = True
+        if "number" not in q and not skip_qcount:
+            self.qcount += 1
+        if "setcounter" in q:
+            self.qcount = int(q["setcounter"])
+        p.add_run(
+            "{question}. ".format(
+                question=self.get_label(
+                    q,
+                    "question",
+                    number=self.qcount if "number" not in q else q["number"],
+                )
+            )
+        ).bold = True
+
+        if "handout" in q:
+            p.add_run("\n[{handout}: ".format(handout=self.get_label(q, "handout")))
+            self._docx_format(
+                q["handout"],
+                p,
+                WHITEN["handout"],
+                remove_accents=screen_mode,
+                remove_brackets=screen_mode,
+            )
+            p.add_run("\n]")
+        if not self.args.noparagraph:
+            p.add_run("\n")
+
+        self._docx_format(
+            q["question"],
+            p,
+            False,
+            remove_accents=screen_mode,
+            remove_brackets=screen_mode,
+            replace_no_break_spaces=True,
+        )
+
+        if not self.args.noanswers:
+            if self.args.spoilers == "pagebreak":
+                p = self.doc.add_page_break()
+            elif self.args.spoilers == "dots":
+                for _ in range(30):
+                    if external_para is None:
+                        p = self.doc.add_paragraph()
+                    else:
+                        p.add_run("\n")
+                    p.add_run(".")
+                if external_para is None:
+                    p = self.doc.add_paragraph()
+                else:
+                    p.add_run("\n")
+            else:
+                if external_para is None:
+                    p = self.doc.add_paragraph()
+                else:
+                    p.add_run("\n")
+            p.paragraph_format.keep_together = True
+            p.paragraph_format.space_before = DocxPt(6)
+            p.add_run(f"{self.get_label(q, 'answer')}: ").bold = True
+            self._docx_format(
+                q["answer"],
+                p,
+                True,
+                remove_accents=screen_mode,
+                replace_no_break_spaces=True,
+            )
+
+            for field in ["zachet", "nezachet", "comment", "source", "author"]:
+                if field in q:
+                    if field == "source":
+                        if external_para is None:
+                            p = self.doc.add_paragraph()
+                            p.paragraph_format.keep_together = True
+                        else:
+                            p.add_run("\n")
+                    else:
+                        p.add_run("\n")
+                    p.add_run(f"{self.get_label(q, field)}: ").bold = True
+                    self._docx_format(
+                        q[field],
+                        p,
+                        WHITEN[field],
+                        remove_accents=screen_mode,
+                        remove_brackets=screen_mode,
+                        replace_no_break_spaces=field != "source",
+                    )
+
+    def _add_question_columns(self, element):
+        table = self.doc.add_table(rows=1, cols=2)
+        table.autofit = True
+
+        def set_cell_border(cell):
+            tc = cell._tc
+            tcPr = tc.get_or_add_tcPr()
+
+            for edge in ["top", "left", "bottom", "right"]:
+                border = OxmlElement("w:{}Border".format(edge))
+                border.set(qn("w:val"), "single")
+                border.set(qn("w:sz"), "4")
+                border.set(qn("w:space"), "0")
+                border.set(qn("w:color"), "auto")
+                tcPr.append(border)
+
+        for row in table.rows:
+            for cell in row.cells:
+                set_cell_border(cell)
+
+        table.cell(0, 0).paragraphs[0].add_run("Версия для ведущего\n").bold = True
+        table.cell(0, 1).paragraphs[0].add_run("Версия для экрана\n").bold = True
+
+        self.add_question(element, screen_mode=False, external_para=table.cell(0, 0).paragraphs[0])
+        self.add_question(element, screen_mode=True, external_para=table.cell(0, 1).paragraphs[0])
+
+        self.doc.add_paragraph()
+
+    def _add_question_content(self, q, p, skip_qcount=False, screen_mode=False):
+        """Helper method to add question content to a paragraph"""
         if "number" not in q and not skip_qcount:
             self.qcount += 1
         if "setcounter" in q:
@@ -297,7 +421,7 @@ class DocxExporter(BaseExporter):
                 para = self.doc.add_paragraph()
                 if prev_element and prev_element[0] == "Question":
                     para.paragraph_format.space_before = DocxPt(18)
-                self._docx_format(element[1], para, False)
+                self._docx_format(element[1], para, False, replace_no_break_spaces=True)
                 self.doc.add_paragraph()
 
             if element[0] in ["editor", "date", "heading", "section"]:
@@ -307,7 +431,7 @@ class DocxExporter(BaseExporter):
                     para = self.doc.paragraphs[0]
                 else:
                     para = self.doc.add_paragraph()
-                self._docx_format(element[1], para, False)
+                self._docx_format(element[1], para, False, replace_no_break_spaces=True)
                 if element[0] == "heading" and page_break_before_heading:
                     para.paragraph_format.page_break_before = True
                 if element[0] == "section":
@@ -329,18 +453,21 @@ class DocxExporter(BaseExporter):
                 para.add_run("\n")
 
             if element[0] == "Question":
-                if self.args.screen_mode == "add_versions":
+                if self.args.screen_mode == "add_versions_columns":
+                    self._add_question_columns(element)
+                elif self.args.screen_mode == "add_versions":
                     para = self.doc.add_paragraph()
                     para = self.doc.add_paragraph()
                     para.add_run("Версия для ведущего:").bold = True
-                self.add_question(
-                    element, screen_mode=self.args.screen_mode == "replace_all"
-                )
-                if self.args.screen_mode == "add_versions":
+                    self.add_question(element, screen_mode=False)
                     para = self.doc.add_paragraph()
                     para = self.doc.add_paragraph()
                     para.add_run("Версия для экрана:").bold = True
                     self.add_question(element, skip_qcount=True, screen_mode=True)
+                elif self.args.screen_mode == "replace_all":
+                    self.add_question(element, screen_mode=True)
+                else:
+                    self.add_question(element)
             prev_element = element
 
         self.doc.save(outfilename)

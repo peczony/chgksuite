@@ -3,10 +3,10 @@
 from __future__ import unicode_literals
 
 import argparse
-import os
-import sys
 import json
+import os
 import shlex
+import sys
 
 from chgksuite.common import (
     DefaultNamespace,
@@ -371,7 +371,7 @@ class ArgparseBuilder:
             cmdparse,
             "--defaultauthor",
             action="store_true",
-            help="pick default author from filename " "where author is missing.",
+            help="pick default author from filename where author is missing.",
             advanced=True,
             caption="Дописать отсутствующего автора из имени файла",
         )
@@ -388,7 +388,7 @@ class ArgparseBuilder:
             cmdparse,
             "--encoding",
             default=None,
-            help="Encoding of text file " "(use if auto-detect fails).",
+            help="Encoding of text file (use if auto-detect fails).",
             advanced=True,
             caption="Кодировка",
         )
@@ -396,7 +396,7 @@ class ArgparseBuilder:
             cmdparse,
             "--regexes",
             default=None,
-            help="A file containing regexes " "(the default is regexes_ru.json).",
+            help="A file containing regexes (the default is regexes_ru.json).",
             advanced=True,
             caption="Файл с регулярными выражениями",
             argtype="filename",
@@ -425,8 +425,7 @@ class ArgparseBuilder:
             cmdparse,
             "--fix_spans",
             action="store_true",
-            help="try to unwrap all <span> tags. "
-            "Can help fix weird Word formatting.",
+            help="try to unwrap all <span> tags. Can help fix weird Word formatting.",
             advanced=True,
             caption="Fix <span> tags",
         )
@@ -609,7 +608,7 @@ class ArgparseBuilder:
             cmdcompose_docx,
             "--screen_mode",
             "-sm",
-            choices=["off", "replace_all", "add_versions"],
+            choices=["off", "replace_all", "add_versions", "add_versions_columns"],
             default="off",
             help="exporting questions for screen.",
             caption="Экспорт для экрана",
@@ -619,14 +618,14 @@ class ArgparseBuilder:
             cmdcompose_docx,
             "--noanswers",
             action="store_true",
-            help="do not print answers " "(not even spoilered).",
+            help="do not print answers (not even spoilered).",
             caption="Без ответов",
         )
         self.add_argument(
             cmdcompose_docx,
             "--noparagraph",
             action="store_true",
-            help="disable paragraph break " "after 'Question N.'",
+            help="disable paragraph break after 'Question N.'",
             advanced=True,
             caption='Без переноса строки после "Вопрос N."',
         )
@@ -944,7 +943,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdtrello_download,
             "folder",
-            help="path to the folder" "to synchronize with a trello board.",
+            help="path to the folderto synchronize with a trello board.",
             caption="Папка",
         )
         self.add_argument(
@@ -1014,7 +1013,7 @@ class ArgparseBuilder:
             cmdtrello_download,
             "--labels",
             action="store_true",
-            help="Use this if you also want " "to have lists based on labels.",
+            help="Use this if you also want to have lists based on labels.",
             caption="Создать файлы из лейблов Трелло",
         )
 
