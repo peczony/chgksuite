@@ -6,7 +6,7 @@ import time
 
 import toml
 
-from chgksuite.common import get_chgksuite_dir, init_logger, tryint
+from chgksuite.common import get_chgksuite_dir, init_logger, tryint, load_settings
 from chgksuite.composer.composer_common import BaseExporter, parseimg
 
 
@@ -50,12 +50,13 @@ class TelegramExporter(BaseExporter):
         return False
 
     def get_api_credentials(self):
+        settings = load_settings()
         pyrogram_toml_file_path = os.path.join(self.chgksuite_dir, "pyrogram.toml")
         if os.path.exists(pyrogram_toml_file_path) and not self.args.reset_api:
             with open(pyrogram_toml_file_path, "r", encoding="utf8") as f:
                 pyr = toml.load(f)
             if (
-                pyr.get("stop_if_no_stats")
+                settings.get("stop_if_no_stats")
                 and not self.structure_has_stats()
                 and not os.environ.get("CHGKSUITE_BYPASS_STATS_CHECK")
             ):
