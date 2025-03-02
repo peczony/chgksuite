@@ -67,9 +67,9 @@ def make_filename(s, ext, args, addsuffix=""):
     bn = os.path.splitext(os.path.basename(s))[0]
     if addsuffix:
         bn += addsuffix
-    if not args.add_ts:
-        return bn + "." + ext
-    return "{}_{}.{}".format(bn, datetime.datetime.now().strftime("%Y%m%dT%H%M"), ext)
+    if args.add_ts == "on":
+        return "{}_{}.{}".format(bn, datetime.datetime.now().strftime("%Y%m%dT%H%M"), ext)
+    return bn + "." + ext
 
 
 @contextlib.contextmanager

@@ -5,14 +5,11 @@ from __future__ import unicode_literals
 import argparse
 import json
 import os
-import shlex
-import sys
 
 from chgksuite.common import (
     DefaultNamespace,
-    ensure_utf8,
-    get_lastdir,
     get_source_dirs,
+    load_settings,
 )
 from chgksuite.composer import gui_compose
 from chgksuite.parser import gui_parse
@@ -22,270 +19,6 @@ from chgksuite.version import __version__
 LANGS = ["by", "by_tar", "en", "kz_cyr", "ru", "sr", "ua", "uz", "uz_cyr"] + ["custom"]
 
 debug = False
-
-
-class VarWrapper(object):
-    def __init__(self, name, var):
-        self.name = name
-        self.var = var
-
-
-class OpenFileDialog(object):
-    def __init__(self, label, var, folder=False, lastdir=None, filetypes=None):
-        self.label = label
-        self.var = var
-        self.folder = folder
-        self.lastdir = lastdir
-        self.filetypes = filetypes
-
-    def __call__(self):
-        function = (
-            filedialog.askdirectory if self.folder else filedialog.askopenfilename
-        )
-        kwargs = {}
-        if self.lastdir:
-            kwargs["initialdir"] = self.lastdir
-        if self.filetypes:
-            kwargs["filetypes"] = self.filetypes
-        output = function(**kwargs)
-        if isinstance(output, bytes):
-            output = output.decode("utf8")
-        self.var.set(output or "")
-        self.label.config(text=(output or "").split(ensure_utf8(os.sep))[-1])
-
-
-class ParserWrapper(object):
-    def __init__(self, parser, parent=None, lastdir=None):
-        self.parent = parent
-        if self.parent and not lastdir:
-            self.lastdir = self.parent.lastdir
-        else:
-            self.lastdir = lastdir
-        if self.parent:
-            self.parent.children.append(self)
-            self.frame = tk.Frame(self.parent.frame)
-            self.frame.pack()
-            self.frame.pack_forget()
-            self.advanced_frame = tk.Frame(self.parent.advanced_frame)
-            self.advanced_frame.pack()
-            self.advanced_frame.pack_forget()
-        else:
-            self.init_tk()
-        self.parser = parser
-        self.subparsers_var = None
-        self.cmdline_call = None
-        self.children = []
-        self.vars = []
-
-    def _list_vars(self):
-        result = []
-        for var in self.vars:
-            result.append((var.name, var.var.get()))
-        if self.subparsers_var:
-            chosen_parser_name = self.subparsers_var.get()
-            chosen_parser = [
-                x
-                for x in self.subparsers.parsers
-                if x.parser.prog.split()[-1] == chosen_parser_name
-            ][0]
-            result.append(("", chosen_parser_name))
-            result.extend(chosen_parser._list_vars())
-        return result
-
-    def build_command_line_call(self):
-        result = []
-        result_to_print = []
-        for tup in self._list_vars():
-            to_append = None
-            if tup[0].startswith("--"):
-                if tup[1] == "true":
-                    to_append = tup[0]
-                elif not tup[1] or tup[1] == "false":
-                    continue
-                else:
-                    to_append = [tup[0], tup[1]]
-            else:
-                to_append = tup[1]
-            if isinstance(to_append, list):
-                result.extend(to_append)
-                if "password" in tup[0]:
-                    result_to_print.append(tup[0])
-                    result_to_print.append("********")
-                else:
-                    result_to_print.extend(to_append)
-            else:
-                result.append(to_append)
-                result_to_print.append(to_append)
-        print("Command line call: {}".format(shlex.join(result_to_print)))
-        return result
-
-    def ok_button_press(self):
-        self.cmdline_call = self.build_command_line_call()
-        self.tk.quit()
-        self.tk.destroy()
-
-    def toggle_advanced_frame(self):
-        value = self.advanced_checkbox_var.get()
-        if value == "true":
-            self.advanced_frame.pack()
-        else:
-            self.advanced_frame.pack_forget()
-
-    def init_tk(self):
-        self.tk = tk.Tk()
-        self.tk.title("chgksuite v{}".format(__version__))
-        self.tk.minsize(600, 300)
-        self.tk.eval("tk::PlaceWindow . center")
-        self.mainframe = tk.Frame(self.tk)
-        self.mainframe.pack(side="top")
-        self.frame = tk.Frame(self.mainframe)
-        self.frame.pack(side="top")
-        self.button_frame = tk.Frame(self.mainframe)
-        self.button_frame.pack(side="top")
-        self.ok_button = tk.Button(
-            self.button_frame,
-            text="Запустить",
-            command=self.ok_button_press,
-            width=15,
-            height=2,
-        )
-        self.ok_button.pack(side="top")
-        self.advanced_checkbox_var = tk.StringVar()
-        self.toggle_advanced_checkbox = tk.Checkbutton(
-            self.button_frame,
-            text="Показать дополнительные настройки",
-            onvalue="true",
-            offvalue="false",
-            variable=self.advanced_checkbox_var,
-            command=self.toggle_advanced_frame,
-        )
-        self.toggle_advanced_checkbox.pack(side="top")
-        self.advanced_frame = tk.Frame(self.mainframe)
-        self.advanced_frame.pack(side="top")
-        self.advanced_frame.pack_forget()
-
-    def add_argument(self, *args, **kwargs):
-        if kwargs.pop("advanced", False):
-            frame = self.advanced_frame
-        else:
-            frame = self.frame
-        if kwargs.pop("hide", False):
-            self.parser.add_argument(*args, **kwargs)
-            return
-        caption = kwargs.pop("caption", None) or args[0]
-        argtype = kwargs.pop("argtype", None)
-        filetypes = kwargs.pop("filetypes", None)
-        if not argtype:
-            if kwargs.get("action") == "store_true":
-                argtype = "checkbutton"
-            elif args[0] in {"filename", "folder"}:
-                argtype = args[0]
-            else:
-                argtype = "entry"
-        if argtype == "checkbutton":
-            var = tk.StringVar()
-            var.set("false")
-            innerframe = tk.Frame(frame)
-            innerframe.pack(side="top")
-            checkbutton = tk.Checkbutton(
-                innerframe, text=caption, variable=var, onvalue="true", offvalue="false"
-            )
-            checkbutton.pack(side="left")
-            self.vars.append(VarWrapper(name=args[0], var=var))
-        elif argtype == "radiobutton":
-            var = tk.StringVar()
-            var.set(kwargs["default"])
-            innerframe = tk.Frame(frame)
-            innerframe.pack(side="top")
-            label = tk.Label(innerframe, text=caption)
-            label.pack(side="left")
-            for ch in kwargs["choices"]:
-                radio = tk.Radiobutton(
-                    innerframe,
-                    text=ch,
-                    variable=var,
-                    value=ch,
-                )
-                radio.pack(side="left")
-            self.vars.append(VarWrapper(name=args[0], var=var))
-        elif argtype in {"filename", "folder"}:
-            text = "(имя файла)" if argtype == "filename" else "(имя папки)"
-            button_text = "Открыть файл" if argtype == "filename" else "Открыть папку"
-            var = tk.StringVar()
-            innerframe = tk.Frame(frame)
-            innerframe.pack(side="top")
-            label = tk.Label(innerframe, text=caption)
-            label.pack(side="left")
-            label = tk.Label(innerframe, text=text)
-            ofd_kwargs = dict(folder=argtype == "folder", lastdir=self.lastdir)
-            if filetypes:
-                ofd_kwargs["filetypes"] = filetypes
-            button = tk.Button(
-                innerframe,
-                text=button_text,
-                command=OpenFileDialog(label, var, **ofd_kwargs),
-            )
-            button.pack(side="left")
-            label.pack(side="left")
-            self.vars.append(VarWrapper(name=args[0], var=var))
-        elif argtype == "entry":
-            var = tk.StringVar()
-            var.set(kwargs.get("default") or "")
-            innerframe = tk.Frame(frame)
-            innerframe.pack(side="top")
-            tk.Label(innerframe, text=caption).pack(side="left")
-            entry_show = "*" if "password" in args[0] else ""
-            entry = tk.Entry(innerframe, textvariable=var, show=entry_show)
-            entry.pack(side="left")
-            self.vars.append(VarWrapper(name=args[0], var=var))
-        self.parser.add_argument(*args, **kwargs)
-
-    def add_subparsers(self, *args, **kwargs):
-        subparsers = self.parser.add_subparsers(*args, **kwargs)
-        self.subparsers_var = tk.StringVar()
-        self.subparsers = SubparsersWrapper(subparsers, parent=self)
-        return self.subparsers
-
-    def show_frame(self):
-        for child in self.parent.children:
-            child.frame.pack_forget()
-            child.advanced_frame.pack_forget()
-        self.frame.pack(side="top")
-        self.advanced_frame.pack(side="top")
-
-    def parse_args(self, *args, **kwargs):
-        argv = sys.argv[1:]
-        if not argv:
-            self.tk.mainloop()
-            if self.cmdline_call:
-                return self.parser.parse_args(self.cmdline_call)
-            else:
-                sys.exit(0)
-        return self.parser.parse_args(*args, **kwargs)
-
-
-class SubparsersWrapper(object):
-    def __init__(self, subparsers, parent):
-        self.subparsers = subparsers
-        self.parent = parent
-        self.frame = tk.Frame(self.parent.frame)
-        self.frame.pack(side="top")
-        self.parsers = []
-
-    def add_parser(self, *args, **kwargs):
-        caption = kwargs.pop("caption", None) or args[0]
-        parser = self.subparsers.add_parser(*args, **kwargs)
-        pw = ParserWrapper(parser=parser, parent=self.parent)
-        self.parsers.append(pw)
-        radio = tk.Radiobutton(
-            self.frame,
-            text=caption,
-            variable=self.parent.subparsers_var,
-            value=args[0],
-            command=pw.show_frame,
-        )
-        radio.pack(side="left")
-        return pw
 
 
 class ArgparseBuilder:
@@ -310,8 +43,15 @@ class ArgparseBuilder:
     def add_parser(self, parser, *args, **kwargs):
         return self.apply_func(parser, "add_parser", *args, **kwargs)
 
+    def get_default_overrides(self):
+        settings = load_settings()
+        default_overrides = settings.get("default_overrides") or {}
+        assert isinstance(default_overrides, dict)
+        return default_overrides
+
     def build(self):
         parser = self.parser
+        default_overrides = self.get_default_overrides()
         self.add_argument(
             parser,
             "--debug",
@@ -329,6 +69,17 @@ class ArgparseBuilder:
             caption="Файл конфигурации",
             advanced=True,
             argtype="filename",
+        )
+        self.add_argument(
+            parser,
+            "--add_ts",
+            "-ts",
+            choices=["on", "off"],
+            default=default_overrides.get("add_ts") or "off",
+            help="append timestamp to filenames",
+            caption="Добавить временную отметку в имя файла",
+            advanced=True,
+            argtype="radiobutton",
         )
         self.add_argument(
             parser,
@@ -355,7 +106,7 @@ class ArgparseBuilder:
             "-lang",
             help="language to use while parsing.",
             choices=LANGS,
-            default="ru",
+            default=default_overrides.get("language") or "ru",
             caption="Язык",
             argtype="radiobutton",
         )
@@ -387,7 +138,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--encoding",
-            default=None,
+            default=default_overrides.get("encoding") or None,
             help="Encoding of text file (use if auto-detect fails).",
             advanced=True,
             caption="Кодировка",
@@ -395,7 +146,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--regexes",
-            default=None,
+            default=default_overrides.get("encoding") or None,
             help="A file containing regexes (the default is regexes_ru.json).",
             advanced=True,
             caption="Файл с регулярными выражениями",
@@ -412,7 +163,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--links",
-            default="unwrap",
+            default=default_overrides.get("links") or "unwrap",
             choices=["unwrap", "old"],
             help="hyperlinks handling strategy. "
             "Unwrap just leaves links as presented in the text, unchanged. "
@@ -446,7 +197,7 @@ class ArgparseBuilder:
                 "mammoth_bs_hard_unwrap",
                 "mammoth",
             ],
-            default="mammoth",
+            default=default_overrides.get("parsing_engine") or "mammoth",
             help="old html processing behaviour (before v0.5.5). "
             "Sometimes it will yield better results than the new default.",
             advanced=True,
@@ -455,7 +206,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--numbers_handling",
-            default="default",
+            default=default_overrides.get("numbers_handling") or "default",
             choices=["default", "all", "none"],
             help="question numbers handling strategy. "
             "Default preserves zero questions and numbering "
@@ -468,7 +219,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--typography_quotes",
-            default="on",
+            default=default_overrides.get("typography_quotes") or "on",
             choices=["smart", "on", "off"],
             help="typography: try to fix quotes.",
             advanced=True,
@@ -478,7 +229,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--typography_dashes",
-            default="on",
+            default=default_overrides.get("typography_dashes") or "on",
             choices=["smart", "on", "off"],
             help="typography: try to fix dashes.",
             advanced=True,
@@ -488,7 +239,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--typography_whitespace",
-            default="on",
+            default=default_overrides.get("typography_whitespace") or "on",
             choices=["on", "off"],
             help="typography: try to fix whitespace.",
             advanced=True,
@@ -498,7 +249,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--typography_accents",
-            default="on",
+            default=default_overrides.get("typography_accents") or "on",
             choices=["smart", "light", "on", "off"],
             help="typography: try to fix accents.",
             advanced=True,
@@ -508,7 +259,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--typography_percent",
-            default="on",
+            default=default_overrides.get("typography_percent") or "on",
             choices=["on", "off"],
             help="typography: try to fix percent encoding.",
             advanced=True,
@@ -518,7 +269,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--single_number_line_handling",
-            default="smart",
+            default=default_overrides.get("single_number_line_handling") or "smart",
             choices=["smart", "on", "off"],
             help="handling cases where a line consists of a single number.",
             advanced=True,
@@ -541,7 +292,7 @@ class ArgparseBuilder:
             "-lang",
             help="language to use while composing.",
             choices=LANGS,
-            default="ru",
+            default=default_overrides.get("language") or "ru",
             caption="Язык",
             argtype="radiobutton",
         )
@@ -555,16 +306,8 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdcompose,
-            "--add_ts",
-            "-ts",
-            action="store_true",
-            help="append timestamp to filenames",
-            caption="Добавить временную отметку в имя файла",
-            advanced=True,
-        )
-        self.add_argument(
-            cmdcompose,
             "--imgur_client_id",
+            default=default_overrides.get("imgur_client_id") or None,
             help="imgur client id",
             caption="Client ID для API Imgur",
             advanced=True,
@@ -582,6 +325,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdcompose_docx,
             "--font_face",
+            default=default_overrides.get("font_face") or None,
             help="font face to use in the document.",
             advanced=True,
             caption="Шрифт",
@@ -599,7 +343,7 @@ class ArgparseBuilder:
             "--spoilers",
             "-s",
             choices=["off", "whiten", "pagebreak", "dots"],
-            default="off",
+            default=default_overrides.get("spoilers") or "off",
             help="whether to hide answers behind spoilers.",
             caption="Спойлеры",
             argtype="radiobutton",
@@ -609,7 +353,7 @@ class ArgparseBuilder:
             "--screen_mode",
             "-sm",
             choices=["off", "replace_all", "add_versions", "add_versions_columns"],
-            default="off",
+            default=default_overrides.get("screen_mode") or "off",
             help="exporting questions for screen.",
             caption="Экспорт для экрана",
             argtype="radiobutton",
@@ -815,7 +559,7 @@ class ArgparseBuilder:
         self.add_argument(
             cmdcompose_telegram,
             "--tgaccount",
-            default="my_account",
+            default=default_overrides.get("tgaccount") or "my_account",
             help="a made-up string designating account to use.",
             caption="Аккаунт для постинга",
         )
@@ -921,7 +665,7 @@ class ArgparseBuilder:
             "--team_naming_threshold",
             "-tnt",
             type=int,
-            default=2,
+            default=default_overrides.get("team_naming_threshold") or 2,
             help="threshold for naming teams who scored at the question.",
             caption="Граница вывода названий команд",
         )
@@ -975,7 +719,7 @@ class ArgparseBuilder:
             "--fix_trello_new_editor",
             "-ftne",
             choices=["on", "off"],
-            default="on",
+            default=default_overrides.get("fix_trello_new_editor") or "on",
             help="This flag fixes mess caused by Trello's new editor "
             "(introduced in early 2023).",
             caption="Пофиксить новый редактор Трелло",
@@ -1036,6 +780,12 @@ class ArgparseBuilder:
             action="store_true",
             help="Display authors in cards' captions",
             caption="Дописать авторов в заголовок карточки",
+        )
+        self.add_argument(
+            cmdtrello_upload,
+            "--list_name",
+            help="List name where to upload cards",
+            caption="Имя списка для загрузки карточек",
         )
 
         cmdtrello_token = cmdtrello_subcommands.add_parser("token")

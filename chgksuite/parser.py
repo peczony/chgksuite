@@ -37,6 +37,7 @@ from chgksuite.common import (
     set_lastdir,
 )
 from chgksuite.composer import gui_compose
+from chgksuite.composer.composer_common import make_filename
 from chgksuite.parser_db import chgk_parse_db
 from chgksuite.typotools import remove_excessive_whitespace as rew
 
@@ -48,10 +49,6 @@ EDITORS = {
     "linux": "xdg-open",  # python3
     "darwin": "open -t",
 }
-
-
-def make_filename(s):
-    return os.path.splitext(s)[0] + ".4s"
 
 
 def partition(alist, indices):
@@ -166,7 +163,10 @@ class ChgkParser:
         regexes = self.regexes
         while i < len(st):
             matching_regexes = {
-                (regex, regexes[regex].search(self.remove_formatting(st[i][1])).start(0))
+                (
+                    regex,
+                    regexes[regex].search(self.remove_formatting(st[i][1])).start(0),
+                )
                 for regex in set(regexes) - {"number", "date2"}
                 if regexes[regex].search(self.remove_formatting(st[i][1]))
             }
@@ -832,7 +832,7 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
             if tag.parent and tag.parent.name == "ol":
                 num = get_number(tag.parent)
                 to_append.append((tag, f"{num}. "))
-        for (tag, prefix) in to_append:
+        for tag, prefix in to_append:
             tag.insert(0, prefix)
             ensure_line_breaks(tag)
         for tag in bsoup.find_all("table"):
@@ -937,7 +937,7 @@ def chgk_parse_wrapper(path, args, logger=None):
     else:
         sys.stderr.write("Error: unsupported file format." + SEP)
         sys.exit()
-    outfilename = os.path.join(target_dir, make_filename(abspath))
+    outfilename = os.path.join(target_dir, make_filename(abspath, "4s", args))
     logger.info("Output: {}".format(os.path.abspath(outfilename)))
     with codecs.open(outfilename, "w", "utf8") as output_file:
         output_file.write(compose_4s(final_structure, args=args))
@@ -954,7 +954,7 @@ def gui_parse(args):
             set_lastdir(ld)
             for filename in os.listdir(args.filename):
                 if filename.endswith((".docx", ".txt")) and not os.path.isfile(
-                    os.path.join(args.filename, make_filename(filename))
+                    os.path.join(args.filename, make_filename(filename, "4s", args))
                 ):
                     outfilename = chgk_parse_wrapper(
                         os.path.join(args.filename, filename),
@@ -980,7 +980,7 @@ def gui_parse(args):
         if outfilename and not args.console_mode:
             print(
                 "Please review the resulting file {}:".format(
-                    make_filename(args.filename)
+                    make_filename(args.filename, "4s", args)
                 )
             )
             texteditor = load_settings().get("editor") or EDITORS[sys.platform]
