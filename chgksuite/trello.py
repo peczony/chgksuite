@@ -28,7 +28,7 @@ TRELLO_URL = (
 )
 
 
-def upload_file(filepath, trello):
+def upload_file(filepath, trello, list_name=None):
     req = requests.get(
         "{}/boards/{}/lists".format(API, trello["board_id"]),
         params={"token": trello["params"]["token"], "key": trello["params"]["key"]},
@@ -38,7 +38,19 @@ def upload_file(filepath, trello):
         sys.exit(1)
 
     lists = json.loads(req.content.decode("utf8"))
-    lid = lists[0]["id"]
+    lid = None
+    if list_name is None:
+        list_ = lists[0]
+        lid = list_["id"]
+    else:
+        for list_ in lists:
+            if list_["name"] == list_name:
+                lid = list_["id"]
+                break
+        if lid is None:
+            raise Exception(f"list '{list_name}' not found")
+    assert lid is not None
+    print(f"uploading to list '{list_['name']}'")
     content = ""
     with codecs.open(filepath, "r", "utf8") as f:
         content = f.read()
@@ -66,7 +78,7 @@ def upload_file(filepath, trello):
             print("Error {}: {}".format(req.status_code, req.content))
 
 
-def gui_trello_upload(args, sourcedir):
+def gui_trello_upload(args):
     get_lastdir()
 
     if not args.board_id:
@@ -84,21 +96,21 @@ def gui_trello_upload(args, sourcedir):
             for filename in os.listdir(args.filename[0]):
                 if filename.endswith(".4s"):
                     filepath = os.path.join(args.filename[0], filename)
-                    upload_file(filepath, trelloconfig)
+                    upload_file(filepath, trelloconfig, list_name=args.list_name)
             set_lastdir(args.filename[0])
         else:
             for filename in args.filename:
-                upload_file(filename, trelloconfig)
+                upload_file(filename, trelloconfig, list_name=args.list_name)
                 set_lastdir(filename)
     elif isinstance(args.filename, str):
         if os.path.isdir(args.filename):
             for filename in os.listdir(args.filename):
                 if filename.endswith(".4s"):
                     filepath = os.path.join(args.filename, filename)
-                    upload_file(filepath, trelloconfig)
+                    upload_file(filepath, trelloconfig, list_name=args.list_name)
                     set_lastdir(filepath)
         elif os.path.isfile(args.filename):
-            upload_file(args.filename, trelloconfig)
+            upload_file(args.filename, trelloconfig, list_name=args.list_name)
             set_lastdir(args.filename)
 
 
@@ -236,7 +248,7 @@ def init_doc(doc_, id_):
     return doc_.add_paragraph()
 
 
-def gui_trello_download(args, sourcedir):
+def gui_trello_download(args):
     ld = get_lastdir()
 
     template_path = args.docx_template
@@ -432,7 +444,7 @@ def get_token(tokenpath, args):
 
 def gui_trello(args):
     csdir = get_chgksuite_dir()
-    sourcedir, resourcedir = get_source_dirs()
+    _, resourcedir = get_source_dirs()
     tokenpath = os.path.join(csdir, ".trello_token")
     if args.trellosubcommand == "token":
         get_token(tokenpath, args)
@@ -448,6 +460,6 @@ def gui_trello(args):
     args.trelloconfig["params"]["token"] = token
 
     if args.trellosubcommand == "download":
-        gui_trello_download(args, sourcedir)
+        gui_trello_download(args)
     elif args.trellosubcommand == "upload":
-        gui_trello_upload(args, sourcedir)
+        gui_trello_upload(args)
