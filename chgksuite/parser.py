@@ -28,6 +28,7 @@ from chgksuite.common import (
     QUESTION_LABELS,
     DefaultArgs,
     DefaultNamespace,
+    DummyLogger,
     check_question,
     compose_4s,
     get_lastdir,
@@ -729,7 +730,8 @@ def ensure_line_breaks(tag):
     tag.unwrap()
 
 
-def chgk_parse_docx(docxfile, defaultauthor="", args=None):
+def chgk_parse_docx(docxfile, defaultauthor="", args=None, logger=None):
+    logger = logger or DummyLogger()
     args = args or DefaultArgs()
     for_ol = {}
 
@@ -836,8 +838,11 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None):
             tag.insert(0, prefix)
             ensure_line_breaks(tag)
         for tag in bsoup.find_all("table"):
-            table = dashtable.html2md(str(tag))
-            tag.insert_before(table)
+            try:
+                table = dashtable.html2md(str(tag))
+                tag.insert_before(table)
+            except (TypeError, ValueError):
+                logger.error(f"couldn't parse html table: {str(tag)}")
             tag.extract()
         for tag in bsoup.find_all("hr"):
             tag.extract()
@@ -932,7 +937,7 @@ def chgk_parse_wrapper(path, args, logger=None):
         )
     elif os.path.splitext(abspath)[1] == ".docx":
         final_structure = chgk_parse_docx(
-            abspath, defaultauthor=defaultauthor, args=args
+            abspath, defaultauthor=defaultauthor, args=args, logger=logger
         )
     else:
         sys.stderr.write("Error: unsupported file format." + SEP)
