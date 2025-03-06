@@ -357,6 +357,10 @@ class ChgkParser:
                 )
             )
 
+        if debug:
+            with codecs.open("debug_0.txt", "w", "utf8") as f:
+                f.write(text)
+
         # 1.
         sep = "\r\n" if "\r\n" in text else "\n"
 
@@ -604,7 +608,7 @@ class ChgkParser:
 
         for element in self.structure:
             if (
-                element[0] in set(["number", "tour", "tourrev", "question", "meta"])
+                element[0] in set(["number", "tour", "tourrev", "question", "meta", "editor"])
                 and "question" in current_question
             ):
                 if self.defaultauthor and "author" not in current_question:
@@ -644,6 +648,10 @@ class ChgkParser:
                 current_question["author"] = self.defaultauthor
             check_question(current_question, logger=logger)
             final_structure.append(["Question", current_question])
+
+        if debug:
+            with codecs.open("debug_6.json", "w", "utf8") as f:
+                f.write(json.dumps(final_structure, ensure_ascii=False, indent=4))
 
         # 7.
         try:
