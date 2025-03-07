@@ -121,10 +121,10 @@ class ArgparseBuilder:
         self.add_argument(
             cmdparse,
             "--defaultauthor",
-            action="store_true",
-            help="pick default author from filename where author is missing.",
+            default="off",
+            help="pick default author where author is missing. 'off' is default, 'file' is from filename, you can add custom value",
             advanced=True,
-            caption="Дописать отсутствующего автора из имени файла",
+            caption="Дописать отсутствующего автора. 'off' — дефолт, 'file' — взять из имени файла, вы также можете указать свою строчку",
         )
         self.add_argument(
             cmdparse,

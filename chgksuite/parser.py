@@ -932,9 +932,12 @@ def chgk_parse_wrapper(path, args, logger=None):
     abspath = os.path.abspath(path)
     target_dir = os.path.dirname(abspath)
     logger = logger or init_logger("parser")
-    defaultauthor = ""
-    if args.defaultauthor:
+    if args.defaultauthor == "off":
+        defaultauthor = ""
+    elif args.defaultauthor == "file":
         defaultauthor = os.path.splitext(os.path.basename(abspath))[0]
+    else:
+        defaultauthor = args.defaultauthor
     if os.path.splitext(abspath)[1] == ".txt":
         final_structure = chgk_parse_txt(
             abspath,
