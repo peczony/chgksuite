@@ -10,15 +10,17 @@ import subprocess
 import tempfile
 
 import pytest
+from PIL import Image
 
 from chgksuite.common import DefaultArgs
+from chgksuite.composer.chgksuite_parser import parse_4s
+from chgksuite.composer.composer_common import _parse_4s_elem, parseimg
+from chgksuite.composer.telegram import TelegramExporter
 from chgksuite.parser import (
     chgk_parse_docx,
     chgk_parse_txt,
     compose_4s,
 )
-from chgksuite.composer.chgksuite_parser import parse_4s
-from chgksuite.composer.composer_common import _parse_4s_elem, parseimg
 from chgksuite.typotools import get_quotes_right
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -191,3 +193,19 @@ def test_inline_image():
     assert img_parsed["inline"]
     assert os.path.basename(img_parsed["imgfile"]) == "test.jpg"
     assert compose_4s(structure, DefaultArgs()).strip() == TEST_INLINE_IMAGE.strip()
+
+
+def test_long_handout():
+    cwd = os.getcwd()
+    with make_temp_directory(dir=".") as temp_dir:
+        shutil.copy(os.path.join(currentdir, "test.jpg"), temp_dir)
+        shutil.copy(os.path.join(currentdir, "long_handout.png"), temp_dir)
+        os.chdir(temp_dir)
+        assert TelegramExporter.prepare_image_for_telegram("test.jpg") == "test.jpg"
+        assert (
+            TelegramExporter.prepare_image_for_telegram("long_handout.png")
+            == "long_handout_telegram.jpg"
+        )
+        img = Image.open("long_handout_telegram.jpg")
+        assert img.size == (1600, 83)
+        os.chdir(cwd)

@@ -5,8 +5,9 @@ import re
 import time
 
 import toml
+from PIL import Image, ImageOps
 
-from chgksuite.common import get_chgksuite_dir, init_logger, tryint, load_settings
+from chgksuite.common import get_chgksuite_dir, init_logger, load_settings, tryint
 from chgksuite.composer.composer_common import BaseExporter, parseimg
 
 
@@ -110,11 +111,7 @@ class TelegramExporter(BaseExporter):
                 res += tgr(run[1]["for_screen"])
             elif run[0] == "strike":
                 res += f"<s>{tgr(run[1])}</s>"
-            elif (
-                "italic" in run[0]
-                or "bold" in run[0]
-                or "underline" in run[0]
-            ):
+            elif "italic" in run[0] or "bold" in run[0] or "underline" in run[0]:
                 chunk = tgr(run[1])
                 if "italic" in run[0]:
                     chunk = f"<i>{chunk}</i>"
@@ -138,7 +135,7 @@ class TelegramExporter(BaseExporter):
                     )
                     imgfile = parsed_image["imgfile"]
                     if os.path.isfile(imgfile):
-                        image = imgfile
+                        image = self.prepare_image_for_telegram(imgfile)
                     else:
                         raise Exception(f"image {run[1]} doesn't exist")
             else:
@@ -146,6 +143,74 @@ class TelegramExporter(BaseExporter):
         while res.endswith("\n"):
             res = res[:-1]
         return res, image
+
+    @classmethod
+    def prepare_image_for_telegram(cls, imgfile):
+        img = Image.open(imgfile)
+        width, height = img.size
+        file_size = os.path.getsize(imgfile)
+        modified = False
+
+        aspect_ratio = max(width, height) / min(width, height)
+        if aspect_ratio >= 20:
+            modified = True
+            if width > height:
+                new_height = width // 19  # Keep ratio slightly under 20
+                padding = (0, (new_height - height) // 2)
+                img = ImageOps.expand(img, padding, fill="white")
+            else:
+                new_width = height // 19  # Keep ratio slightly under 20
+                padding = ((new_width - width) // 2, 0)
+                img = ImageOps.expand(img, padding, fill="white")
+            width, height = img.size
+
+        if width + height >= 10000:
+            modified = True
+            scale_factor = 10000 / (width + height)
+            new_width = int(width * scale_factor)
+            new_height = int(height * scale_factor)
+            # Ensure longest side is 1000px max
+            if max(new_width, new_height) > 1000:
+                if new_width > new_height:
+                    scale = 1000 / new_width
+                else:
+                    scale = 1000 / new_height
+                new_width = int(new_width * scale)
+                new_height = int(new_height * scale)
+            img = img.resize((new_width, new_height), Image.LANCZOS)
+
+        # Check file size (10MB = 10 * 1024 * 1024 bytes)
+        if file_size > 10 * 1024 * 1024 or modified:
+            base, _ = os.path.splitext(imgfile)
+            new_imgfile = f"{base}_telegram.jpg"
+
+            # Convert to JPG and save with reduced quality if necessary
+            quality = 95
+            while quality >= 70:
+                img.convert("RGB").save(new_imgfile, "JPEG", quality=quality)
+                new_size = os.path.getsize(new_imgfile)
+                if new_size <= 10 * 1024 * 1024:
+                    break
+                quality -= 5
+
+            # If we still can't get it under 10MB, resize more
+            if os.path.getsize(new_imgfile) > 10 * 1024 * 1024:
+                width, height = img.size
+                scale_factor = 0.9  # Reduce by 10% each iteration
+                while (
+                    os.path.getsize(new_imgfile) > 10 * 1024 * 1024
+                    and min(width, height) > 50
+                ):
+                    width = int(width * scale_factor)
+                    height = int(height * scale_factor)
+                    resized_img = img.resize((width, height), Image.LANCZOS)
+                    resized_img.convert("RGB").save(
+                        new_imgfile, "JPEG", quality=quality
+                    )
+
+            return new_imgfile
+
+        return imgfile
 
     def tg_element_layout(self, e):
         res = ""
@@ -318,7 +383,11 @@ class TelegramExporter(BaseExporter):
 
     def assemble(self, list_, lb_after_first=False):
         list_ = [x for x in list_ if x]
-        list_ = [x.strip() for x in list_ if not x.startswith(("\n</spoiler>", "\n<spoiler>"))]
+        list_ = [
+            x.strip()
+            for x in list_
+            if not x.startswith(("\n</spoiler>", "\n<spoiler>"))
+        ]
         if lb_after_first:
             list_[0] = list_[0] + "\n"
         res = "\n".join(list_)
@@ -556,7 +625,10 @@ class TelegramExporter(BaseExporter):
             if not self.args.skip_until:
                 navigation_text = [self.labels["general"]["general_impressions_text"]]
                 if self.tg_heading:
-                    navigation_text = [f"<b>{self.tg_heading}</b>", ""] + navigation_text
+                    navigation_text = [
+                        f"<b>{self.tg_heading}</b>",
+                        "",
+                    ] + navigation_text
                 for i, link in enumerate(self.section_links):
                     navigation_text.append(
                         f"{self.labels['general']['section']} {i + 1}: {link}"
