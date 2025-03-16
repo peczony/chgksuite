@@ -55,10 +55,10 @@ setup(
         "ply",
         "pypandoc",
         "pyperclip",
-        "pyrogram",
-        "python-pptx",
         "python-docx",
+        "python-pptx",
         "requests",
+        "telethon",
         "TgCrypto",
         "toml",
     ]

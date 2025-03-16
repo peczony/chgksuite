@@ -2,13 +2,21 @@ import importlib
 import os
 import random
 import re
+import sqlite3
 import time
 
 import toml
 from PIL import Image, ImageOps
+from telethon import errors
+from telethon.sync import TelegramClient
+from telethon.tl.functions.messages import (
+    GetDiscussionMessageRequest,
+)
+from telethon.tl.types import InputChannel
 
 from chgksuite.common import get_chgksuite_dir, init_logger, load_settings, tryint
 from chgksuite.composer.composer_common import BaseExporter, parseimg
+from chgksuite.composer.telegram_parser import CustomHtmlParser
 
 
 class TelegramExporter(BaseExporter):
@@ -16,12 +24,10 @@ class TelegramExporter(BaseExporter):
         super().__init__(*args, **kwargs)
         self.chgksuite_dir = get_chgksuite_dir()
         self.logger = kwargs.get("logger") or init_logger("composer")
-        self.pyrogram = importlib.import_module(
-            "pyrogram"
-        )  # pyrogram slows down startup quite a bit, so only import it when needed
         try:
             self.init_tg()
-        except self.pyrogram.errors.exceptions.unauthorized_401.AuthKeyUnregistered:
+        except (errors.AuthKeyUnregisteredError, sqlite3.OperationalError) as e:
+            self.logger.warning(f"Session error: {str(e)}")
             filepath = os.path.join(
                 self.chgksuite_dir, self.args.tgaccount + ".session"
             )
@@ -34,15 +40,12 @@ class TelegramExporter(BaseExporter):
 
     def init_tg(self):
         api_id, api_hash = self.get_api_credentials()
-        self.app = self.pyrogram.Client(
-            self.args.tgaccount,
-            api_id,
-            api_hash,
-            workdir=self.chgksuite_dir,
-            hide_password=not self.args.no_hide_password,
+        self.client = TelegramClient(
+            os.path.join(self.chgksuite_dir, self.args.tgaccount), api_id, api_hash
         )
-        with self.app:
-            self.logger.debug(self.app.get_me())
+        self.client.start()
+        me = self.client.get_me()
+        self.logger.debug(f"Logged in as {me.username or me.first_name}")
 
     def structure_has_stats(self):
         for element in self.structure:
@@ -50,19 +53,35 @@ class TelegramExporter(BaseExporter):
                 return True
         return False
 
+    def get_message_link(self, message, channel=None):
+        if not channel:
+            channel = self.client.get_entity(message.peer_id)
+
+        # Determine if the channel is public (has a username)
+        if hasattr(channel, "username") and channel.username:
+            # Public channel with username
+            return f"https://t.me/{channel.username}/{message.id}"
+        else:
+            # Private channel, use channel ID
+            channel_id_str = str(channel.id)
+            # Remove -100 prefix if present (common in Telethon)
+            if channel_id_str.startswith("-100"):
+                channel_id_str = channel_id_str[4:]
+            return f"https://t.me/c/{channel_id_str}/{message.id}"
+
     def get_api_credentials(self):
         settings = load_settings()
-        pyrogram_toml_file_path = os.path.join(self.chgksuite_dir, "pyrogram.toml")
-        if os.path.exists(pyrogram_toml_file_path) and not self.args.reset_api:
-            with open(pyrogram_toml_file_path, "r", encoding="utf8") as f:
-                pyr = toml.load(f)
+        telegram_toml_file_path = os.path.join(self.chgksuite_dir, "telegram.toml")
+        if os.path.exists(telegram_toml_file_path) and not self.args.reset_api:
+            with open(telegram_toml_file_path, "r", encoding="utf8") as f:
+                tg = toml.load(f)
             if (
                 settings.get("stop_if_no_stats")
                 and not self.structure_has_stats()
                 and not os.environ.get("CHGKSUITE_BYPASS_STATS_CHECK")
             ):
                 raise Exception("don't publish questions without stats")
-            return pyr["api_id"], pyr["api_hash"]
+            return tg["api_id"], tg["api_hash"]
         else:
             print("Please enter you api_id and api_hash.")
             print(
@@ -70,7 +89,7 @@ class TelegramExporter(BaseExporter):
             )
             api_id = input("Enter your api_id: ").strip()
             api_hash = input("Enter your api_hash: ").strip()
-            with open(pyrogram_toml_file_path, "w", encoding="utf8") as f:
+            with open(telegram_toml_file_path, "w", encoding="utf8") as f:
                 toml.dump({"api_id": api_id, "api_hash": api_hash}, f)
             return api_id, api_hash
 
@@ -230,6 +249,7 @@ class TelegramExporter(BaseExporter):
         return res, images
 
     def _post(self, chat_id, text, photo, reply_to_message_id=None):
+        self.logger.info(f"Posting message `{text}`")
         if photo:
             if not text:
                 caption = ""
@@ -237,31 +257,31 @@ class TelegramExporter(BaseExporter):
                 caption = "--"
             else:
                 caption = "---"
-            msg = self.app.send_photo(
+            msg = self.client.send_file(
                 chat_id,
                 photo,
                 caption=caption,
-                parse_mode=self.pyrogram.enums.ParseMode.HTML,
-                reply_to_message_id=reply_to_message_id,
-                disable_notification=True,
+                parse_mode=CustomHtmlParser,
+                reply_to=reply_to_message_id,
+                silent=True,
             )
             if text:
                 time.sleep(2)
-                self.app.edit_message_text(
+                msg = self.client.edit_message(
                     chat_id,
                     msg.id,
                     text=text,
-                    parse_mode=self.pyrogram.enums.ParseMode.HTML,
-                    disable_web_page_preview=True,
+                    parse_mode=CustomHtmlParser,
+                    link_preview=False,
                 )
         else:
-            msg = self.app.send_message(
+            msg = self.client.send_message(
                 chat_id,
                 text,
-                parse_mode=self.pyrogram.enums.ParseMode.HTML,
-                disable_web_page_preview=True,
-                reply_to_message_id=reply_to_message_id,
-                disable_notification=True,
+                parse_mode=CustomHtmlParser,
+                link_preview=False,
+                reply_to=reply_to_message_id,
+                silent=True,
             )
         return msg
 
@@ -270,13 +290,8 @@ class TelegramExporter(BaseExporter):
         while retries <= 2:
             try:
                 return self._post(*args, **kwargs)
-            except self.pyrogram.errors.exceptions.flood_420.FloodWait as e:
-                mstr = str(e)
-                secs_to_wait = re.search("([0-9]+) seconds is required", mstr)
-                if secs_to_wait:
-                    secs_to_wait = int(secs_to_wait.group(1)) + 30
-                else:
-                    secs_to_wait = 120
+            except errors.FloodWaitError as e:
+                secs_to_wait = e.seconds + 30
                 self.logger.error(
                     f"Telegram thinks we are spammers, waiting for {secs_to_wait} seconds"
                 )
@@ -307,9 +322,31 @@ class TelegramExporter(BaseExporter):
             messages.append(root_msg)
             messages.append(prev_root_msg)
         time.sleep(2.1)
-        root_msg_in_chat = self.app.get_discussion_message(self.channel_id, root_msg.id)
+
+        result = self.client(
+            GetDiscussionMessageRequest(peer=self.channel_entity, msg_id=root_msg.id)
+        )
+        root_msg_in_chat = result.messages[0]
+
+        channel_username = getattr(self.channel_entity, "username", None)
+        chat_username = getattr(self.chat_entity, "username", None)
+
+        if channel_username:
+            root_msg_link = f"https://t.me/{channel_username}/{root_msg.id}"
+        else:
+            root_msg_link = f"https://t.me/c/{str(self.channel_id)[4:]}/{root_msg.id}"
+
+        if chat_username:
+            root_msg_in_chat_link = (
+                f"https://t.me/{chat_username}/{root_msg_in_chat.id}"
+            )
+        else:
+            root_msg_in_chat_link = (
+                f"https://t.me/c/{str(self.chat_id)[4:]}/{root_msg_in_chat.id}"
+            )
+
         self.logger.info(
-            f"Posted message {root_msg.link} ({root_msg_in_chat.link} in chat)"
+            f"Posted message {root_msg_link} ({root_msg_in_chat_link} in chat)"
         )
         time.sleep(random.randint(5, 7))
         if root_msg not in messages:
@@ -321,7 +358,7 @@ class TelegramExporter(BaseExporter):
                 self.chat_id, text, im, reply_to_message_id=root_msg_in_chat.id
             )
             self.logger.info(
-                f"Replied to message {root_msg_in_chat.link} with {reply_msg.link}"
+                f"Replied to message {root_msg_in_chat_link} with reply message"
             )
             time.sleep(random.randint(5, 7))
             messages.append(reply_msg)
@@ -330,7 +367,7 @@ class TelegramExporter(BaseExporter):
     def post_wrapper(self, posts):
         messages = self.post(posts)
         if self.section and not self.args.dry_run:
-            self.section_links.append(messages[0].link)
+            self.section_links.append(self.get_message_link(messages[0]))
         self.section = False
 
     def tg_process_element(self, pair):
@@ -593,51 +630,62 @@ class TelegramExporter(BaseExporter):
         self.buffer_texts = []
         self.buffer_images = []
         self.section = False
-        with self.app:
-            self.channel_dialog = None
-            self.chat_dialog = None
-            if self.is_valid_tg_identifier(
-                self.args.tgchannel
-            ) and self.is_valid_tg_identifier(self.args.tgchat):
-                self.channel_id = self.is_valid_tg_identifier(self.args.tgchannel)
-                self.chat_id = self.is_valid_tg_identifier(self.args.tgchat)
-            else:
-                for dialog in self.app.get_dialogs():
-                    if (dialog.chat.title or "").strip() == self.args.tgchannel.strip():
-                        self.channel_dialog = dialog
-                    if (dialog.chat.title or "").strip() == self.args.tgchat.strip():
-                        self.chat_dialog = dialog
-                    if self.channel_dialog is not None and self.chat_dialog is not None:
-                        break
-                if not self.channel_dialog:
-                    raise Exception("Channel not found, please check provided name")
-                if not self.chat_dialog:
-                    raise Exception("Linked chat not found, please check provided name")
-                self.channel_id = self.channel_dialog.chat.id
-                self.chat_id = self.chat_dialog.chat.id
-            for pair in self.structure:
-                self.tg_process_element(pair)
-            if self.buffer_texts or self.buffer_images:
-                posts = self.split_to_messages(self.buffer_texts, self.buffer_images)
-                self.post_wrapper(posts)
-                self.buffer_texts = []
-                self.buffer_images = []
-            if not self.args.skip_until:
-                navigation_text = [self.labels["general"]["general_impressions_text"]]
-                if self.tg_heading:
-                    navigation_text = [
-                        f"<b>{self.tg_heading}</b>",
-                        "",
-                    ] + navigation_text
-                for i, link in enumerate(self.section_links):
-                    navigation_text.append(
-                        f"{self.labels['general']['section']} {i + 1}: {link}"
-                    )
-                navigation_text = "\n".join(navigation_text)
-                messages = self.post([(navigation_text.strip(), None)])
-                if not self.args.dry_run:
-                    self.app.pin_chat_message(
-                        self.channel_id,
-                        messages[0].id,
-                        disable_notification=True,
-                    )
+
+        # Find channel and chat
+        self.channel_entity = None
+        self.chat_entity = None
+
+        if self.is_valid_tg_identifier(
+            self.args.tgchannel
+        ) and self.is_valid_tg_identifier(self.args.tgchat):
+            self.channel_id = self.is_valid_tg_identifier(self.args.tgchannel)
+            self.chat_id = self.is_valid_tg_identifier(self.args.tgchat)
+            self.channel_entity = InputChannel(self.channel_id, 0)
+            self.chat_entity = InputChannel(self.chat_id, 0)
+        else:
+            # Get dialogs and find the channel and chat by title
+            dialogs = self.client.get_dialogs()
+            for dialog in dialogs:
+                if (dialog.title or "").strip() == self.args.tgchannel.strip():
+                    self.channel_entity = dialog.entity
+                    self.channel_id = dialog.id
+                if (dialog.title or "").strip() == self.args.tgchat.strip():
+                    self.chat_entity = dialog.entity
+                    self.chat_id = dialog.id
+                if self.channel_entity is not None and self.chat_entity is not None:
+                    break
+
+            if not self.channel_entity:
+                raise Exception("Channel not found, please check provided name")
+            if not self.chat_entity:
+                raise Exception("Linked chat not found, please check provided name")
+
+        # Process all elements
+        for pair in self.structure:
+            self.tg_process_element(pair)
+
+        if self.buffer_texts or self.buffer_images:
+            posts = self.split_to_messages(self.buffer_texts, self.buffer_images)
+            self.post_wrapper(posts)
+            self.buffer_texts = []
+            self.buffer_images = []
+
+        if not self.args.skip_until:
+            navigation_text = [self.labels["general"]["general_impressions_text"]]
+            if self.tg_heading:
+                navigation_text = [
+                    f"<b>{self.tg_heading}</b>",
+                    "",
+                ] + navigation_text
+            for i, link in enumerate(self.section_links):
+                navigation_text.append(
+                    f"{self.labels['general']['section']} {i + 1}: {link}"
+                )
+            navigation_text = "\n".join(navigation_text)
+            messages = self.post([(navigation_text.strip(), None)])
+            if not self.args.dry_run:
+                self.client.pin_message(
+                    self.channel_entity,
+                    messages[0].id,
+                    notify=False,
+                )
