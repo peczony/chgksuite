@@ -1,7 +1,7 @@
-import importlib
 import os
 import random
 import re
+import shutil
 import sqlite3
 import time
 
@@ -27,12 +27,13 @@ class TelegramExporter(BaseExporter):
         try:
             self.init_tg()
         except (errors.AuthKeyUnregisteredError, sqlite3.OperationalError) as e:
-            self.logger.warning(f"Session error: {str(e)}")
             filepath = os.path.join(
                 self.chgksuite_dir, self.args.tgaccount + ".session"
             )
+            new_filepath = filepath + ".bak"
+            self.logger.warning(f"Session error: {str(e)}. Moving session: {filepath} -> {new_filepath}")
             if os.path.isfile(filepath):
-                os.remove(filepath)
+                shutil.move(filepath, new_filepath)
             self.init_tg()
         self.qcount = 1
         self.number = 1
@@ -328,22 +329,8 @@ class TelegramExporter(BaseExporter):
         )
         root_msg_in_chat = result.messages[0]
 
-        channel_username = getattr(self.channel_entity, "username", None)
-        chat_username = getattr(self.chat_entity, "username", None)
-
-        if channel_username:
-            root_msg_link = f"https://t.me/{channel_username}/{root_msg.id}"
-        else:
-            root_msg_link = f"https://t.me/c/{str(self.channel_id)[4:]}/{root_msg.id}"
-
-        if chat_username:
-            root_msg_in_chat_link = (
-                f"https://t.me/{chat_username}/{root_msg_in_chat.id}"
-            )
-        else:
-            root_msg_in_chat_link = (
-                f"https://t.me/c/{str(self.chat_id)[4:]}/{root_msg_in_chat.id}"
-            )
+        root_msg_link = self.get_message_link(root_msg, self.channel_entity)
+        root_msg_in_chat_link = self.get_message_link(root_msg_in_chat, self.chat_entity)
 
         self.logger.info(
             f"Posted message {root_msg_link} ({root_msg_in_chat_link} in chat)"
