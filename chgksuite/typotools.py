@@ -252,21 +252,23 @@ def get_dashes_right(s):
     return s
 
 
-def replace_no_break_spaces(s):
-    for sp in NO_BREAK_SEQUENCES + [x.title() for x in NO_BREAK_SEQUENCES]:
-        r_from = "(^|[ \u00a0]){sp} ".format(sp=sp)
-        r_to = "\\g<1>{sp}\u00a0".format(sp=sp)
-        s = re.sub(r_from, r_to, s)
-    for sp in NO_BREAK_SEQUENCES_LEFT + [x.title() for x in NO_BREAK_SEQUENCES_LEFT]:
-        r_from = " {sp}([ \u00a0]|$)".format(sp=sp)
-        r_to = "\u00a0{sp}\\g<1>".format(sp=sp)
-        s = re.sub(r_from, r_to, s)
-    srch = re_nbh.search(s)
-    while srch:
-        s = s.replace(
-            srch.group("word"), srch.group("word").replace("-", "\u2011")
-        )  # non-breaking hyphen
+def replace_no_break(s, spaces=True, hyphens=True):
+    if spaces:
+        for sp in NO_BREAK_SEQUENCES + [x.title() for x in NO_BREAK_SEQUENCES]:
+            r_from = "(^|[ \u00a0]){sp} ".format(sp=sp)
+            r_to = "\\g<1>{sp}\u00a0".format(sp=sp)
+            s = re.sub(r_from, r_to, s)
+        for sp in NO_BREAK_SEQUENCES_LEFT + [x.title() for x in NO_BREAK_SEQUENCES_LEFT]:
+            r_from = " {sp}([ \u00a0]|$)".format(sp=sp)
+            r_to = "\u00a0{sp}\\g<1>".format(sp=sp)
+            s = re.sub(r_from, r_to, s)
+    if hyphens:
         srch = re_nbh.search(s)
+        while srch:
+            s = s.replace(
+                srch.group("word"), srch.group("word").replace("-", "\u2011")
+            )  # non-breaking hyphen
+            srch = re_nbh.search(s)
     return s
 
 

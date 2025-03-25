@@ -10,7 +10,6 @@ from chgksuite.composer.composer_common import (
     Imgur,
     parseimg,
 )
-from chgksuite.typotools import replace_no_break_spaces
 
 MEDIA_STUB = {"Key": "", "Type": "Picture"}
 

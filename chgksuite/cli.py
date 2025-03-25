@@ -83,6 +83,26 @@ class ArgparseBuilder:
         )
         self.add_argument(
             parser,
+            "--replace_no_break_spaces",
+            choices=["on", "off"],
+            default=default_overrides.get("replace_no_break_spaces") or "on",
+            help="add non-breaking spaces where applicable",
+            caption="Добавить неразрывные пробелы",
+            advanced=True,
+            argtype="radiobutton",
+        )
+        self.add_argument(
+            parser,
+            "--replace_no_break_hyphens",
+            choices=["on", "off"],
+            default=default_overrides.get("replace_no_break_hyphens") or "on",
+            help="add non-breaking hyphens where applicable",
+            caption="Добавить неразрывные дефисы",
+            advanced=True,
+            argtype="radiobutton",
+        )
+        self.add_argument(
+            parser,
             "-v",
             "--version",
             action="version",

@@ -14,7 +14,6 @@ from docx.shared import Pt as DocxPt
 
 from chgksuite.common import log_wrap, replace_escaped
 from chgksuite.composer.composer_common import BaseExporter, backtick_replace, parseimg
-from chgksuite.typotools import replace_no_break_spaces
 
 WHITEN = {
     "handout": False,
@@ -126,7 +125,7 @@ class DocxExporter(BaseExporter):
                     else:
                         text = run[1]["for_print"]
                     if kwargs.get("replace_no_break_spaces"):
-                        text = replace_no_break_spaces(text)
+                        text = self._replace_no_break(text)
                     r = para.add_run(text)
                 elif run[0] == "hyperlink" and not (
                     whiten and self.args.spoilers == "whiten"
@@ -175,7 +174,7 @@ class DocxExporter(BaseExporter):
                 else:
                     text = run[1]
                     if kwargs.get("replace_no_break_spaces"):
-                        text = replace_no_break_spaces(text)
+                        text = self._replace_no_break(text)
                     r = para.add_run(text)
                     if "italic" in run[0]:
                         r.italic = True
@@ -206,9 +205,7 @@ class DocxExporter(BaseExporter):
         return hyperlink
 
     def add_question(
-        self,
-        element, skip_qcount=False, screen_mode=False,
-        external_para=None
+        self, element, skip_qcount=False, screen_mode=False, external_para=None
     ):
         q = element[1]
         if external_para is None:
@@ -326,8 +323,12 @@ class DocxExporter(BaseExporter):
         table.cell(0, 0).paragraphs[0].add_run("Версия для ведущего\n").bold = True
         table.cell(0, 1).paragraphs[0].add_run("Версия для экрана\n").bold = True
 
-        self.add_question(element, screen_mode=False, external_para=table.cell(0, 0).paragraphs[0])
-        self.add_question(element, screen_mode=True, external_para=table.cell(0, 1).paragraphs[0])
+        self.add_question(
+            element, screen_mode=False, external_para=table.cell(0, 0).paragraphs[0]
+        )
+        self.add_question(
+            element, screen_mode=True, external_para=table.cell(0, 1).paragraphs[0]
+        )
 
         self.doc.add_paragraph()
 

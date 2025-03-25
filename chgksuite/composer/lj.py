@@ -17,7 +17,7 @@ from chgksuite.composer.composer_common import (
     md5,
     parseimg,
 )
-from chgksuite.typotools import re_lowercase, re_uppercase, replace_no_break_spaces
+from chgksuite.typotools import re_lowercase, re_uppercase
 
 
 class LjExporter(BaseExporter):
@@ -375,7 +375,7 @@ class LjExporter(BaseExporter):
             else:
                 res += self.htmlrepl(run[1])
         if replace_spaces:
-            res = replace_no_break_spaces(res)
+            res = self._replace_no_break(res)
         return res
 
     @staticmethod

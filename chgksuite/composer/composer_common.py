@@ -17,7 +17,7 @@ import toml
 from PIL import Image
 
 import chgksuite.typotools as typotools
-from chgksuite.common import get_chgksuite_dir, init_logger, log_wrap, DummyLogger
+from chgksuite.common import DummyLogger, get_chgksuite_dir, init_logger, log_wrap
 from chgksuite.typotools import re_lowercase, re_percent, re_uppercase, re_url
 
 
@@ -68,7 +68,9 @@ def make_filename(s, ext, args, addsuffix=""):
     if addsuffix:
         bn += addsuffix
     if args.add_ts == "on":
-        return "{}_{}.{}".format(bn, datetime.datetime.now().strftime("%Y%m%dT%H%M"), ext)
+        return "{}_{}.{}".format(
+            bn, datetime.datetime.now().strftime("%Y%m%dT%H%M"), ext
+        )
     return bn + "." + ext
 
 
@@ -400,6 +402,13 @@ class BaseExporter:
             self.logger = logger
         else:
             self.logger = init_logger("composer", debug=self.args.debug)
+
+    def _replace_no_break(self, s):
+        return typotools.replace_no_break(
+            s,
+            spaces=self.args.replace_no_break_spaces == "on",
+            hyphens=self.args.replace_no_break_hyphens == "on",
+        )
 
     def parse_4s_elem(self, *args, **kwargs):
         kwargs["logger"] = self.logger

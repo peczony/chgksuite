@@ -10,7 +10,6 @@ from pptx.util import Pt as PptxPt
 
 from chgksuite.common import log_wrap, replace_escaped
 from chgksuite.composer.composer_common import BaseExporter, backtick_replace, parseimg
-from chgksuite.typotools import replace_no_break_spaces
 
 
 class PptxExporter(BaseExporter):
@@ -51,7 +50,7 @@ class PptxExporter(BaseExporter):
     def pptx_format(self, el, para, tf, slide, replace_spaces=True):
         def r_sp(text):
             if replace_spaces:
-                return replace_no_break_spaces(text)
+                return self._replace_no_break(text)
             return text
 
         if isinstance(el, list):
@@ -127,7 +126,7 @@ class PptxExporter(BaseExporter):
         for punct in (".", ",", "!", "?", ":"):
             s = s.replace(" " + punct, punct)
         if replace_spaces:
-            s = replace_no_break_spaces(s)
+            s = self._replace_no_break(s)
         s = s.strip()
         return s
 
