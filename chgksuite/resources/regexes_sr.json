@@ -1,16 +1,16 @@
 {
-    "tour": "^(# +)?R[Uu][Nn][Dd][Aa] ?№? ?([0-9IVXLCDM]*)([\\.:])?$",
-    "tourrev": "^([0-9IVXLCDM]+) R[Uu][Nn][Dd][Aa]([\\.:])?$",
-    "question": "P[Ii][Tt][Aa][Nn][Jj][Ee] ?[№N]?([0-9 ]*) ?([\\.:]|\n|\r\n|$)",
-    "answer": "O[Dd][Gg][Oo][Vv][Oo][Rr] ?[№N]?([0-9]+)? ?[\\.:]",
+    "tour": "^(#\\s+)?R[Uu][Nn][Dd][Aa]\\s?№?\\s?([0-9IVXLCDM]*)([\\.:])?$",
+    "tourrev": "^([0-9IVXLCDM]+)\\sR[Uu][Nn][Dd][Aa]([\\.:])?$",
+    "question": "P[Ii][Tt][Aa][Nn][Jj][Ee]\\s?[№N]?([0-9\\s]*)\\s?([\\.:]|\n|\r\n|$)",
+    "answer": "O[Dd][Gg][Oo][Vv][Oo][Rr]\\s?[№N]?([0-9]+)?\\s?[\\.:]",
     "handout": "^(M[Aa][Tt][Ee][Rr][Ii][Jj][Aa][Ll]|P[Oo][Dd][Ee][Ll][Jj][Ee][Nn][Oo])[\\.:]",
-    "zachet": "P[Rr][Ii][Hh][Vv][Aa][Tt][Aa] [Ss][Ee] ?[\\.:]",
-    "nezachet": "N[Ee] [Pp][Rr][Ii][Hh][Vv][Aa][Tt][Aa] [Ss][Ee] ?[\\.:]",
-    "comment": "K[Oo][Mm][Ee][Nn][Tt][Aa][Rr] ?[№N]?([0-9]+)? ?[\\.:]",
-    "author": "A[Uu][Tt][Oo][Rr][Ii]? ?[\\.:]",
-    "source": "I[Zz][Vv][Oo][Rr][Ii]? ?[\\.:]",
-    "editor": "U[Rr][Ee][Dd][Nn][Ii][Kk][Ii]? ?( ?[\\.:]| [\\-–—]+ )",
-    "date": "D[Aa][Tt][Uu][Mm] ?[\\.:]",
+    "zachet": "P[Rr][Ii][Hh][Vv][Aa][Tt][Aa]\\s[Ss][Ee]\\s?[\\.:]",
+    "nezachet": "N[Ee]\\s[Pp][Rr][Ii][Hh][Vv][Aa][Tt][Aa]\\s[Ss][Ee]\\s?[\\.:]",
+    "comment": "K[Oo][Mm][Ee][Nn][Tt][Aa][Rr]\\s?[№N]?([0-9]+)?\\s?[\\.:]",
+    "author": "A[Uu][Tt][Oo][Rr][Ii]?\\s?[\\.:]",
+    "source": "I[Zz][Vv][Oo][Rr][Ii]?\\s?[\\.:]",
+    "editor": "U[Rr][Ee][Dd][Nn][Ii][Kk][Ii]?\\s?(\\s?[\\.:]|\\s[\\-–—]+\\s)",
+    "date": "D[Aa][Tt][Uu][Mm]\\s?[\\.:]",
     "date2": "WILL_FILL_LATER",
-    "number": "^[0-9]+[\\.\\)] *"
+    "number": "^[0-9]+[\\.\\)]\\s*"
 }
