@@ -151,12 +151,12 @@ class PptxExporter(BaseExporter):
         add_line_break = False
         if section:
             r = p.add_run()
-            r.text = replace_no_break_spaces(self.pptx_process_text(section[0][1]))
+            r.text = self._replace_no_break(self.pptx_process_text(section[0][1]))
             r.font.size = PptxPt(self.c["text_size_grid"]["section"])
             add_line_break = True
         if editor:
             r = p.add_run()
-            r.text = replace_no_break_spaces(
+            r.text = self._replace_no_break(
                 ("\n" if add_line_break else "")
                 + self.pptx_process_text(editor[0][1])
                 + "\n"
@@ -165,7 +165,7 @@ class PptxExporter(BaseExporter):
         if meta:
             for element in meta:
                 r = p.add_run()
-                r.text = replace_no_break_spaces(
+                r.text = self._replace_no_break(
                     ("\n" if add_line_break else "")
                     + self.pptx_process_text(element[1])
                     + "\n"
@@ -468,7 +468,8 @@ class PptxExporter(BaseExporter):
         os.chdir(wd)
         self.prs = Presentation(template)
         self.TITLE_SLIDE = self.prs.slide_layouts[0]
-        self.BLANK_SLIDE = self.prs.slide_layouts[6]
+        # self.BLANK_SLIDE = self.prs.slide_layouts[6]
+        self.BLANK_SLIDE = self.prs.slides[0]
         buffer = []
         for element in self.structure:
             if element[0] != "Question":
