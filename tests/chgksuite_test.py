@@ -10,10 +10,8 @@ import subprocess
 import tempfile
 
 import pytest
-from PIL import Image
-
 from chgksuite.common import DefaultArgs
-from chgksuite.composer.chgksuite_parser import parse_4s
+from chgksuite.composer.chgksuite_parser import parse_4s, replace_counters
 from chgksuite.composer.composer_common import _parse_4s_elem, parseimg
 from chgksuite.composer.telegram import TelegramExporter
 from chgksuite.parser import (
@@ -22,6 +20,7 @@ from chgksuite.parser import (
     compose_4s,
 )
 from chgksuite.typotools import get_quotes_right
+from PIL import Image
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -209,3 +208,16 @@ def test_long_handout():
         img = Image.open("long_handout_telegram.jpg")
         assert img.size == (1600, 83)
         os.chdir(cwd)
+
+
+REPLACE_COUNTER_TEST_CASES = [
+    ("4SCOUNTER 4SCOUNTER 4SCOUNTER", "1 2 3"),
+    ("4SCOUNTER 4SCOUNTER1 4SCOUNTERa", "1 1 1"),
+    ("__SET__COUNTER____5 4SCOUNTER", " 5"),
+    ("__SET__COUNTER__a__4 4SCOUNTERa", " 4"),
+]
+
+
+@pytest.mark.parametrize("replace_input, replace_output", REPLACE_COUNTER_TEST_CASES)
+def test_replace_counters(replace_input, replace_output):
+    assert replace_counters(replace_input) == replace_output

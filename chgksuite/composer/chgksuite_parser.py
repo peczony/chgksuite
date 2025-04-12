@@ -1,7 +1,7 @@
 import codecs
 import random
 import re
-from collections import Counter
+from collections import defaultdict
 
 from chgksuite.common import QUESTION_LABELS, check_question, init_logger, log_wrap
 from chgksuite.typotools import remove_excessive_whitespace as rew
@@ -63,18 +63,27 @@ def process_list(element):
         element[1] = inner_list
 
 
-RE_COUNTER = re.compile("4SCOUNTER([0-9a-zA-Z_]*)")
+RE_COUNTER = "4SCOUNTER(?P<counter_id>[0-9a-zA-Z_]*)"
+RE_SET_COUNTER = "__SET__COUNTER__(?P<counter_id_set>[0-9a-zA-Z_]*)__(?P<counter_value>[0-9+])"
+RE_COUNTER_UNIFY = re.compile(f"({RE_COUNTER}|{RE_SET_COUNTER})")
 
 
 def replace_counters(string_):
-    dd = Counter()
-    match = RE_COUNTER.search(string_)
+    dd = defaultdict(lambda: 1)
+    match = RE_COUNTER_UNIFY.search(string_)
     while match:
         span = match.span()
-        counter_id = match.group(1)
-        dd[counter_id] += 1
-        string_ = string_[: span[0]] + str(dd[counter_id]) + string_[span[1] :]
-        match = RE_COUNTER.search(string_)
+        if "__SET__COUNTER" in match.group(0):
+            counter_id = match.group("counter_id_set")
+            counter_value = int(match.group("counter_value"))
+            dd[counter_id] = counter_value
+            string_ = string_[: span[0]] + string_[span[1] :]
+        else:
+            span = match.span()
+            counter_id = match.group("counter_id")
+            string_ = string_[: span[0]] + str(dd[counter_id]) + string_[span[1] :]
+            dd[counter_id] += 1
+        match = RE_COUNTER_UNIFY.search(string_)    
     return string_
 
 
