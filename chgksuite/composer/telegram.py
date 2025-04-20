@@ -41,7 +41,10 @@ class TelegramExporter(BaseExporter):
 
     def check_connectivity(self):
         req_me = requests.get(f"https://api.telegram.org/bot{self.bot_token}/getMe")
-        assert req_me.status_code == 200
+        if req_me.status_code != 200:
+            raise Exception(
+                f"getMe request wasn't successful: {req_me.status_code} {req_me.text}"
+            )
         obj = req_me.json()
         assert obj["ok"]
         if self.args.debug:
@@ -74,6 +77,7 @@ class TelegramExporter(BaseExporter):
     def init_telegram(self):
         """Initialize Telegram API connection and start sidecar bot."""
         self.bot_token = self.get_api_credentials()
+        assert self.bot_token is not None
 
         self.init_temp_db()
         self.init_resolve_db()
@@ -86,7 +90,9 @@ class TelegramExporter(BaseExporter):
         cur = self.db_conn.cursor()
         while True:
             time.sleep(2)
-            messages = cur.execute("select raw_data, created_at from bot_status").fetchall()
+            messages = cur.execute(
+                "select raw_data, created_at from bot_status"
+            ).fetchall()
             if messages and json.loads(messages[0][0])["status"] == "ok":
                 break
         # Request user authentication
@@ -134,28 +140,53 @@ class TelegramExporter(BaseExporter):
                 return True
         return False
 
+    def get_bot_token(self, tg):
+        if self.args.tgaccount == "my_account":
+
+            def _getter(x):
+                return x["bot_token"]
+        else:
+
+            def _getter(x):
+                return x["bot_tokens"][self.args.tgaccount]
+
+        try:
+            return _getter(tg)
+        except KeyError:
+            bot_token = input("Please paste your bot token:").strip()
+
+        if self.args.tgaccount == "my_account":
+
+            def _setter(x, y):
+                x["bot_token"] = y
+        else:
+
+            def _setter(x, y):
+                if "bot_tokens" not in y:
+                    x["bot_tokens"] = {}
+                x["bot_tokens"][self.args.tgaccount] = y
+
+        _setter(tg, bot_token)
+        self.save_tg(tg)
+        return bot_token
+
     def get_api_credentials(self):
         """Get or create bot token and channel/discussion IDs from telegram.toml"""
         settings = load_settings()
 
-        if os.path.exists(self.telegram_toml_path) and not self.args.reset_api:
+        if (
+            settings.get("stop_if_no_stats")
+            and not self.structure_has_stats()
+            and not os.environ.get("CHGKSUITE_BYPASS_STATS_CHECK")
+        ):
+            raise Exception("don't publish questions without stats")
+
+        if os.path.exists(self.telegram_toml_path):
             with open(self.telegram_toml_path, "r", encoding="utf8") as f:
                 tg = toml.load(f)
-            if (
-                settings.get("stop_if_no_stats")
-                and not self.structure_has_stats()
-                and not os.environ.get("CHGKSUITE_BYPASS_STATS_CHECK")
-            ):
-                raise Exception("don't publish questions without stats")
-
-            return tg["bot_token"]
         else:
-            print("Please enter your bot token for Telegram.")
-            bot_token = input("Enter your bot token: ").strip()
-            tg = {"bot_token": bot_token}
-            self.save_tg(tg)
-
-            return bot_token
+            tg = {}
+        return self.get_bot_token(tg)
 
     def save_tg(self, tg):
         self.logger.info(f"saving {tg}")
@@ -1059,9 +1090,7 @@ class TelegramExporter(BaseExporter):
             entity_name = "discussion group"
             instruction_message = "🔄 Please forward any message from the discussion group\n\n⚠️ IMPORTANT: Do NOT forward messages that were automatically posted from the channel. Forward messages that were sent directly in the discussion group."
             success_message = "✅ Successfully extracted discussion group ID: {}"
-            failure_message = (
-                "❌ Failed to extract discussion group ID."
-            )
+            failure_message = "❌ Failed to extract discussion group ID."
 
         if add_msg:
             instruction_message = add_msg + "\n\n" + instruction_message
