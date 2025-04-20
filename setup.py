@@ -58,8 +58,7 @@ setup(
         "python-docx",
         "python-pptx",
         "requests",
-        "telethon",
-        "TgCrypto",
+        "python-telegram-bot",
         "toml",
     ]
 )
