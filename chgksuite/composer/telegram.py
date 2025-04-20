@@ -1,22 +1,19 @@
+import json
 import os
 import random
 import re
-import shutil
 import sqlite3
+import tempfile
 import time
+import uuid
 
+import requests
 import toml
 from PIL import Image, ImageOps
-from telethon import errors
-from telethon.sync import TelegramClient
-from telethon.tl.functions.messages import (
-    GetDiscussionMessageRequest,
-)
-from telethon.tl.types import InputChannel
 
 from chgksuite.common import get_chgksuite_dir, init_logger, load_settings, tryint
 from chgksuite.composer.composer_common import BaseExporter, parseimg
-from chgksuite.composer.telegram_parser import CustomHtmlParser
+from chgksuite.composer.telegram_bot import run_bot_in_thread
 
 
 class TelegramExporter(BaseExporter):
@@ -24,29 +21,112 @@ class TelegramExporter(BaseExporter):
         super().__init__(*args, **kwargs)
         self.chgksuite_dir = get_chgksuite_dir()
         self.logger = kwargs.get("logger") or init_logger("composer")
-        try:
-            self.init_tg()
-        except (errors.AuthKeyUnregisteredError, sqlite3.OperationalError) as e:
-            filepath = os.path.join(
-                self.chgksuite_dir, self.args.tgaccount + ".session"
-            )
-            new_filepath = filepath + ".bak"
-            self.logger.warning(f"Session error: {str(e)}. Moving session: {filepath} -> {new_filepath}")
-            if os.path.isfile(filepath):
-                shutil.move(filepath, new_filepath)
-            self.init_tg()
         self.qcount = 1
         self.number = 1
         self.tg_heading = None
-
-    def init_tg(self):
-        api_id, api_hash = self.get_api_credentials()
-        self.client = TelegramClient(
-            os.path.join(self.chgksuite_dir, self.args.tgaccount), api_id, api_hash
+        self.forwarded_message = None
+        self.target_channel = None
+        self.created_at = None
+        self.telegram_toml_path = os.path.join(self.chgksuite_dir, "telegram.toml")
+        self.resolve_db_path = os.path.join(self.chgksuite_dir, "resolve.db")
+        self.temp_db_path = os.path.join(
+            tempfile.gettempdir(), f"telegram_sidecar_{uuid.uuid4().hex}.db"
         )
-        self.client.start()
-        me = self.client.get_me()
-        self.logger.debug(f"Logged in as {me.username or me.first_name}")
+        self.bot_token = None
+        self.control_chat_id = None  # Chat ID where the user talks to the bot
+        self.channel_id = None  # Target channel ID
+        self.chat_id = None  # Discussion group ID linked to the channel
+        self.auth_uuid = uuid.uuid4().hex[:8]
+        self.init_telegram()
+
+    def check_connectivity(self):
+        req_me = requests.get(f"https://api.telegram.org/bot{self.bot_token}/getMe")
+        assert req_me.status_code == 200
+        obj = req_me.json()
+        assert obj["ok"]
+        if self.args.debug:
+            print(f"connection successful! {obj}")
+        self.bot_id = obj["result"]["id"]
+
+    def init_temp_db(self):
+        self.db_conn = sqlite3.connect(self.temp_db_path)
+        self.db_conn.row_factory = sqlite3.Row
+
+        cursor = self.db_conn.cursor()
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            raw_data TEXT,
+            chat_id TEXT,
+            created_at TEXT
+        )
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS bot_status (
+            raw_data TEXT,
+            created_at TEXT
+        )
+        """)
+
+        self.db_conn.commit()
+
+    def init_telegram(self):
+        """Initialize Telegram API connection and start sidecar bot."""
+        self.bot_token = self.get_api_credentials()
+
+        self.init_temp_db()
+        self.init_resolve_db()
+        self.check_connectivity()
+
+        # Start the sidecar bot as a daemon thread
+        if self.args.debug:
+            print(f"Starting sidecar bot with DB at {self.temp_db_path}")
+        self.bot_thread = run_bot_in_thread(self.bot_token, self.temp_db_path)
+        cur = self.db_conn.cursor()
+        while True:
+            time.sleep(2)
+            messages = cur.execute("select raw_data, created_at from bot_status").fetchall()
+            if messages and json.loads(messages[0][0])["status"] == "ok":
+                break
+        # Request user authentication
+        self.authenticate_user()
+
+    def authenticate_user(self):
+        print("\n" + "=" * 50)
+        print(f"Please send the following code to the bot: {self.auth_uuid}")
+        print("This is for security validation.")
+        print("=" * 50 + "\n")
+
+        # Wait for authentication
+        retry_count = 0
+        SLEEP = 2
+        max_retries = 300 / SLEEP  # 5 minutes
+
+        while not self.control_chat_id and retry_count < max_retries:
+            time.sleep(2)
+            cursor = self.db_conn.cursor()
+            cursor.execute(
+                f"SELECT * FROM messages m WHERE m.raw_data like '%{self.auth_uuid}%' ORDER BY m.created_at DESC LIMIT 1",
+            )
+            result = cursor.fetchone()
+
+            if result:
+                msg_data = json.loads(result["raw_data"])
+                self.control_chat_id = msg_data["message"]["chat"]["id"]
+                self.send_api_request(
+                    "sendMessage",
+                    {
+                        "chat_id": self.control_chat_id,
+                        "text": "✅ Authentication successful! This chat will be used for control messages.",
+                    },
+                )
+
+            retry_count += 1
+
+        if not self.control_chat_id:
+            self.logger.error("Authentication timeout. Please try again.")
+            raise Exception("Authentication failed")
 
     def structure_has_stats(self):
         for element in self.structure:
@@ -54,27 +134,12 @@ class TelegramExporter(BaseExporter):
                 return True
         return False
 
-    def get_message_link(self, message, channel=None):
-        if not channel:
-            channel = self.client.get_entity(message.peer_id)
-
-        # Determine if the channel is public (has a username)
-        if hasattr(channel, "username") and channel.username:
-            # Public channel with username
-            return f"https://t.me/{channel.username}/{message.id}"
-        else:
-            # Private channel, use channel ID
-            channel_id_str = str(channel.id)
-            # Remove -100 prefix if present (common in Telethon)
-            if channel_id_str.startswith("-100"):
-                channel_id_str = channel_id_str[4:]
-            return f"https://t.me/c/{channel_id_str}/{message.id}"
-
     def get_api_credentials(self):
+        """Get or create bot token and channel/discussion IDs from telegram.toml"""
         settings = load_settings()
-        telegram_toml_file_path = os.path.join(self.chgksuite_dir, "telegram.toml")
-        if os.path.exists(telegram_toml_file_path) and not self.args.reset_api:
-            with open(telegram_toml_file_path, "r", encoding="utf8") as f:
+
+        if os.path.exists(self.telegram_toml_path) and not self.args.reset_api:
+            with open(self.telegram_toml_path, "r", encoding="utf8") as f:
                 tg = toml.load(f)
             if (
                 settings.get("stop_if_no_stats")
@@ -82,17 +147,98 @@ class TelegramExporter(BaseExporter):
                 and not os.environ.get("CHGKSUITE_BYPASS_STATS_CHECK")
             ):
                 raise Exception("don't publish questions without stats")
-            return tg["api_id"], tg["api_hash"]
+
+            return tg["bot_token"]
         else:
-            print("Please enter you api_id and api_hash.")
-            print(
-                "Go to https://my.telegram.org/apps, register an app and paste the credentials here."
-            )
-            api_id = input("Enter your api_id: ").strip()
-            api_hash = input("Enter your api_hash: ").strip()
-            with open(telegram_toml_file_path, "w", encoding="utf8") as f:
-                toml.dump({"api_id": api_id, "api_hash": api_hash}, f)
-            return api_id, api_hash
+            print("Please enter your bot token for Telegram.")
+            bot_token = input("Enter your bot token: ").strip()
+            tg = {"bot_token": bot_token}
+            self.save_tg(tg)
+
+            return bot_token
+
+    def save_tg(self, tg):
+        self.logger.info(f"saving {tg}")
+        with open(self.telegram_toml_path, "w", encoding="utf8") as f:
+            toml.dump(tg, f)
+
+    def send_api_request(self, method, data=None, files=None):
+        """Send a request to the Telegram Bot API."""
+        url = f"https://api.telegram.org/bot{self.bot_token}/{method}"
+
+        try:
+            if files:
+                response = requests.post(url, data=data, files=files, timeout=60)
+            else:
+                response = requests.post(url, json=data, timeout=30)
+
+            response_data = response.json()
+
+            if not response_data.get("ok"):
+                error_message = response_data.get("description", "Unknown error")
+                self.logger.error(f"Telegram API error: {error_message}")
+
+                # Handle rate limiting
+                if "retry_after" in response_data:
+                    retry_after = response_data["retry_after"]
+                    self.logger.info(f"Rate limited. Waiting for {retry_after} seconds")
+                    time.sleep(retry_after + 1)
+                    return self.send_api_request(method, data, files)
+
+                raise Exception(f"Telegram API error: {error_message}")
+
+            return response_data["result"]
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Request error: {e}")
+            raise
+
+    def get_message_link(self, chat_id, message_id, username=None):
+        """Generate a link to a Telegram message."""
+        if username:
+            # Public channel with username
+            return f"https://t.me/{username}/{message_id}"
+        else:
+            # Private channel, use channel ID
+            channel_id_str = str(chat_id)
+            # Remove -100 prefix if present
+            if channel_id_str.startswith("-100"):
+                channel_id_str = channel_id_str[4:]
+            return f"https://t.me/c/{channel_id_str}/{message_id}"
+
+    def extract_id_from_link(self, link) -> int | str | None:
+        """
+        Extract channel or chat ID from a Telegram link.
+        Examples:
+        - https://t.me/c/1234567890/123 -> 1234567890
+        - https://t.me/joinchat/CkzknkZnxkZkZWM0 -> None (not supported)
+        - -1001234567890 -> 1234567890
+        - @username -> (username, None)  # Returns username for resolution later
+        """
+        if link is None:
+            return None
+
+        if tryint(link) and link.startswith("-100"):
+            return int(link[4:])
+        elif tryint(link):
+            return int(link)
+
+        # Handle username format
+        if link.startswith("@"):
+            return link[1:]
+
+        # Handle URL format for private channels (with numeric ID)
+        link_pattern = r"https?://t\.me/c/(\d+)"
+        match = re.search(link_pattern, link)
+        if match:
+            return int(match.group(1))
+
+        # Handle URL format for public channels (with username)
+        public_pattern = r"https?://t\.me/([^/]+)"
+        match = re.search(public_pattern, link)
+        if match:
+            return match.group(1)
+
+        return link
 
     def tgyapper(self, e):
         if isinstance(e, str):
@@ -166,6 +312,7 @@ class TelegramExporter(BaseExporter):
 
     @classmethod
     def prepare_image_for_telegram(cls, imgfile):
+        """Prepare an image for uploading to Telegram (resize if needed)."""
         img = Image.open(imgfile)
         width, height = img.size
         file_size = os.path.getsize(imgfile)
@@ -250,111 +397,146 @@ class TelegramExporter(BaseExporter):
         return res, images
 
     def _post(self, chat_id, text, photo, reply_to_message_id=None):
-        self.logger.info(f"Posting message `{text}`")
-        if photo:
-            if not text:
-                caption = ""
-            elif text == "---":
-                caption = "--"
-            else:
-                caption = "---"
-            msg = self.client.send_file(
-                chat_id,
-                photo,
-                caption=caption,
-                parse_mode=CustomHtmlParser,
-                reply_to=reply_to_message_id,
-                silent=True,
-            )
-            if text:
-                time.sleep(2)
-                msg = self.client.edit_message(
-                    chat_id,
-                    msg.id,
-                    text=text,
-                    parse_mode=CustomHtmlParser,
-                    link_preview=False,
-                )
-        else:
-            msg = self.client.send_message(
-                chat_id,
-                text,
-                parse_mode=CustomHtmlParser,
-                link_preview=False,
-                reply_to=reply_to_message_id,
-                silent=True,
-            )
-        return msg
+        """Send a message to Telegram using API requests."""
+        self.logger.info(f"Posting message: {text[:50]}...")
 
-    def __post(self, *args, **kwargs):
-        retries = 0
-        while retries <= 2:
-            try:
-                return self._post(*args, **kwargs)
-            except errors.FloodWaitError as e:
-                secs_to_wait = e.seconds + 30
-                self.logger.error(
-                    f"Telegram thinks we are spammers, waiting for {secs_to_wait} seconds"
-                )
-                time.sleep(secs_to_wait)
-                retries += 1
+        try:
+            if photo:
+                # Step 1: Upload the photo first
+                with open(photo, "rb") as photo_file:
+                    files = {"photo": photo_file}
+                    caption = "" if not text else ("---" if text != "---" else "--")
+
+                    data = {
+                        "chat_id": chat_id,
+                        "caption": caption,
+                        "parse_mode": "HTML",
+                        "disable_notification": True,
+                    }
+
+                    if reply_to_message_id:
+                        data["reply_to_message_id"] = reply_to_message_id
+
+                    result = self.send_api_request("sendPhoto", data, files)
+                    msg_id = result["message_id"]
+
+                # Step 2: Edit the message if needed to add full text
+                if text and text != "---":
+                    time.sleep(2)  # Slight delay before editing
+                    edit_data = {
+                        "chat_id": chat_id,
+                        "message_id": msg_id,
+                        "caption": text,
+                        "parse_mode": "HTML",
+                        "disable_web_page_preview": True,
+                    }
+                    result = self.send_api_request("editMessageCaption", edit_data)
+
+                return {"message_id": msg_id, "chat": {"id": chat_id}}
+            else:
+                # Simple text message
+                data = {
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                    "disable_notification": True,
+                }
+
+                if reply_to_message_id:
+                    data["reply_to_message_id"] = reply_to_message_id
+
+                result = self.send_api_request("sendMessage", data)
+                return {"message_id": result["message_id"], "chat": {"id": chat_id}}
+
+        except Exception as e:
+            self.logger.error(f"Error posting message: {str(e)}")
+            raise
 
     def post(self, posts):
+        """Post a series of messages, handling the channel and discussion group."""
         if self.args.dry_run:
-            self.logger.info("skipping posting due to dry run")
+            self.logger.info("Skipping posting due to dry run")
             for post in posts:
                 self.logger.info(post)
             return
+
         messages = []
         text, im = posts[0]
-        root_msg = self.__post(
+
+        # Step 1: Post the root message to the channel
+        root_msg = self._post(
             self.channel_id,
             self.labels["general"]["handout_for_question"].format(text[3:])
             if text.startswith("QQQ")
             else text,
             im,
         )
-        if (
-            len(posts) >= 2 and text.startswith("QQQ") and im and posts[1][0]
-        ):  # crutch for case when the question doesn't fit without image
+
+        # Handle special case for questions with images
+        if len(posts) >= 2 and text.startswith("QQQ") and im and posts[1][0]:
             prev_root_msg = root_msg
-            root_msg = self.__post(self.channel_id, posts[1][0], posts[1][1])
+            root_msg = self._post(self.channel_id, posts[1][0], posts[1][1])
             posts = posts[1:]
             messages.append(root_msg)
             messages.append(prev_root_msg)
+
         time.sleep(2.1)
 
-        result = self.client(
-            GetDiscussionMessageRequest(peer=self.channel_entity, msg_id=root_msg.id)
+        # Step 2: Wait for the message to appear in the discussion group
+        root_msg_in_discussion_id = self.get_discussion_message(
+            self.channel_id, root_msg["message_id"]
         )
-        root_msg_in_chat = result.messages[0]
 
-        root_msg_link = self.get_message_link(root_msg, self.channel_entity)
-        root_msg_in_chat_link = self.get_message_link(root_msg_in_chat, self.chat_entity)
+        if not root_msg_in_discussion_id:
+            self.logger.error("Failed to find discussion message")
+            return
+
+        root_msg_in_discussion = {
+            "message_id": root_msg_in_discussion_id,
+            "chat": {"id": self.chat_id},
+        }
+
+        # Create message links
+        root_msg_link = self.get_message_link(self.channel_id, root_msg["message_id"])
+        root_msg_in_discussion_link = self.get_message_link(
+            self.chat_id, root_msg_in_discussion_id
+        )
 
         self.logger.info(
-            f"Posted message {root_msg_link} ({root_msg_in_chat_link} in chat)"
+            f"Posted message {root_msg_link} ({root_msg_in_discussion_link} in discussion group)"
         )
+
         time.sleep(random.randint(5, 7))
+
         if root_msg not in messages:
             messages.append(root_msg)
-        messages.append(root_msg_in_chat)
+        messages.append(root_msg_in_discussion)
+
+        # Step 3: Post replies in the discussion group
         for post in posts[1:]:
             text, im = post
-            reply_msg = self.__post(
-                self.chat_id, text, im, reply_to_message_id=root_msg_in_chat.id
+            reply_msg = self._post(
+                self.chat_id,
+                text,
+                im,
+                reply_to_message_id=root_msg_in_discussion_id,
             )
             self.logger.info(
-                f"Replied to message {root_msg_in_chat_link} with reply message"
+                f"Replied to message {root_msg_in_discussion_link} with reply message"
             )
             time.sleep(random.randint(5, 7))
             messages.append(reply_msg)
+
         return messages
 
     def post_wrapper(self, posts):
+        """Wrapper for post() that handles section links."""
         messages = self.post(posts)
-        if self.section and not self.args.dry_run:
-            self.section_links.append(self.get_message_link(messages[0]))
+        if messages and self.section and not self.args.dry_run:
+            self.section_links.append(
+                self.get_message_link(self.channel_id, messages[0]["message_id"])
+            )
         self.section = False
 
     def tg_process_element(self, pair):
@@ -410,20 +592,20 @@ class TelegramExporter(BaseExporter):
         list_ = [
             x.strip()
             for x in list_
-            if not x.startswith(("\n</spoiler>", "\n<spoiler>"))
+            if not x.startswith(("\n</tg-spoiler>", "\n<tg-spoiler>"))
         ]
         if lb_after_first:
             list_[0] = list_[0] + "\n"
         res = "\n".join(list_)
-        res = res.replace("\n</spoiler>\n", "\n</spoiler>")
-        res = res.replace("\n<spoiler>\n", "\n<spoiler>")
+        res = res.replace("\n</tg-spoiler>\n", "\n</tg-spoiler>")
+        res = res.replace("\n<tg-spoiler>\n", "\n<tg-spoiler>")
         while res.endswith("\n"):
             res = res[:-1]
-        if res.endswith("\n</spoiler>"):
-            res = res[:-3] + "</spoiler>"
+        if res.endswith("\n</tg-spoiler>"):
+            res = res[:-3] + "</tg-spoiler>"
         if self.args.nospoilers:
-            res = res.replace("<spoiler>", "")
-            res = res.replace("</spoiler>", "")
+            res = res.replace("<tg-spoiler>", "")
+            res = res.replace("</tg-spoiler>", "")
         res = res.replace("`", "'")  # hack so spoilers don't break
         return res
 
@@ -454,9 +636,9 @@ class TelegramExporter(BaseExporter):
             threshold_ = threshold - 3
             chunk = texts[0][:threshold_]
             rest = texts[0][threshold_:]
-            if texts[0].endswith("</spoiler>"):
-                chunk += "</spoiler>"
-                rest = "<spoiler>" + rest
+            if texts[0].endswith("</tg-spoiler>"):
+                chunk += "</tg-spoiler>"
+                rest = "<tg-spoiler>" + rest
             texts[0] = rest
             return chunk, im, texts, images
 
@@ -474,11 +656,11 @@ class TelegramExporter(BaseExporter):
         if self.args.nospoilers:
             res = s_
         elif t == "both":
-            res = "<spoiler>" + s_ + "</spoiler>"
+            res = "<tg-spoiler>" + s_ + "</tg-spoiler>"
         elif t == "left":
-            res = "<spoiler>" + s_
+            res = "<tg-spoiler>" + s_
         elif t == "right":
-            res = s_ + "</spoiler>"
+            res = s_ + "</tg-spoiler>"
         return res
 
     @staticmethod
@@ -613,50 +795,112 @@ class TelegramExporter(BaseExporter):
         return tryint(str_)
 
     def export(self):
+        """Main export function to send the structure to Telegram."""
         self.section_links = []
         self.buffer_texts = []
         self.buffer_images = []
         self.section = False
 
-        # Find channel and chat
-        self.channel_entity = None
-        self.chat_entity = None
+        if not self.args.tgchannel or not self.args.tgchat:
+            raise Exception("Please provide channel and chat links or IDs.")
 
-        if self.is_valid_tg_identifier(
-            self.args.tgchannel
-        ) and self.is_valid_tg_identifier(self.args.tgchat):
-            self.channel_id = self.is_valid_tg_identifier(self.args.tgchannel)
-            self.chat_id = self.is_valid_tg_identifier(self.args.tgchat)
-            self.channel_entity = InputChannel(self.channel_id, 0)
-            self.chat_entity = InputChannel(self.chat_id, 0)
+        # Try to extract IDs from links or direct ID inputs
+        channel_result = self.extract_id_from_link(self.args.tgchannel)
+        chat_result = self.extract_id_from_link(self.args.tgchat)
+
+        # Handle channel resolution
+        if isinstance(channel_result, int):
+            channel_id = channel_result
+        elif isinstance(channel_result, str):
+            channel_id = self.resolve_username_to_id(channel_result)
+            if not channel_id:
+                print("\n" + "=" * 50)
+                print("Please forward any message from the target channel to the bot.")
+                print("This will allow me to extract the channel ID automatically.")
+                print("=" * 50 + "\n")
+
+                # Wait for a forwarded message with channel information
+                channel_id = self.wait_for_forwarded_message(
+                    entity_type="channel", check_type=True, string_id=channel_result
+                )
+                if channel_id:
+                    self.save_username(channel_result, channel_id)
+                else:
+                    raise Exception("Failed to get channel ID from forwarded message")
         else:
-            # Get dialogs and find the channel and chat by title
-            dialogs = self.client.get_dialogs()
-            for dialog in dialogs:
-                if (dialog.title or "").strip() == self.args.tgchannel.strip():
-                    self.channel_entity = dialog.entity
-                    self.channel_id = dialog.id
-                if (dialog.title or "").strip() == self.args.tgchat.strip():
-                    self.chat_entity = dialog.entity
-                    self.chat_id = dialog.id
-                if self.channel_entity is not None and self.chat_entity is not None:
-                    break
+            raise Exception("Channel ID is undefined")
+        # Handle chat resolution
+        if isinstance(chat_result, int):
+            chat_id = chat_result
+        elif isinstance(chat_result, str):
+            chat_id = self.resolve_username_to_id(chat_result)
+            if not chat_id:
+                print("\n" + "=" * 50)
+                print(
+                    "Please forward any message from the discussion group to the bot."
+                )
+                print("This will allow me to extract the group ID automatically.")
+                print("=" * 50 + "\n")
 
-            if not self.channel_entity:
-                raise Exception("Channel not found, please check provided name")
-            if not self.chat_entity:
-                raise Exception("Linked chat not found, please check provided name")
+                # Wait for a forwarded message with chat information
+                chat_id = self.wait_for_forwarded_message(
+                    entity_type="chat", check_type=False, string_id=chat_result
+                )
+                if not chat_id:
+                    self.logger.error("Failed to get chat ID from forwarded message")
+                    return False
+                while chat_id == channel_id:
+                    error_msg = (
+                        "Chat ID and channel ID are the same. The problem may be that "
+                        "you forwarded a message from discussion group that itself was automatically forwarded "
+                        "from the channel by Telegram. Please forward a message that was sent directly in the discussion group."
+                    )
+                    self.logger.error(error_msg)
+                    chat_id = self.wait_for_forwarded_message(
+                        entity_type="chat",
+                        check_type=False,
+                        add_msg=error_msg,
+                        string_id=chat_result,
+                    )
+                if chat_id:
+                    self.save_username(chat_result, chat_id)
+        else:
+            raise Exception("Chat ID is undefined")
+
+        if not channel_id:
+            raise Exception("Channel ID is undefined")
+        if not chat_id:
+            raise Exception("Chat ID is undefined")
+
+        self.channel_id = f"-100{channel_id}"
+        self.chat_id = f"-100{chat_id}"
+
+        self.logger.info(
+            f"Using channel ID {self.channel_id} and discussion group ID {self.chat_id}"
+        )
+
+        channel_access = self.verify_access(self.channel_id, hr_type="channel")
+        chat_access = self.verify_access(self.chat_id, hr_type="chat")
+        if not (channel_access and chat_access):
+            bad = []
+            if not channel_access:
+                bad.append("channel")
+            if not chat_access:
+                bad.append("discussion group")
+            raise Exception(f"The bot doesn't have access to {' and '.join(bad)}")
 
         # Process all elements
         for pair in self.structure:
             self.tg_process_element(pair)
 
+        # Handle any remaining buffer
         if self.buffer_texts or self.buffer_images:
             posts = self.split_to_messages(self.buffer_texts, self.buffer_images)
             self.post_wrapper(posts)
             self.buffer_texts = []
             self.buffer_images = []
 
+        # Create and pin navigation message with links to sections
         if not self.args.skip_until:
             navigation_text = [self.labels["general"]["general_impressions_text"]]
             if self.tg_heading:
@@ -669,10 +913,269 @@ class TelegramExporter(BaseExporter):
                     f"{self.labels['general']['section']} {i + 1}: {link}"
                 )
             navigation_text = "\n".join(navigation_text)
-            messages = self.post([(navigation_text.strip(), None)])
+
+            # Post the navigation message
             if not self.args.dry_run:
-                self.client.pin_message(
-                    self.channel_entity,
-                    messages[0].id,
-                    notify=False,
-                )
+                message = self._post(self.channel_id, navigation_text.strip(), None)
+
+                # Pin the message
+                try:
+                    self.send_api_request(
+                        "pinChatMessage",
+                        {
+                            "chat_id": self.channel_id,
+                            "message_id": message["message_id"],
+                            "disable_notification": True,
+                        },
+                    )
+                except Exception as e:
+                    self.logger.error(f"Failed to pin message: {str(e)}")
+        return True
+
+    def init_resolve_db(self):
+        if not os.path.exists(self.resolve_db_path):
+            self.resolve_db_conn = sqlite3.connect(self.resolve_db_path)
+            self.resolve_db_conn.execute(
+                "CREATE TABLE IF NOT EXISTS resolve (username TEXT PRIMARY KEY, id INTEGER)"
+            )
+            self.resolve_db_conn.commit()
+        else:
+            self.resolve_db_conn = sqlite3.connect(self.resolve_db_path)
+
+    def resolve_username_to_id(self, username):
+        assert username is not None
+        cur = self.resolve_db_conn.cursor()
+        cur.execute("SELECT id FROM resolve WHERE username = ?", (username,))
+        res = cur.fetchone()
+        if res:
+            return res[0]
+        return None
+
+    def save_username(self, username, id_):
+        assert username is not None
+        assert id_ is not None
+        self.logger.info(f"Saving username {username} as ID {id_}")
+        cur = self.resolve_db_conn.cursor()
+        cur.execute("INSERT INTO resolve (username, id) VALUES (?, ?)", (username, id_))
+        self.resolve_db_conn.commit()
+
+    def get_discussion_message(self, channel_id, message_id):
+        """
+        Find the corresponding message in the discussion group for a channel message.
+        Returns the message_id in the discussion group.
+        """
+        # Format the channel ID correctly for comparison
+        if not str(channel_id).startswith("-100"):
+            formatted_channel_id = f"-100{channel_id}"
+        else:
+            formatted_channel_id = str(channel_id)
+
+        search_channel_id = int(formatted_channel_id)
+
+        self.logger.info(
+            f"Looking for discussion message for channel post {message_id}"
+        )
+
+        # Wait for the message to appear in the discussion group
+        retry_count = 0
+        max_retries = 30
+
+        while retry_count < max_retries:
+            # Query database for recent messages that might be our discussion message
+            cursor = self.db_conn.cursor()
+            cursor.execute(
+                """
+                SELECT raw_data
+                FROM messages
+                WHERE chat_id = ? AND created_at > datetime('now', '-5 minutes')
+                ORDER BY created_at DESC
+                LIMIT 20
+            """,
+                (self.chat_id,),
+            )
+
+            messages = cursor.fetchall()
+
+            for msg_row in messages:
+                try:
+                    msg_data = json.loads(msg_row["raw_data"])
+
+                    # Check if this is a forwarded message from our channel
+                    if (
+                        "message" in msg_data
+                        and "forward_from_chat" in msg_data["message"]
+                    ):
+                        forward_info = msg_data["message"]["forward_from_chat"]
+                        forward_msg_id = msg_data["message"].get(
+                            "forward_from_message_id"
+                        )
+                        self.logger.info(
+                            f"forward_msg_id: {forward_msg_id}, forward_id: {forward_info.get('id')}, search_channel_id: {search_channel_id}, message_id: {message_id}"
+                        )
+                        # Check if this matches our original message
+                        if (
+                            forward_info.get("id") == search_channel_id
+                            and forward_msg_id == message_id
+                        ):
+                            discussion_msg_id = msg_data["message"]["message_id"]
+                            self.logger.info(
+                                f"Found discussion message {discussion_msg_id} for channel post {message_id}"
+                            )
+                            return discussion_msg_id
+                except Exception as e:
+                    self.logger.error(f"Error parsing message: {e}")
+                    continue
+
+            retry_count += 1
+            time.sleep(3)
+
+        self.logger.error(
+            f"Could not find discussion message for channel message {message_id}"
+        )
+        return None
+
+    def wait_for_forwarded_message(
+        self, entity_type="channel", check_type=True, add_msg=None
+    ):
+        """
+        Wait for the user to forward a message from a channel or chat to extract its ID.
+
+        Args:
+            entity_type (str): "channel" or "chat" - used for proper prompting
+            check_type (bool): Whether to check if the forwarded message is from a channel
+
+        Returns the numeric ID without the -100 prefix.
+        """
+
+        # Customize messages based on entity type
+        if entity_type == "channel":
+            entity_name = "channel"
+            instruction_message = (
+                "🔄 Please forward any message from the target channel"
+            )
+            success_message = "✅ Successfully extracted channel ID: {}"
+            failure_message = "❌ Failed to extract channel ID."
+        else:
+            entity_name = "discussion group"
+            instruction_message = "🔄 Please forward any message from the discussion group\n\n⚠️ IMPORTANT: Do NOT forward messages that were automatically posted from the channel. Forward messages that were sent directly in the discussion group."
+            success_message = "✅ Successfully extracted discussion group ID: {}"
+            failure_message = (
+                "❌ Failed to extract discussion group ID."
+            )
+
+        if add_msg:
+            instruction_message = add_msg + "\n\n" + instruction_message
+
+        # Send instructions to the user
+        self.send_api_request(
+            "sendMessage",
+            {"chat_id": self.control_chat_id, "text": instruction_message},
+        )
+
+        # Wait for a forwarded message
+        resolved = False
+        retry_count = 0
+        max_retries = 30  # 5 minutes (10 seconds per retry)
+
+        # Extract channel ID for comparison if we're looking for a discussion group
+        channel_numeric_id = None
+        if entity_type == "chat" and self.channel_id:
+            if str(self.channel_id).startswith("-100"):
+                channel_numeric_id = int(str(self.channel_id)[4:])
+
+        while not resolved and retry_count < max_retries:
+            time.sleep(10)  # Check every 10 seconds
+
+            # Look for a forwarded message in recent messages
+            cursor = self.db_conn.cursor()
+            cursor.execute(
+                """
+                SELECT raw_data, created_at
+                FROM messages 
+                WHERE created_at > datetime('now', '-2 minutes')
+                ORDER BY created_at DESC
+            """
+            )
+
+            messages = cursor.fetchall()
+
+            for row in messages:
+                if self.created_at and row["created_at"] < self.created_at:
+                    break
+                msg_data = json.loads(row["raw_data"])
+                if msg_data["message"]["chat"]["id"] != self.control_chat_id:
+                    continue
+                if "message" in msg_data and "forward_from_chat" in msg_data["message"]:
+                    forward_info = msg_data["message"]["forward_from_chat"]
+
+                    # Extract chat ID from the message
+                    chat_id = forward_info.get("id")
+                    # Remove -100 prefix if present
+                    if str(chat_id).startswith("-100"):
+                        extracted_id = int(str(chat_id)[4:])
+                    else:
+                        extracted_id = chat_id
+
+                    # If we're looking for a discussion group, verify it's not the same as the channel ID
+                    if entity_type == "chat" and channel_numeric_id:
+                        if extracted_id == channel_numeric_id:
+                            self.logger.warning(
+                                "User forwarded a message from the channel, not the discussion group"
+                            )
+                            self.send_api_request(
+                                "sendMessage",
+                                {
+                                    "chat_id": self.control_chat_id,
+                                    "text": "⚠️ You forwarded a message from the channel, not from the discussion group.\n\nPlease forward a message that was originally sent IN the discussion group, not an automatic repost from the channel.",
+                                },
+                            )
+                            # Skip this message and continue waiting
+                            continue
+
+                    # For channels, check the type; for chats, accept any type except "channel" if check_type is False
+                    if (check_type and forward_info.get("type") == "channel") or (
+                        not check_type
+                    ):
+                        resolved = True
+                        self.created_at = row["created_at"]
+                        self.logger.info(
+                            f"Extracted {entity_name} ID: {extracted_id} from forwarded message"
+                        )
+
+                        # Send confirmation message
+                        self.send_api_request(
+                            "sendMessage",
+                            {
+                                "chat_id": self.control_chat_id,
+                                "text": success_message.format(extracted_id),
+                            },
+                        )
+
+                        return extracted_id
+
+            retry_count += 1
+
+            print(f"Waiting for forwarded message... ({retry_count}/{max_retries})")
+
+        if not resolved:
+            self.logger.error(
+                f"Failed to extract {entity_name} ID from forwarded message"
+            )
+            self.send_api_request(
+                "sendMessage",
+                {"chat_id": self.control_chat_id, "text": failure_message},
+            )
+            return None
+
+    def verify_access(self, telegram_id, hr_type=None):
+        url = f"https://api.telegram.org/bot{self.bot_token}/getChatAdministrators"
+        if not str(telegram_id).startswith("-100"):
+            telegram_id = f"-100{telegram_id}"
+        req = requests.post(url, data={"chat_id": telegram_id})
+        if self.args.debug:
+            print(req.status_code, req.text)
+        if req.status_code != 200:
+            raise Exception(f"Bot isn't added to {hr_type}")
+        obj = req.json()
+        admin_ids = {x["user"]["id"] for x in obj["result"]}
+        return self.bot_id in admin_ids
