@@ -226,17 +226,25 @@ def xlsx_to_results(xlsx_file_path):
     for row in sheet.iter_rows(values_only=True):
         if first:
             assert row[1] == "Название"
-            assert row[3] == "Тур"
+            if row[3] == "Тур":
+                table_type = "tour"
+            elif row[3] in ("1", 1):
+                table_type = "full"
             first = False
             continue
         team_id = row[0]
         team_name = row[1]
-        tour = row[3]
-        results = [x for x in row[4:] if x is not None]
+        if table_type == "tour":
+            tour = row[3]
+            results = [x for x in row[4:] if x is not None]
+        else:
+            tour = 1
+            results = [x for x in row[3:] if x is not None]
         rlen = len(results)
         tour_len[tour] = max(tour_len[tour], rlen)
         res_by_tour[(team_id, team_name)][tour] = results
     results = []
+
     tours = sorted(tour_len)
     for team_tup in res_by_tour:
         team_id, team_name = team_tup
@@ -246,7 +254,7 @@ def xlsx_to_results(xlsx_file_path):
             if len(team_res) < tour_len[tour]:
                 team_res += [0] * (tour_len[tour] - len(team_res))
             for element in team_res:
-                if element in (1, 0):
+                if tryint(element) in (1, 0):
                     mask.append(str(element))
                 else:
                     mask.append("0")
