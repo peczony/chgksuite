@@ -468,8 +468,7 @@ class PptxExporter(BaseExporter):
         os.chdir(wd)
         self.prs = Presentation(template)
         self.TITLE_SLIDE = self.prs.slide_layouts[0]
-        # self.BLANK_SLIDE = self.prs.slide_layouts[6]
-        self.BLANK_SLIDE = self.prs.slides[0]
+        self.BLANK_SLIDE = self.prs.slide_layouts[6]
         buffer = []
         for element in self.structure:
             if element[0] != "Question":
