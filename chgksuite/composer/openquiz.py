@@ -79,7 +79,7 @@ class OpenquizExporter(BaseExporter):
             re_hs = re.search("\\[" + hs + ".+?: ?(.+)\\]", res, flags=re.DOTALL)
             if re_hs:
                 res = res.replace(re_hs.group(0), re_hs.group(1))
-        res = replace_no_break_spaces(res)
+        res = self._replace_no_break(res)
         res = res.replace("\u0301", "")
         return (res, images)
 
