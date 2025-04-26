@@ -5,10 +5,11 @@ import re
 import toml
 from pptx import Presentation
 from pptx.dml.color import RGBColor
+from pptx.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR
 from pptx.util import Inches as PptxInches
 from pptx.util import Pt as PptxPt
 
-from chgksuite.common import log_wrap, replace_escaped
+from chgksuite.common import log_wrap, replace_escaped, tryint
 from chgksuite.composer.composer_common import BaseExporter, backtick_replace, parseimg
 
 
@@ -130,6 +131,14 @@ class PptxExporter(BaseExporter):
         s = s.strip()
         return s
 
+    def apply_vertical_alignment_if_needed(self, text_frame):
+        align = self.c["textbox"].get("vertical_align")
+        if align:
+            text_frame.auto_size = MSO_AUTO_SIZE.NONE
+            text_frame.margin_top = 0
+            text_frame.margin_bottom = 0
+            text_frame.vertical_anchor = getattr(MSO_VERTICAL_ANCHOR, align.upper())
+
     def _process_block(self, block):
         section = [x for x in block if x[0] == "section"]
         editor = [x for x in block if x[0] == "editor"]
@@ -139,6 +148,7 @@ class PptxExporter(BaseExporter):
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         textbox = self.get_textbox(slide)
         tf = textbox.text_frame
+        self.apply_vertical_alignment_if_needed(tf)
         tf.word_wrap = True
         text_for_size = (
             (self.recursive_join([x[1] for x in section]) or "")
@@ -150,10 +160,16 @@ class PptxExporter(BaseExporter):
         p = self.init_paragraph(tf, text=text_for_size)
         add_line_break = False
         if section:
-            r = p.add_run()
-            r.text = self._replace_no_break(self.pptx_process_text(section[0][1]))
-            r.font.size = PptxPt(self.c["text_size_grid"]["section"])
-            add_line_break = True
+            if self.c.get("tour_as_question_number"):
+                txt = self.pptx_process_text(section[0][1])
+                if self.c.get("tour_as_question_number") == "caps":
+                    txt = txt.upper()
+                self.set_question_number(slide, number=txt)
+            else:
+                r = p.add_run()
+                r.text = self._replace_no_break(self.pptx_process_text(section[0][1]))
+                r.font.size = PptxPt(self.c["text_size_grid"]["section"])
+                add_line_break = True
         if editor:
             r = p.add_run()
             r.text = self._replace_no_break(
@@ -207,6 +223,8 @@ class PptxExporter(BaseExporter):
         qtf = qntextbox.text_frame
         qtf_p = self.init_paragraph(qtf)
         qtf_r = qtf_p.add_run()
+        if self.c.get("question_number_format") == "caps" and tryint(number):
+            number = f"ВОПРОС {number}"
         qtf_r.text = number
         if self.c["number_textbox"].get("color"):
             qtf_r.font.color.rgb = RGBColor(*self.c["number_textbox"]["color"])
@@ -336,6 +354,7 @@ class PptxExporter(BaseExporter):
             image, slide, allowbigimage=allowbigimage
         )
         tf = textbox.text_frame
+        self.apply_vertical_alignment_if_needed(tf)
         tf.word_wrap = True
         self.set_question_number(slide, self.number)
         question_text = self.pptx_process_text(q["question"], image=image)
@@ -352,13 +371,12 @@ class PptxExporter(BaseExporter):
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         textbox = self.get_textbox(slide)
         tf = textbox.text_frame
+        self.apply_vertical_alignment_if_needed(tf)
         tf.word_wrap = True
         if number is not None:
             self.set_question_number(slide, number)
         p = self.init_paragraph(tf, text=handout)
-        self.pptx_format(
-            self.pptx_process_text(handout), p, tf, slide
-        )
+        self.pptx_format(self.pptx_process_text(handout), p, tf, slide)
 
     def process_question_text(self, q):
         image = self._get_image_from_4s(q["question"])
@@ -375,24 +393,7 @@ class PptxExporter(BaseExporter):
         if image and image["big"] and text_is_duplicated:
             self.add_slide_with_image(image, number=self.number)
 
-    def process_question(self, q):
-        if "number" not in q:
-            self.qcount += 1
-        if "setcounter" in q:
-            self.qcount = int(q["setcounter"])
-        self.number = str(self.qcount if "number" not in q else q["number"])
-
-        if isinstance(q["question"], list):
-            for i in range(len(q["question"][1])):
-                qn = copy.deepcopy(q)
-                qn["question"][1] = q["question"][1][: i + 1]
-                self.process_question_text(qn)
-        else:
-            self.process_question_text(q)
-
-        if self.c["add_plug"]:
-            slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
-            self.set_question_number(slide, self.number)
+    def add_answer_slide(self, q):
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         self.set_question_number(slide, self.number)
         fields = ["answer"]
@@ -400,6 +401,8 @@ class PptxExporter(BaseExporter):
             fields.append("zachet")
         if self.c["add_comment"] and "comment" in q:
             fields.append("comment")
+        if self.c["add_source"] and "source" in q:
+            fields.append("source")
         textbox = None
         coeff = 1
         for field in fields:
@@ -410,6 +413,7 @@ class PptxExporter(BaseExporter):
         if not textbox:
             textbox = self.get_textbox(slide)
         tf = textbox.text_frame
+        self.apply_vertical_alignment_if_needed(tf)
         tf.word_wrap = True
 
         text_for_size = self.recursive_join(
@@ -422,6 +426,14 @@ class PptxExporter(BaseExporter):
         if q.get("comment") and self.c.get("add_comment"):
             text_for_size += "\n" + self.recursive_join(
                 self.pptx_process_text(q["comment"])
+            )
+        if q.get("source") and self.c.get("add_source"):
+            text_for_size += "\n" + self.recursive_join(
+                self.pptx_process_text(q["source"])
+            )
+        if q.get("author") and self.c.get("add_author"):
+            text_for_size += "\n" + self.recursive_join(
+                self.pptx_process_text(q["author"])
             )
         p = self.init_paragraph(tf, text=text_for_size, coeff=coeff)
         r = p.add_run()
@@ -442,6 +454,38 @@ class PptxExporter(BaseExporter):
             r.text = f"\n{self.get_label(q, 'comment')}: "
             r.font.bold = True
             self.pptx_format(comment_text, p, tf, slide)
+        if self.c["add_source"] and "source" in q:
+            source_text = self.pptx_process_text(q["source"])
+            r = p.add_run()
+            r.text = f"\n{self.get_label(q, 'source')}: "
+            r.font.bold = True
+            self.pptx_format(source_text, p, tf, slide)
+        if self.c["add_author"] and "author" in q:
+            author_text = self.pptx_process_text(q["author"])
+            r = p.add_run()
+            r.text = f"\n{self.get_label(q, 'author')}: "
+            r.font.bold = True
+            self.pptx_format(author_text, p, tf, slide)
+
+    def process_question(self, q):
+        if "number" not in q:
+            self.qcount += 1
+        if "setcounter" in q:
+            self.qcount = int(q["setcounter"])
+        self.number = str(self.qcount if "number" not in q else q["number"])
+
+        if isinstance(q["question"], list):
+            for i in range(len(q["question"][1])):
+                qn = copy.deepcopy(q)
+                qn["question"][1] = q["question"][1][: i + 1]
+                self.process_question_text(qn)
+        else:
+            self.process_question_text(q)
+
+        if self.c["add_plug"]:
+            slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
+            self.set_question_number(slide, self.number)
+        self.add_answer_slide(q)
 
     def determine_size(self, text, coeff=1):
         text = self.recursive_join(text)
