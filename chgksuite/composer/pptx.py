@@ -358,7 +358,10 @@ class PptxExporter(BaseExporter):
         tf.word_wrap = True
         self.set_question_number(slide, self.number)
         question_text = self.pptx_process_text(q["question"], image=image)
-        p = self.init_paragraph(tf, text=question_text, coeff=coeff)
+        if self.c.get("force_text_size_question"):
+            p = self.init_paragraph(tf, size=self.c["force_text_size_question"])
+        else:
+            p = self.init_paragraph(tf, text=question_text, coeff=coeff)
         self.pptx_format(question_text, p, tf, slide)
 
     def recursive_join(self, s):
@@ -395,7 +398,10 @@ class PptxExporter(BaseExporter):
 
     def add_answer_slide(self, q):
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
-        self.set_question_number(slide, self.number)
+        if self.c.get("override_answer_caption"):
+            self.set_question_number(slide, self.c["override_answer_caption"])
+        else:
+            self.set_question_number(slide, self.number)
         fields = ["answer"]
         if q.get("zachet") and self.c.get("add_zachet"):
             fields.append("zachet")
@@ -435,7 +441,10 @@ class PptxExporter(BaseExporter):
             text_for_size += "\n" + self.recursive_join(
                 self.pptx_process_text(q["author"])
             )
-        p = self.init_paragraph(tf, text=text_for_size, coeff=coeff)
+        if self.c.get("force_text_size_answer"):
+            p = self.init_paragraph(tf, size=self.c["force_text_size_answer"])
+        else:
+            p = self.init_paragraph(tf, text=text_for_size, coeff=coeff)
         r = p.add_run()
         r.text = f"{self.get_label(q, 'answer')}: "
         r.font.bold = True
@@ -495,13 +504,16 @@ class PptxExporter(BaseExporter):
                 return element["size"]
         return self.c["text_size_grid"]["smallest"]
 
-    def init_paragraph(self, text_frame, text=None, coeff=1):
+    def init_paragraph(self, text_frame, text=None, coeff=1, size=None):
         p = text_frame.paragraphs[0]
         p.font.name = self.c["font"]["name"]
-        size = self.c["text_size_grid"]["default"]
-        if text:
-            size = self.determine_size(text, coeff=coeff)
-        p.font.size = PptxPt(size)
+        if size:
+            _size = size
+        else:
+            _size = self.c["text_size_grid"]["default"]
+            if text:
+                _size = self.determine_size(text, coeff=coeff)
+        p.font.size = PptxPt(_size)
         return p
 
     def export(self, outfilename):
