@@ -5,7 +5,7 @@ import re
 import toml
 from pptx import Presentation
 from pptx.dml.color import RGBColor
-from pptx.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR
+from pptx.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR, PP_ALIGN
 from pptx.util import Inches as PptxInches
 from pptx.util import Pt as PptxPt
 
@@ -222,6 +222,8 @@ class PptxExporter(BaseExporter):
         qntextbox = self.get_textbox_qnumber(slide)
         qtf = qntextbox.text_frame
         qtf_p = self.init_paragraph(qtf)
+        if self.c["number_textbox"].get("align"):
+            qtf_p.alignment = getattr(PP_ALIGN, self.c["number_textbox"]["align"].upper())
         qtf_r = qtf_p.add_run()
         if self.c.get("question_number_format") == "caps" and tryint(number):
             number = f"ВОПРОС {number}"
