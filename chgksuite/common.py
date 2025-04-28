@@ -224,6 +224,8 @@ def xlsx_to_results(xlsx_file_path):
     res_by_tour = defaultdict(lambda: defaultdict(list))
     tour_len = defaultdict(lambda: 0)
     for row in sheet.iter_rows(values_only=True):
+        if not any(x for x in row):
+            continue
         if first:
             assert row[1] == "Название"
             if row[3] == "Тур":
@@ -233,6 +235,8 @@ def xlsx_to_results(xlsx_file_path):
             first = False
             continue
         team_id = row[0]
+        if not tryint(team_id):
+            continue
         team_name = row[1]
         if table_type == "tour":
             tour = row[3]
