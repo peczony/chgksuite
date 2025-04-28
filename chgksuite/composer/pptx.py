@@ -228,6 +228,8 @@ class PptxExporter(BaseExporter):
         qtf_r.text = number
         if self.c["number_textbox"].get("color"):
             qtf_r.font.color.rgb = RGBColor(*self.c["number_textbox"]["color"])
+        if self.c["number_textbox"].get("font_size"):
+            qtf_r.font.size = PptxPt(self.c["number_textbox"]["font_size"])
 
     def _get_handout_from_4s(self, text):
         if isinstance(text, list):
