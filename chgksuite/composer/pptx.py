@@ -228,6 +228,8 @@ class PptxExporter(BaseExporter):
         if self.c.get("question_number_format") == "caps" and tryint(number):
             number = f"ВОПРОС {number}"
         qtf_r.text = number
+        if self.c["number_textbox"].get("bold"):
+            qtf_r.font.bold = True
         if self.c["number_textbox"].get("color"):
             qtf_r.font.color.rgb = RGBColor(*self.c["number_textbox"]["color"])
         if self.c["number_textbox"].get("font_size"):
