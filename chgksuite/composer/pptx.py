@@ -439,7 +439,7 @@ class PptxExporter(BaseExporter):
             fields.append("zachet")
         if self.c["add_comment"] and "comment" in q:
             fields.append("comment")
-        if self.c["add_source"] and "source" in q:
+        if self.c.get("add_source") and "source" in q:
             fields.append("source")
         textbox = None
         coeff = 1
@@ -492,12 +492,12 @@ class PptxExporter(BaseExporter):
             r = self.add_run(p, f"\n{self.get_label(q, 'comment')}: ")
             r.font.bold = True
             self.pptx_format(comment_text, p, tf, slide)
-        if self.c["add_source"] and "source" in q:
+        if self.c.get("add_source") and "source" in q:
             source_text = self.pptx_process_text(q["source"])
             r = self.add_run(p, f"\n{self.get_label(q, 'source')}: ")
             r.font.bold = True
             self.pptx_format(source_text, p, tf, slide)
-        if self.c["add_author"] and "author" in q:
+        if self.c.get("add_author") and "author" in q:
             author_text = self.pptx_process_text(q["author"])
             r = self.add_run(p, f"\n{self.get_label(q, 'author')}: ")
             r.font.bold = True
