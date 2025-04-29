@@ -3,14 +3,14 @@ import os
 import re
 
 import toml
+
+from chgksuite.common import log_wrap, replace_escaped, tryint
+from chgksuite.composer.composer_common import BaseExporter, backtick_replace, parseimg
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR, PP_ALIGN
 from pptx.util import Inches as PptxInches
 from pptx.util import Pt as PptxPt
-
-from chgksuite.common import log_wrap, replace_escaped, tryint
-from chgksuite.composer.composer_common import BaseExporter, backtick_replace, parseimg
 
 
 class PptxExporter(BaseExporter):
@@ -48,6 +48,15 @@ class PptxExporter(BaseExporter):
         textbox = slide.shapes.add_textbox(left, top, width, height)
         return textbox
 
+    def add_run(self, para, text, color=None):
+        r = para.add_run()
+        r.text = text
+        if color is None:
+            color = self.c["textbox"].get("color")
+        if color:
+            r.font.color.rgb = RGBColor(*color)
+        return r
+
     def pptx_format(self, el, para, tf, slide, replace_spaces=True):
         def r_sp(text):
             if replace_spaces:
@@ -60,15 +69,13 @@ class PptxExporter(BaseExporter):
                 licount = 0
                 for li in el[1]:
                     licount += 1
-                    r = para.add_run()
-                    r.text = "\n{}. ".format(licount)
+                    self.add_run(para, "\n{}. ".format(licount))
                     self.pptx_format(li, para, tf, slide)
             else:
                 licount = 0
                 for li in el:
                     licount += 1
-                    r = para.add_run()
-                    r.text = "\n{}. ".format(licount)
+                    self.add_run(para, "\n{}. ".format(licount))
                     self.pptx_format(li, para, tf, slide)
 
         if isinstance(el, str):
@@ -77,23 +84,20 @@ class PptxExporter(BaseExporter):
 
             for run in self.parse_4s_elem(el):
                 if run[0] == "screen":
-                    r = para.add_run()
-                    r.text = r_sp(run[1]["for_screen"])
+                    self.add_run(para, r_sp(run[1]["for_screen"]))
 
                 elif run[0] == "linebreak":
-                    r = para.add_run("\n")
+                    self.add_run(para, "\n")
 
                 elif run[0] == "strike":
-                    r = para.add_run()
-                    r.text = r_sp(run[1])
+                    r = self.add_run(para, r_sp(run[1]))
                     r.font.strike = True  # TODO: doesn't work as of 2023-12-24, cf. https://github.com/scanny/python-pptx/issues/339
 
                 elif run[0] == "img":
                     pass  # image processing is moved to other places
 
                 else:
-                    r = para.add_run()
-                    r.text = r_sp(run[1])
+                    r = self.add_run(para, r_sp(run[1]))
                     if "italic" in run[0]:
                         r.font.italic = True
                     if "bold" in run[0]:
@@ -166,25 +170,30 @@ class PptxExporter(BaseExporter):
                     txt = txt.upper()
                 self.set_question_number(slide, number=txt)
             else:
-                r = p.add_run()
-                r.text = self._replace_no_break(self.pptx_process_text(section[0][1]))
+                r = self.add_run(
+                    p, self._replace_no_break(self.pptx_process_text(section[0][1]))
+                )
                 r.font.size = PptxPt(self.c["text_size_grid"]["section"])
                 add_line_break = True
         if editor:
-            r = p.add_run()
-            r.text = self._replace_no_break(
-                ("\n" if add_line_break else "")
-                + self.pptx_process_text(editor[0][1])
-                + "\n"
+            r = self.add_run(
+                p,
+                self._replace_no_break(
+                    ("\n" if add_line_break else "")
+                    + self.pptx_process_text(editor[0][1])
+                    + "\n"
+                ),
             )
             add_line_break = True
         if meta:
             for element in meta:
-                r = p.add_run()
-                r.text = self._replace_no_break(
-                    ("\n" if add_line_break else "")
-                    + self.pptx_process_text(element[1])
-                    + "\n"
+                r = self.add_run(
+                    p,
+                    self._replace_no_break(
+                        ("\n" if add_line_break else "")
+                        + self.pptx_process_text(element[1])
+                        + "\n"
+                    ),
                 )
                 add_line_break = True
 
@@ -211,8 +220,11 @@ class PptxExporter(BaseExporter):
             title = slide.shapes.title
             title.text = title_text[0][1]
             if date_text:
-                subtitle = slide.placeholders[1]
-                subtitle.text = date_text[0][1]
+                try:
+                    subtitle = slide.placeholders[1]
+                    subtitle.text = date_text[0][1]
+                except KeyError:
+                    pass
         for block in (editor_block, section_block):
             self._process_block(block)
 
@@ -223,11 +235,12 @@ class PptxExporter(BaseExporter):
         qtf = qntextbox.text_frame
         qtf_p = self.init_paragraph(qtf)
         if self.c["number_textbox"].get("align"):
-            qtf_p.alignment = getattr(PP_ALIGN, self.c["number_textbox"]["align"].upper())
-        qtf_r = qtf_p.add_run()
+            qtf_p.alignment = getattr(
+                PP_ALIGN, self.c["number_textbox"]["align"].upper()
+            )
         if self.c.get("question_number_format") == "caps" and tryint(number):
             number = f"ВОПРОС {number}"
-        qtf_r.text = number
+        qtf_r = self.add_run(qtf_p, number)
         if self.c["number_textbox"].get("bold"):
             qtf_r.font.bold = True
         if self.c["number_textbox"].get("color"):
@@ -278,6 +291,15 @@ class PptxExporter(BaseExporter):
             base_top = PptxInches(self.c["textbox"]["top"])
             base_width = PptxInches(self.c["textbox"]["width"])
             base_height = PptxInches(self.c["textbox"]["height"])
+            if self.c.get("disable_autolayout"):
+                slide.shapes.add_picture(
+                    image["imgfile"],
+                    left=base_left,
+                    top=base_top,
+                    width=img_base_width,
+                    height=img_base_height,
+                )
+                return self.get_textbox(slide), 1
             big_mode = (
                 image["big"] and not self.c.get("text_is_duplicated") and allowbigimage
             )
@@ -390,9 +412,13 @@ class PptxExporter(BaseExporter):
     def process_question_text(self, q):
         image = self._get_image_from_4s(q["question"])
         handout = self._get_handout_from_4s(q["question"])
-        if image:
+        add_handout_on_separate_slide = self.c.get("add_handout_on_separate_slide")
+        add_handout_on_separate_slide = (
+            add_handout_on_separate_slide is None or add_handout_on_separate_slide
+        )
+        if image and add_handout_on_separate_slide:
             self.add_slide_with_image(image, number=self.number)
-        elif handout:
+        elif handout and add_handout_on_separate_slide:
             self.add_slide_with_handout(handout, number=self.number)
         slide = self.prs.slides.add_slide(self.BLANK_SLIDE)
         text_is_duplicated = bool(self.c.get("text_is_duplicated"))
@@ -451,34 +477,29 @@ class PptxExporter(BaseExporter):
             p = self.init_paragraph(tf, size=self.c["force_text_size_answer"])
         else:
             p = self.init_paragraph(tf, text=text_for_size, coeff=coeff)
-        r = p.add_run()
-        r.text = f"{self.get_label(q, 'answer')}: "
+        r = self.add_run(p, f"{self.get_label(q, 'answer')}: ")
         r.font.bold = True
         self.pptx_format(
             self.pptx_process_text(q["answer"], strip_brackets=False), p, tf, slide
         )
         if q.get("zachet") and self.c.get("add_zachet"):
             zachet_text = self.pptx_process_text(q["zachet"], strip_brackets=False)
-            r = p.add_run()
-            r.text = f"\n{self.get_label(q, 'zachet')}: "
+            r = self.add_run(p, f"\n{self.get_label(q, 'zachet')}: ")
             r.font.bold = True
             self.pptx_format(zachet_text, p, tf, slide)
         if self.c["add_comment"] and "comment" in q:
             comment_text = self.pptx_process_text(q["comment"])
-            r = p.add_run()
-            r.text = f"\n{self.get_label(q, 'comment')}: "
+            r = self.add_run(p, f"\n{self.get_label(q, 'comment')}: ")
             r.font.bold = True
             self.pptx_format(comment_text, p, tf, slide)
         if self.c["add_source"] and "source" in q:
             source_text = self.pptx_process_text(q["source"])
-            r = p.add_run()
-            r.text = f"\n{self.get_label(q, 'source')}: "
+            r = self.add_run(p, f"\n{self.get_label(q, 'source')}: ")
             r.font.bold = True
             self.pptx_format(source_text, p, tf, slide)
         if self.c["add_author"] and "author" in q:
             author_text = self.pptx_process_text(q["author"])
-            r = p.add_run()
-            r.text = f"\n{self.get_label(q, 'author')}: "
+            r = self.add_run(p, f"\n{self.get_label(q, 'author')}: ")
             r.font.bold = True
             self.pptx_format(author_text, p, tf, slide)
 
@@ -510,7 +531,7 @@ class PptxExporter(BaseExporter):
                 return element["size"]
         return self.c["text_size_grid"]["smallest"]
 
-    def init_paragraph(self, text_frame, text=None, coeff=1, size=None):
+    def init_paragraph(self, text_frame, text=None, coeff=1, size=None, color=None):
         p = text_frame.paragraphs[0]
         p.font.name = self.c["font"]["name"]
         if size:
