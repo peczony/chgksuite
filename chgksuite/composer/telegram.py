@@ -852,7 +852,7 @@ class TelegramExporter(BaseExporter):
 
                 # Wait for a forwarded message with channel information
                 channel_id = self.wait_for_forwarded_message(
-                    entity_type="channel", check_type=True, string_id=channel_result
+                    entity_type="channel", check_type=True
                 )
                 if channel_id:
                     self.save_username(channel_result, channel_id)
@@ -875,7 +875,7 @@ class TelegramExporter(BaseExporter):
 
                 # Wait for a forwarded message with chat information
                 chat_id = self.wait_for_forwarded_message(
-                    entity_type="chat", check_type=False, string_id=chat_result
+                    entity_type="chat", check_type=False
                 )
                 if not chat_id:
                     self.logger.error("Failed to get chat ID from forwarded message")
@@ -891,7 +891,6 @@ class TelegramExporter(BaseExporter):
                         entity_type="chat",
                         check_type=False,
                         add_msg=error_msg,
-                        string_id=chat_result,
                     )
                 if chat_id:
                     self.save_username(chat_result, chat_id)
@@ -1117,11 +1116,15 @@ class TelegramExporter(BaseExporter):
 
             # Look for a forwarded message in recent messages
             cursor = self.db_conn.cursor()
+            if self.created_at:
+                threshold = "'" + self.created_at + "'"
+            else:
+                threshold = "datetime('now', '-2 minutes')"
             cursor.execute(
-                """
+                f"""
                 SELECT raw_data, created_at
                 FROM messages 
-                WHERE created_at > datetime('now', '-2 minutes')
+                WHERE created_at > {threshold}
                 ORDER BY created_at DESC
             """
             )
