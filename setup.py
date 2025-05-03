@@ -54,11 +54,13 @@ setup(
         "Pillow",
         "ply",
         "pypandoc",
+        "pypdf",
         "pyperclip",
         "python-docx",
         "python-pptx",
-        "requests",
         "python-telegram-bot",
+        "requests",
         "toml",
+        "watchdog",
     ]
 )

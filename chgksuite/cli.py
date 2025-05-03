@@ -12,6 +12,8 @@ from chgksuite.common import (
     load_settings,
 )
 from chgksuite.composer import gui_compose
+from chgksuite.handouter.runner import gui_handouter
+from chgksuite.handouter.tex_internals import GREYTEXT_LANGS
 from chgksuite.parser import gui_parse
 from chgksuite.trello import gui_trello
 from chgksuite.version import __version__
@@ -817,6 +819,205 @@ class ArgparseBuilder:
             caption="Не открывать браузер",
         )
 
+        cmdhandouts = subparsers.add_parser("handouts")
+        cmdhandouts_subcommands = cmdhandouts.add_subparsers(dest="handoutssubcommand")
+        cmdhandouts_run = self.add_parser(cmdhandouts_subcommands, "run")
+        self.add_argument(
+            cmdhandouts_run,
+            "filename",
+            help="file with handouts",
+            caption="Имя файла с раздатками",
+            filetypes=[("handouts files", "*.hndts"), ("text files", "*.txt")],
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--lang",
+            default="ru",
+            argtype="radiobutton",
+            choices=sorted(GREYTEXT_LANGS.keys()),
+            help="language",
+            caption="Язык",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--compress",
+            action="store_true",
+            help="compress",
+            caption="Сжать файл после вёрстки (требует установленного ghostscript)",
+            advanced=True,
+        )
+        self.add_argument(cmdhandouts_run, "--font", "-f", help="font", caption="Шрифт")
+        self.add_argument(
+            cmdhandouts_run,
+            "--font_size",
+            type=int,
+            default=14,
+            help="font size",
+            caption="Размер шрифта",
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--pdfsettings",
+            choices=["screen", "ebook", "printer", "prepress", "default"],
+            default="default",
+            advanced=True,
+            caption="Настройки pdfsettings для ghostscript",
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--paperwidth",
+            type=float,
+            default=210,
+            help="paper width",
+            caption="Ширина бумаги",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--paperheight",
+            type=float,
+            default=297,
+            help="paper height",
+            caption="Высота бумаги",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--margin_top",
+            type=float,
+            default=5,
+            help="top margin",
+            caption="Верхний отступ",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--margin_bottom",
+            type=float,
+            default=5,
+            help="bottom margin",
+            caption="Нижний отступ",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--margin_left",
+            type=float,
+            default=5,
+            help="left margin",
+            caption="Левый отступ",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--margin_right",
+            type=float,
+            default=5,
+            help="right margin",
+            caption="Правый отступ",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--boxwidth",
+            type=float,
+            help="box width",
+            caption="Ширина блока",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--boxwidthinner",
+            type=float,
+            help="box width inner",
+            caption="Внутренняя ширина блока",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdhandouts_run,
+            "--tikz_mm",
+            type=float,
+            default=2,
+            help="tikz_mm width",
+            caption="Ширина tikz_mm",
+            advanced=True,
+        )
+
+        cmdhandouts_generate = self.add_parser(cmdhandouts_subcommands, "generate")
+        self.add_argument(
+            cmdhandouts_generate,
+            "filename",
+            help="file with questions packet",
+            caption="Имя файла с пакетом",
+            filetypes=[("chgksuite files", "*.4s")],
+        )
+        self.add_argument(
+            cmdhandouts_generate,
+            "--lang",
+            default="ru",
+            help="language",
+            caption="Язык",
+            argtype="radiobutton",
+            choices=sorted(GREYTEXT_LANGS.keys()),
+            advanced=True,
+        )
+        self.add_argument(
+            cmdhandouts_generate,
+            "--separate",
+            action="store_true",
+            help="Generate separate handouts for each question",
+            caption="Сгенерировать отдельный файл с раздатками для каждого вопроса",
+        )
+        self.add_argument(
+            cmdhandouts_generate,
+            "--list-handouts",
+            "-l",
+            action="store_true",
+            help="Generate a file with a list of handouts",
+            caption="Сгенерировать файл со списком раздаток",
+        )
+
+        cmdhandouts_pack = self.add_parser(cmdhandouts_subcommands, "pack")
+        self.add_argument(
+            cmdhandouts_pack,
+            "folder",
+            help="input directory",
+            caption="Папка с раздатками",
+        )
+        self.add_argument(
+            cmdhandouts_pack,
+            "--output_filename_prefix",
+            "-o",
+            default="packed_handouts",
+            help="output filename prefix",
+            caption="Префикс имени выходного файла",
+        )
+        self.add_argument(
+            cmdhandouts_pack,
+            "--n_teams",
+            "-n",
+            type=int,
+            required=True,
+            help="number of teams",
+            caption="Количество команд",
+        )
+        self.add_argument(
+            cmdhandouts_pack,
+            "--font",
+            "-f",
+            help="font",
+            caption="Шрифт",
+        )
+
+        cmdhandouts_install = self.add_parser(cmdhandouts_subcommands, "install")
+        self.add_argument(
+            cmdhandouts_install,
+            "--tectonic_package_regex",
+            advanced=True,
+            caption="Переопределить имя файла с релизом tectonic",
+        )
+
 
 def single_action(args, use_wrapper, resourcedir):
     if use_wrapper:
@@ -860,6 +1061,8 @@ def single_action(args, use_wrapper, resourcedir):
         gui_compose(args)
     if args.action == "trello":
         gui_trello(args)
+    if args.action == "handouts":
+        gui_handouter(args)
 
 
 def app():
