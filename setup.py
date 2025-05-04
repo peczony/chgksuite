@@ -31,7 +31,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    packages=["chgksuite", "chgksuite.composer"],
+    packages=["chgksuite", "chgksuite.composer", "chgksuite.handouter"],
     package_data={
         "chgksuite": [
             "resources/*.json",

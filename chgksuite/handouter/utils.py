@@ -1,6 +1,6 @@
 import os
 
-from pecheny_utils import escape_latex
+from chgksuite.handouter.installer import escape_latex
 
 RESERVED_WORDS = [
     "image",
