@@ -9,6 +9,7 @@ from chgksuite.composer.composer_common import BaseExporter, backtick_replace, p
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR, PP_ALIGN
+from pptx.enum.lang import MSO_LANGUAGE_ID
 from pptx.util import Inches as PptxInches
 from pptx.util import Pt as PptxPt
 
@@ -55,6 +56,8 @@ class PptxExporter(BaseExporter):
             color = self.c["textbox"].get("color")
         if color:
             r.font.color.rgb = RGBColor(*color)
+        if self.args.language == "ru":
+            r.font.language_id = MSO_LANGUAGE_ID.RUSSIAN
         return r
 
     def pptx_format(self, el, para, tf, slide, replace_spaces=True):
@@ -437,6 +440,8 @@ class PptxExporter(BaseExporter):
         fields = ["answer"]
         if q.get("zachet") and self.c.get("add_zachet"):
             fields.append("zachet")
+        if q.get("nezachet") and self.c.get("add_zachet"):
+            fields.append("nezachet")
         if self.c["add_comment"] and "comment" in q:
             fields.append("comment")
         if self.c.get("add_source") and "source" in q:
@@ -460,6 +465,10 @@ class PptxExporter(BaseExporter):
         if q.get("zachet") and self.c.get("add_zachet"):
             text_for_size += "\n" + self.recursive_join(
                 self.pptx_process_text(q["zachet"], strip_brackets=False)
+            )
+        if q.get("nezachet") and self.c.get("add_zachet"):
+            text_for_size += "\n" + self.recursive_join(
+                self.pptx_process_text(q["nezachet"], strip_brackets=False)
             )
         if q.get("comment") and self.c.get("add_comment"):
             text_for_size += "\n" + self.recursive_join(
@@ -487,6 +496,11 @@ class PptxExporter(BaseExporter):
             r = self.add_run(p, f"\n{self.get_label(q, 'zachet')}: ")
             r.font.bold = True
             self.pptx_format(zachet_text, p, tf, slide)
+        if q.get("nezachet") and self.c.get("add_zachet"):
+            nezachet_text = self.pptx_process_text(q["nezachet"], strip_brackets=False)
+            r = self.add_run(p, f"\n{self.get_label(q, 'nezachet')}: ")
+            r.font.bold = True
+            self.pptx_format(nezachet_text, p, tf, slide)
         if self.c["add_comment"] and "comment" in q:
             comment_text = self.pptx_process_text(q["comment"])
             r = self.add_run(p, f"\n{self.get_label(q, 'comment')}: ")
