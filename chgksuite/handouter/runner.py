@@ -144,7 +144,7 @@ def process_file(args, file_dir, bn):
     tectonic_path = get_tectonic_path()
     if not tectonic_path:
         print("tectonic is not present, installing it...")
-        install_tectonic()
+        install_tectonic(args)
         tectonic_path = get_tectonic_path()
     if not tectonic_path:
         raise Exception("tectonic couldn't be installed successfully :(")
