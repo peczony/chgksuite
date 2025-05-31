@@ -8,6 +8,8 @@ import codecs
 import inspect
 import json
 
+ALLOWED_IMAGES = ["long_handout.png", "test.jpg"]
+
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 
@@ -48,7 +50,7 @@ def main():
             for filename1 in os.listdir(currentdir):
                 if filename1.endswith(
                     (".jpg", ".jpeg", ".png", ".gif")
-                ) and not filename1.startswith("ALLOWED"):
+                ) and not filename1.startswith("ALLOWED") and not filename1 in ALLOWED_IMAGES:
                     os.remove(os.path.join(currentdir, filename1))
             with codecs.open(
                 os.path.join(currentdir, filename) + ".canon", "w", "utf8"
