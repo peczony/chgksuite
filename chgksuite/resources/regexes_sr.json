@@ -1,7 +1,7 @@
 {
     "tour": "^(#\\s+)?R[Uu][Nn][Dd][Aa]\\s?№?\\s?([0-9IVXLCDM]*)([\\.:])?$",
     "tourrev": "^([0-9IVXLCDM]+)\\sR[Uu][Nn][Dd][Aa]([\\.:])?$",
-    "question": "P[Ii][Tt][Aa][Nn][Jj][Ee]\\s?[№N]?([0-9\\s]*)\\s?([\\.:]|\n|\r\n|$)",
+    "question": "P[Ii][Tt][Aa][Nn][Jj][Ee]\\s?[№N]?(?P<number>[0-9\\s]*)\\s?([\\.:]|\n|\r\n|$)",
     "answer": "O[Dd][Gg][Oo][Vv][Oo][Rr]\\s?[№N]?([0-9]+)?\\s?[\\.:]",
     "handout": "^(M[Aa][Tt][Ee][Rr][Ii][Jj][Aa][Ll]|P[Oo][Dd][Ee][Ll][Jj][Ee][Nn][Oo])[\\.:]",
     "zachet": "P[Rr][Ii][Hh][Vv][Aa][Tt][Aa]\\s[Ss][Ee]\\s?[\\.:]",
