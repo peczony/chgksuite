@@ -536,11 +536,18 @@ class ChgkParser:
                         or ("разминочный вопрос" in element[1].lower())
                     ):
                         self.structure.insert(_id, ["number", "0"])
-                # TODO: переделать корявую обработку авторки на нормальную
-                before_replacement = element[1]
-                element[1] = regexes[element[0]].sub("", element[1], 1)
+                if element[0] == "question":
+                    lines = element[1].split(SEP)
+                    for i, line in enumerate(lines):
+                        if regexes["question"].search(line):
+                            lines[i] = regexes["question"].sub("", line, 1)
+                    element[1] = SEP.join([x.strip() for x in lines if x.strip()])
+                else:
+                    before_replacement = element[1]
+                    element[1] = regexes[element[0]].sub("", element[1], 1)
                 if element[1].startswith(SEP):
                     element[1] = element[1][len(SEP) :]
+                # TODO: переделать корявую обработку авторки на нормальную
                 if element[0] == "author" and "авторка:" in before_replacement.lower():
                     element[1] = "!!Авторка" + element[1]
 
