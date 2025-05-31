@@ -213,8 +213,8 @@ def test_long_handout():
 REPLACE_COUNTER_TEST_CASES = [
     ("4SCOUNTER 4SCOUNTER 4SCOUNTER", "1 2 3"),
     ("4SCOUNTER 4SCOUNTER1 4SCOUNTERa", "1 1 1"),
-    ("__SET__COUNTER____5 4SCOUNTER", " 5"),
-    ("__SET__COUNTER__a__4 4SCOUNTERa", " 4"),
+    ("set 4SCOUNTER = 5 4SCOUNTER", " 5"),
+    ("set 4SCOUNTERa = 4 4SCOUNTERa", " 4"),
 ]
 
 
