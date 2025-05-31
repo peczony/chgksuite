@@ -182,9 +182,8 @@ class PptxExporter(BaseExporter):
             r = self.add_run(
                 p,
                 self._replace_no_break(
-                    ("\n" if add_line_break else "")
+                    ("\n\n" if add_line_break else "")
                     + self.pptx_process_text(editor[0][1])
-                    + "\n"
                 ),
             )
             add_line_break = True
@@ -193,9 +192,8 @@ class PptxExporter(BaseExporter):
                 r = self.add_run(
                     p,
                     self._replace_no_break(
-                        ("\n" if add_line_break else "")
+                        ("\n\n" if add_line_break else "")
                         + self.pptx_process_text(element[1])
-                        + "\n"
                     ),
                 )
                 add_line_break = True
