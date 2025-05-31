@@ -92,6 +92,18 @@ class ChgkParser:
     RE_NUM = re.compile("^([0-9]+)\\.?$")
     RE_NUM_START = re.compile("^([0-9]+)\\.")
     ZERO_PREFIXES = ("Нулевой вопрос", "Разминочный вопрос")
+    TOUR_NUMBERS_AS_WORDS = (
+        "Первый",
+        "Второй",
+        "Третий",
+        "Четвертый",
+        "Пятый",
+        "Шестой",
+        "Седьмой",
+        "Восьмой",
+        "Девятый",
+        "Десятый",
+    )
 
     def __init__(self, defaultauthor=None, args=None, logger=None):
         self.defaultauthor = defaultauthor
@@ -618,7 +630,8 @@ class ChgkParser:
 
         for element in self.structure:
             if (
-                element[0] in set(["number", "tour", "tourrev", "question", "meta", "editor"])
+                element[0]
+                in set(["number", "tour", "tourrev", "question", "meta", "editor"])
                 and "question" in current_question
             ):
                 if self.defaultauthor and "author" not in current_question:
@@ -692,9 +705,13 @@ class ChgkParser:
         except ValueError:
             pass
 
+        tour_cnt = 0
         for i, element in enumerate(final_structure):
             if element[0] == "Question":
                 self.postprocess_question(element[1])
+            elif element[0] == "tour" and self.args.tour_numbers_as_words == "on":
+                element[1] = f"{self.TOUR_NUMBERS_AS_WORDS[tour_cnt]} тур"
+                tour_cnt += 1
 
         if debug:
             with codecs.open("debug_final.json", "w", "utf8") as f:

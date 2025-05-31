@@ -74,37 +74,6 @@ class ArgparseBuilder:
         )
         self.add_argument(
             parser,
-            "--add_ts",
-            "-ts",
-            choices=["on", "off"],
-            default=default_overrides.get("add_ts") or "off",
-            help="append timestamp to filenames",
-            caption="Добавить временную отметку в имя файла",
-            advanced=True,
-            argtype="radiobutton",
-        )
-        self.add_argument(
-            parser,
-            "--replace_no_break_spaces",
-            choices=["on", "off"],
-            default=default_overrides.get("replace_no_break_spaces") or "on",
-            help="add non-breaking spaces where applicable",
-            caption="Добавить неразрывные пробелы",
-            advanced=True,
-            argtype="radiobutton",
-        )
-        self.add_argument(
-            parser,
-            "--replace_no_break_hyphens",
-            choices=["on", "off"],
-            default=default_overrides.get("replace_no_break_hyphens") or "on",
-            help="add non-breaking hyphens where applicable",
-            caption="Добавить неразрывные дефисы",
-            advanced=True,
-            argtype="radiobutton",
-        )
-        self.add_argument(
-            parser,
             "-v",
             "--version",
             action="version",
@@ -298,6 +267,47 @@ class ArgparseBuilder:
             caption="Обработка строчек, состоящих из одного числа",
             argtype="radiobutton",
         )
+        self.add_argument(
+            cmdparse,
+            "--tour_numbers_as_words",
+            choices=["on", "off"],
+            default=default_overrides.get("tour_numbers_as_words") or "off",
+            help="force tour numbers as words",
+            caption="Номера туров словами",
+            advanced=True,
+            argtype="radiobutton",
+        )
+        self.add_argument(
+            cmdparse,
+            "--add_ts",
+            "-ts",
+            choices=["on", "off"],
+            default=default_overrides.get("add_ts") or "off",
+            help="append timestamp to filenames",
+            caption="Добавить временную отметку в имя файла",
+            advanced=True,
+            argtype="radiobutton",
+        )
+        self.add_argument(
+            cmdparse,
+            "--replace_no_break_spaces",
+            choices=["on", "off"],
+            default=default_overrides.get("replace_no_break_spaces") or "on",
+            help="add non-breaking spaces where applicable",
+            caption="Добавить неразрывные пробелы",
+            advanced=True,
+            argtype="radiobutton",
+        )
+        self.add_argument(
+            cmdparse,
+            "--replace_no_break_hyphens",
+            choices=["on", "off"],
+            default=default_overrides.get("replace_no_break_hyphens") or "on",
+            help="add non-breaking hyphens where applicable",
+            caption="Добавить неразрывные дефисы",
+            advanced=True,
+            argtype="radiobutton",
+        )
 
         cmdcompose = subparsers.add_parser("compose")
         self.add_argument(
@@ -333,6 +343,37 @@ class ArgparseBuilder:
             help="imgur client id",
             caption="Client ID для API Imgur",
             advanced=True,
+        )
+        self.add_argument(
+            cmdcompose,
+            "--add_ts",
+            "-ts",
+            choices=["on", "off"],
+            default=default_overrides.get("add_ts") or "off",
+            help="append timestamp to filenames",
+            caption="Добавить временную отметку в имя файла",
+            advanced=True,
+            argtype="radiobutton",
+        )
+        self.add_argument(
+            cmdcompose,
+            "--replace_no_break_spaces",
+            choices=["on", "off"],
+            default=default_overrides.get("replace_no_break_spaces") or "on",
+            help="add non-breaking spaces where applicable",
+            caption="Добавить неразрывные пробелы",
+            advanced=True,
+            argtype="radiobutton",
+        )
+        self.add_argument(
+            cmdcompose,
+            "--replace_no_break_hyphens",
+            choices=["on", "off"],
+            default=default_overrides.get("replace_no_break_hyphens") or "on",
+            help="add non-breaking hyphens where applicable",
+            caption="Добавить неразрывные дефисы",
+            advanced=True,
+            argtype="radiobutton",
         )
         cmdcompose_filetype = cmdcompose.add_subparsers(dest="filetype")
         cmdcompose_docx = cmdcompose_filetype.add_parser("docx")
