@@ -91,6 +91,7 @@ class ChgkParser:
     BADNEXTFIELDS = set(["question", "answer"])
     RE_NUM = re.compile("^([0-9]+)\\.?$")
     RE_NUM_START = re.compile("^([0-9]+)\\.")
+    ZERO_PREFIXES = ("Нулевой вопрос", "Разминочный вопрос")
 
     def __init__(self, defaultauthor=None, args=None, logger=None):
         self.defaultauthor = defaultauthor
@@ -200,7 +201,7 @@ class ChgkParser:
     @classmethod
     def _replace(cls, obj, val, new_val):
         if isinstance(obj, str):
-            return obj.replace(val, new_val)
+            return obj.replace(val, new_val).strip()
         elif isinstance(obj, list):
             for i, el in enumerate(obj):
                 obj[i] = cls._replace(el, val, new_val)
@@ -213,6 +214,11 @@ class ChgkParser:
         elif isinstance(val, list):
             for el in val:
                 self._get_strings(el, list_)
+
+    def _get_strings_joined(self, val):
+        strings = []
+        self._get_strings(val, strings)
+        return "\n".join(strings)
 
     def _try_extract_field(self, question, k):
         regex = self.regexes[k]
@@ -255,14 +261,18 @@ class ChgkParser:
             and not question["number"].strip()
         ):
             question.pop("number")
+        question_str = self._get_strings_joined(question["question"])
+        for prefix in self.ZERO_PREFIXES:
+            if question_str.startswith(prefix):
+                question["question"] = self._replace(question["question"], prefix, "")
+                question["number"] = 0
+                question_str = self._get_strings_joined(question["question"])
         for k in ("zachet", "nezachet", "source", "comment", "author"):
             if k not in question:
                 self._try_extract_field(question, k)
-        strings = []
-        self._get_strings(question["question"], strings)
-        strings = "\n".join(strings)
+        question_str = self._get_strings_joined(question["question"])
         handout = self.labels["question_labels"]["handout"]
-        srch = re.search(f"{handout}:([ \n]+)\\[", strings, flags=re.DOTALL)
+        srch = re.search(f"{handout}:([ \n]+)\\[", question_str, flags=re.DOTALL)
         if srch:
             question["question"] = self._replace(
                 question["question"],
