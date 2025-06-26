@@ -436,6 +436,15 @@ class ArgparseBuilder:
             advanced=True,
             caption='Без переноса строки после "Вопрос N."',
         )
+
+        self.add_argument(
+            cmdcompose_docx,
+            "--only_question_number",
+            action="store_true",
+            help="only show question number",
+            advanced=True,
+            caption='Без слова "Вопрос" в "Вопрос N."',
+        )
         self.add_argument(
             cmdcompose_docx,
             "--randomize",

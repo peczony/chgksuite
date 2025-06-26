@@ -415,6 +415,8 @@ class BaseExporter:
         return _parse_4s_elem(*args, **kwargs)
 
     def get_label(self, question, field, number=None):
+        if field == "question" and self.args.only_question_number:
+            return str(question.get("number") or number)
         if field in ("question", "tour"):
             lbl = (question.get("overrides") or {}).get(field) or self.labels[
                 "question_labels"
