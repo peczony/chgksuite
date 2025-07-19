@@ -452,6 +452,3 @@ class BaseExporter:
         s = s.replace("LEFTSQUAREBRACKET", "[")
         s = s.replace("RIGHTSQUAREBRACKET", "]")
         return s
-
-
-
