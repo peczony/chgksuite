@@ -279,6 +279,14 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdparse,
+            "--download_images",
+            action="store_true",
+            help="download images from direct URLs and replace with local references",
+            caption="Скачивать изображения по прямым ссылкам",
+            advanced=True,
+        )
+        self.add_argument(
+            cmdparse,
             "--add_ts",
             "-ts",
             choices=["on", "off"],

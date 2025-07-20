@@ -14,7 +14,7 @@ from docx.shared import Inches
 from docx.shared import Pt as DocxPt
 
 import chgksuite.typotools as typotools
-from chgksuite.common import DummyLogger, log_wrap, replace_escaped
+from chgksuite.common import DummyLogger, get_chgksuite_dir, log_wrap, replace_escaped
 from chgksuite.composer.composer_common import (
     BaseExporter,
     _parse_4s_elem,
@@ -317,6 +317,7 @@ def add_question_to_docx(
     spoilers="none",
     language="ru",
     only_question_number=False,
+    add_question_label=True,
     logger=None,
     **kwargs,
 ):
@@ -342,6 +343,10 @@ def add_question_to_docx(
     Returns:
         Updated question count
     """
+    if not kwargs.get("tmp_dir"):
+        kwargs["tmp_dir"] = tempfile.mkdtemp()
+    if not kwargs.get("targetdir"):
+        kwargs["targetdir"] = os.getcwd()
     if logger is None:
         logger = DummyLogger()
 
@@ -350,7 +355,8 @@ def add_question_to_docx(
         p = doc.add_paragraph()
     else:
         p = external_para
-    p.paragraph_format.space_before = DocxPt(18)
+    if add_question_label:
+        p.paragraph_format.space_before = DocxPt(18)
     p.paragraph_format.keep_together = True
 
     # Handle question numbering
@@ -362,15 +368,16 @@ def add_question_to_docx(
         qcount = int(q["setcounter"])
 
     # Add question label
-    question_label = get_label_standalone(
-        q,
-        "question",
-        labels,
-        language,
-        only_question_number,
-        number=qcount if "number" not in q else q["number"],
-    )
-    p.add_run(f"{question_label}. ").bold = True
+    if add_question_label:
+        question_label = get_label_standalone(
+            q,
+            "question",
+            labels,
+            language,
+            only_question_number,
+            number=qcount if "number" not in q else q["number"],
+        )
+        p.add_run(f"{question_label}. ").bold = True
 
     # Add handout if present
     if "handout" in q:

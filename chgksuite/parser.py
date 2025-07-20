@@ -3,6 +3,7 @@
 import base64
 import codecs
 import datetime
+import hashlib
 import itertools
 import json
 import os
@@ -13,12 +14,14 @@ import subprocess
 import sys
 import tempfile
 import urllib
+import time
 
 import bs4
 import chardet
 import dashtable
 import mammoth
 import pypandoc
+import requests
 import toml
 from bs4 import BeautifulSoup
 from parse import parse
@@ -26,11 +29,11 @@ from parse import parse
 import chgksuite.typotools as typotools
 from chgksuite.common import (
     QUESTION_LABELS,
-    DefaultArgs,
     DefaultNamespace,
     DummyLogger,
     check_question,
     compose_4s,
+    get_chgksuite_dir,
     get_lastdir,
     init_logger,
     load_settings,
@@ -40,6 +43,7 @@ from chgksuite.common import (
 from chgksuite.composer import gui_compose
 from chgksuite.composer.composer_common import make_filename
 from chgksuite.parser_db import chgk_parse_db
+from chgksuite.typotools import re_url
 from chgksuite.typotools import remove_excessive_whitespace as rew
 
 ENC = sys.stdout.encoding or "utf8"
@@ -107,7 +111,7 @@ class ChgkParser:
 
     def __init__(self, defaultauthor=None, args=None, logger=None):
         self.defaultauthor = defaultauthor
-        args = args or DefaultArgs()
+        args = args or DefaultNamespace()
         self.regexes = load_regexes(args.regexes)
         self.logger = logger or init_logger("parser")
         self.args = args
@@ -120,6 +124,148 @@ class ChgkParser:
             self.question_stub = f"{question_label} {{}}."
         if self.args.language == "en":
             self.args.typography_quotes = "off"
+
+    def _setup_image_cache(self):
+        """Setup image download cache directory and load existing cache"""
+        if not hasattr(self, "_image_cache"):
+            self.image_cache_dir = os.path.join(
+                get_chgksuite_dir(), "downloaded_images"
+            )
+            os.makedirs(self.image_cache_dir, exist_ok=True)
+
+            self.image_cache_file = os.path.join(
+                get_chgksuite_dir(), "image_download_cache.json"
+            )
+            if os.path.isfile(self.image_cache_file):
+                try:
+                    with open(self.image_cache_file, encoding="utf8") as f:
+                        self._image_cache = json.load(f)
+                except (json.JSONDecodeError, OSError):
+                    self._image_cache = {}
+            else:
+                self._image_cache = {}
+
+    def _download_image(self, url):
+        """Download image from URL and return local filename"""
+        self._setup_image_cache()
+        url = url.replace("\\", "")
+
+        # Check cache first
+        url_hash = hashlib.sha256(url.encode("utf-8")).hexdigest()[:20]
+        if url_hash in self._image_cache:
+            cached_filename = self._image_cache[url_hash]
+            cached_path = os.path.join(self.image_cache_dir, cached_filename)
+            if os.path.isfile(cached_path):
+                return cached_path
+
+        # Determine file extension
+        parsed_url = urllib.parse.urlparse(url)
+        path_lower = parsed_url.path.lower()
+        ext = None
+        for image_ext in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".svg"]:
+            if path_lower.endswith(image_ext):
+                ext = image_ext
+                break
+
+        if not ext:
+            # Try to guess from URL structure
+            if any(
+                img_ext in path_lower
+                for img_ext in [
+                    ".jpg",
+                    ".jpeg",
+                    ".png",
+                    ".webp",
+                    ".gif",
+                    ".bmp",
+                    ".svg",
+                ]
+            ):
+                for image_ext in [
+                    ".jpg",
+                    ".jpeg",
+                    ".png",
+                    ".webp",
+                    ".gif",
+                    ".bmp",
+                    ".svg",
+                ]:
+                    if image_ext in path_lower:
+                        ext = image_ext
+                        break
+            else:
+                ext = ".jpg"  # Default extension
+
+        filename = url_hash + ext
+        filepath = os.path.join(self.image_cache_dir, filename)
+
+        try:
+            self.logger.info(f"Downloading image from {url}")
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "Accept": "image/png,image/jpeg,image/webp,image/gif,image/*,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+            }
+            response = requests.get(url, timeout=30, stream=True, headers=headers)
+            response.raise_for_status()
+            time.sleep(0.5)  # rate limiting
+
+            with open(filepath, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            # Update cache
+            self._image_cache[url_hash] = filename
+            with open(self.image_cache_file, "w", encoding="utf8") as f:
+                json.dump(self._image_cache, f, indent=2, sort_keys=True)
+
+            return filepath
+
+        except Exception as e:
+            self.logger.warning(f"Failed to download image from {url}: {e}")
+            return None
+
+    def _process_images_in_text(self, text):
+        """Process text to find image URLs and replace them with local references"""
+        if not text or not getattr(self.args, "download_images", False):
+            return text
+
+        if isinstance(text, list):
+            return [self._process_images_in_text(item) for item in text]
+
+        if not isinstance(text, str):
+            return text
+
+        # Find all URLs in the text
+        for match in re_url.finditer(text):
+            url = match.group(0)
+            url_lower = url.lower()
+
+            # Check if it's a direct image URL
+            if any(
+                url_lower.endswith(ext)
+                for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".svg"]
+            ):
+                local_filename = self._download_image(url)
+                if local_filename:
+                    # Replace URL with chgksuite image syntax
+                    img_reference = f"(img {local_filename})"
+                    text = text.replace(url, img_reference)
+
+        return text
+
+    def _process_question_images(self, question):
+        """Process a question dict to download images from URLs"""
+        if not getattr(self.args, "download_images", False):
+            return
+
+        # Process all fields except 'source'
+        for field in question:
+            if field != "source":
+                question[field] = self._process_images_in_text(question[field])
 
     def merge_to_previous(self, index):
         target = index - 1
@@ -648,6 +794,7 @@ class ChgkParser:
             ):
                 if self.defaultauthor and "author" not in current_question:
                     current_question["author"] = self.defaultauthor
+                self._process_question_images(current_question)
                 check_question(current_question, logger=logger)
                 final_structure.append(["Question", current_question])
                 current_question = {}
@@ -681,6 +828,7 @@ class ChgkParser:
         if current_question != {}:
             if self.defaultauthor and "author" not in current_question:
                 current_question["author"] = self.defaultauthor
+            self._process_question_images(current_question)
             check_question(current_question, logger=logger)
             final_structure.append(["Question", current_question])
 
@@ -724,6 +872,11 @@ class ChgkParser:
             elif element[0] == "tour" and self.args.tour_numbers_as_words == "on":
                 element[1] = f"{self.TOUR_NUMBERS_AS_WORDS[tour_cnt]} тур"
                 tour_cnt += 1
+            elif element[0] not in ["Question", "source"] and getattr(
+                self.args, "download_images", False
+            ):
+                # Process images in metadata fields (excluding source)
+                element[1] = self._process_images_in_text(element[1])
 
         if debug:
             with codecs.open("debug_final.json", "w", "utf8") as f:
@@ -733,7 +886,8 @@ class ChgkParser:
 
 def chgk_parse(text, defaultauthor=None, args=None):
     parser = ChgkParser(defaultauthor=defaultauthor, args=args)
-    return parser.parse(text)
+    parsed = parser.parse(text)
+    return parsed
 
 
 class UnknownEncodingException(Exception):
@@ -779,7 +933,7 @@ def ensure_line_breaks(tag):
 
 def chgk_parse_docx(docxfile, defaultauthor="", args=None, logger=None):
     logger = logger or DummyLogger()
-    args = args or DefaultArgs()
+    args = args or DefaultNamespace()
     for_ol = {}
 
     def get_number(tag):
