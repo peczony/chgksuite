@@ -124,6 +124,9 @@ class HandoutGenerator:
 
     def generate(self):
         for block in self.parse_input(self.args.filename):
+            if not block:
+                self.blocks.append("\n\\clearpage\n")
+                continue
             if self.args.debug:
                 print(block)
             if block.get("for_question"):

@@ -45,8 +45,29 @@ def wrap_val(key, val):
     return val.strip()
 
 
+def split_array_by_value(arr, delimiter):
+    result = []
+    current_subarray = []
+    for item in arr:
+        if item == delimiter:
+            result.append(current_subarray)
+            current_subarray = []
+        else:
+            current_subarray.append(item)
+    result.append(current_subarray)
+    return result
+
+
+def split_blocks(contents):
+    lines = contents.split("\n")
+    sp = ["\n".join(x) for x in split_array_by_value(lines, "---")]
+    if not sp[0].strip():
+        sp = sp[1:]
+    return sp
+
+
 def parse_handouts(contents):
-    blocks = contents.split("\n---\n")
+    blocks = split_blocks(contents)
     result = []
     for block_ in blocks:
         block = block_.strip()
