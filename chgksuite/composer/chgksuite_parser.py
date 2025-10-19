@@ -64,7 +64,9 @@ def process_list(element):
 
 
 RE_COUNTER = "4SCOUNTER(?P<counter_id>[0-9a-zA-Z_]*)"
-RE_SET_COUNTER = "set 4SCOUNTER(?P<counter_id_set>[0-9a-zA-Z_]*) = (?P<counter_value>[0-9+])"
+RE_SET_COUNTER = (
+    "set 4SCOUNTER(?P<counter_id_set>[0-9a-zA-Z_]*) = (?P<counter_value>[0-9+])"
+)
 RE_COUNTER_UNIFY = re.compile(f"({RE_COUNTER}|{RE_SET_COUNTER})")
 
 
@@ -83,7 +85,7 @@ def replace_counters(string_):
             counter_id = match.group("counter_id")
             string_ = string_[: span[0]] + str(dd[counter_id]) + string_[span[1] :]
             dd[counter_id] += 1
-        match = RE_COUNTER_UNIFY.search(string_)    
+        match = RE_COUNTER_UNIFY.search(string_)
     return string_
 
 

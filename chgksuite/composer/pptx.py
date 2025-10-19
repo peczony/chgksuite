@@ -5,7 +5,12 @@ import re
 import toml
 
 from chgksuite.common import log_wrap, replace_escaped, tryint
-from chgksuite.composer.composer_common import BaseExporter, backtick_replace, parseimg
+from chgksuite.composer.composer_common import (
+    BaseExporter,
+    backtick_replace,
+    parseimg,
+    remove_accents_standalone,
+)
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR, PP_ALIGN
@@ -109,15 +114,20 @@ class PptxExporter(BaseExporter):
                         r.font.underline = True
 
     def pptx_process_text(
-        self, s, image=None, strip_brackets=True, replace_spaces=True
+        self,
+        s,
+        image=None,
+        strip_brackets=True,
+        replace_spaces=True,
+        do_not_remove_accents=False,
     ):
         hs = self.labels["question_labels"]["handout_short"]
         if isinstance(s, list):
             for i in range(len(s)):
                 s[i] = self.pptx_process_text(s[i], image=image)
             return s
-        if not self.args.do_not_remove_accents:
-            s = s.replace("\u0301", "")
+        if not (self.args.do_not_remove_accents or do_not_remove_accents):
+            s = remove_accents_standalone(s, self.labels)
         if strip_brackets:
             s = self.remove_square_brackets(s)
             s = s.replace("]\n", "]\n\n")
@@ -408,7 +418,9 @@ class PptxExporter(BaseExporter):
         if number is not None:
             self.set_question_number(slide, number)
         p = self.init_paragraph(tf, text=handout)
-        self.pptx_format(self.pptx_process_text(handout), p, tf, slide)
+        self.pptx_format(
+            self.pptx_process_text(handout, do_not_remove_accents=True), p, tf, slide
+        )
 
     def process_question_text(self, q):
         image = self._get_image_from_4s(q["question"])

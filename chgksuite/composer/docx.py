@@ -14,12 +14,13 @@ from docx.shared import Inches
 from docx.shared import Pt as DocxPt
 
 import chgksuite.typotools as typotools
-from chgksuite.common import DummyLogger, get_chgksuite_dir, log_wrap, replace_escaped
+from chgksuite.common import DummyLogger, log_wrap, replace_escaped
 from chgksuite.composer.composer_common import (
     BaseExporter,
     _parse_4s_elem,
     backtick_replace,
     parseimg,
+    remove_accents_standalone,
 )
 
 WHITEN = {
@@ -222,8 +223,8 @@ def format_docx_element(
     if isinstance(el, str):
         logger.debug("parsing element {}:".format(log_wrap(el)))
 
-        if remove_accents:
-            el = el.replace("\u0301", "")
+        if remove_accents and labels:
+            el = remove_accents_standalone(el, labels)
         if remove_brackets and labels:
             el = remove_square_brackets_standalone(el, labels)
         else:

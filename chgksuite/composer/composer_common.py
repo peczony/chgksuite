@@ -59,6 +59,22 @@ def backtick_replace(el):
     return el
 
 
+def remove_accents_standalone(s, labels):
+    hs = labels["question_labels"]["handout_short"]
+    re_hs = re.compile(f"\\[{hs}(.+?)\\]", flags=re.DOTALL)
+    replacements = {}
+    n_handouts = 0
+    while match := re_hs.search(s):
+        original = match.group(0)
+        n_handouts += 1
+        replacements[original] = f"HANDOUT_{str(n_handouts).zfill(3)}"
+        s = s.replace(original, replacements[original])
+    s = s.replace("\u0301", "")
+    for k, v in replacements.items():
+        s = s.replace(v, k)
+    return s
+
+
 def unquote(bytestring):
     return urllib.parse.unquote(bytestring.decode("utf8")).encode("utf8")
 

@@ -126,7 +126,9 @@ class TelegramExporter(BaseExporter):
             if result:
                 msg_data = json.loads(result["raw_data"])
                 if msg_data["message"]["chat"]["type"] != "private":
-                    print("You should post to the PRIVATE chat, not to the channel/group")
+                    print(
+                        "You should post to the PRIVATE chat, not to the channel/group"
+                    )
                     continue
                 self.control_chat_id = msg_data["message"]["chat"]["id"]
                 self.send_api_request(
@@ -869,7 +871,7 @@ class TelegramExporter(BaseExporter):
                     raise Exception("Failed to get channel ID from forwarded message")
         else:
             raise Exception("Channel ID is undefined")
-        
+
         # Handle chat resolution
         if isinstance(chat_result, int):
             chat_id = chat_result
@@ -881,7 +883,9 @@ class TelegramExporter(BaseExporter):
                     f"Please write a message in the discussion group with text: {self.chat_auth_uuid}"
                 )
                 print("This will allow me to extract the group ID automatically.")
-                print("The bot MUST be added do the group and made admin, else it won't work!")
+                print(
+                    "The bot MUST be added do the group and made admin, else it won't work!"
+                )
                 print("=" * 50 + "\n")
 
                 # Wait for a forwarded message with chat information
@@ -1158,7 +1162,10 @@ class TelegramExporter(BaseExporter):
                     if get_text(msg_data) != self.chat_auth_uuid:
                         continue
                     extracted_id = msg_data["message"]["chat"]["id"]
-                    if extracted_id == channel_numeric_id or extracted_id == self.control_chat_id:
+                    if (
+                        extracted_id == channel_numeric_id
+                        or extracted_id == self.control_chat_id
+                    ):
                         self.logger.warning(
                             "User posted a message in the channel, not the discussion group"
                         )
@@ -1168,7 +1175,7 @@ class TelegramExporter(BaseExporter):
                                 "chat_id": self.control_chat_id,
                                 "text": (
                                     "⚠️ You posted a message in the channel, not in the discussion group."
-                                )
+                                ),
                             },
                         )
                         # Skip this message and continue waiting
@@ -1176,7 +1183,10 @@ class TelegramExporter(BaseExporter):
                 elif entity_type == "channel":
                     if msg_data["message"]["chat"]["id"] != self.control_chat_id:
                         continue
-                    if "message" in msg_data and "forward_from_chat" in msg_data["message"]:
+                    if (
+                        "message" in msg_data
+                        and "forward_from_chat" in msg_data["message"]
+                    ):
                         forward_info = msg_data["message"]["forward_from_chat"]
 
                         # Extract chat ID from the message
@@ -1187,9 +1197,10 @@ class TelegramExporter(BaseExporter):
                         else:
                             extracted_id = chat_id
                 # For channels, check the type; for chats, accept any type except "channel" if check_type is False
-                if extracted_id and ((check_type and forward_info.get("type") == "channel") or (
-                    not check_type
-                )):
+                if extracted_id and (
+                    (check_type and forward_info.get("type") == "channel")
+                    or (not check_type)
+                ):
                     resolved = True
                     self.created_at = row["created_at"]
                     self.logger.info(

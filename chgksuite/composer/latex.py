@@ -199,11 +199,11 @@ class LatexExporter(BaseExporter):
         firsttour = True
         for element in self.structure:
             if element[0] == "heading":
-                tex += "\n{{\\huge {}}}\n" "\\vspace{{0.8em}}\n".format(
+                tex += "\n{{\\huge {}}}\n\\vspace{{0.8em}}\n".format(
                     self.tex_element_layout(element[1])
                 )
             if element[0] == "date":
-                tex += "\n{{\\large {}}}\n" "\\vspace{{0.8em}}\n".format(
+                tex += "\n{{\\large {}}}\n\\vspace{{0.8em}}\n".format(
                     self.tex_element_layout(element[1])
                 )
             if element[0] in {"meta", "editor"}:
