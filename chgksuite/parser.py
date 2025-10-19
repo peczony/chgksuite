@@ -659,7 +659,19 @@ class ChgkParser:
         ):
             self.merge_to_next(0)
 
-        for _id, element in enumerate(self.structure):
+        if debug:
+            with codecs.open("debug_3a.json", "w", "utf8") as f:
+                f.write(
+                    json.dumps(
+                        list(enumerate(self.structure)), ensure_ascii=False, indent=4
+                    )
+                )
+
+        idx = 0
+        cycle = -1
+        while idx < len(self.structure):
+            cycle += 1
+            element = self.structure[idx]
             if element[0] == "":
                 element[0] = "meta"
             if element[0] in regexes and element[0] not in [
@@ -671,31 +683,42 @@ class ChgkParser:
                     try:
                         num = regexes["question"].search(element[1])
                         if num and num.group("number"):
-                            self.structure.insert(_id, ["number", num.group("number")])
+                            self.structure.insert(idx, ["number", num.group("number")])
+                            idx += 1
                     except Exception as e:
+                        num = None
                         sys.stderr.write(
-                            f"exception at line 445 of parser: {type(e)} {e}\n"
+                            f"exception at setting number: {type(e)} {e}\n"
                         )
                     if (
-                        not num
-                        and ("нулевой вопрос" in element[1].lower())
+                        num is None
+                        or num and not num.group("number")
+                    ) and (
+                        ("нулевой вопрос" in element[1].lower())
                         or ("разминочный вопрос" in element[1].lower())
                     ):
-                        self.structure.insert(_id, ["number", "0"])
+                        self.structure.insert(idx, ["number", "0"])
+                        idx += 1
                 if element[0] == "question":
                     lines = element[1].split(SEP)
                     for i, line in enumerate(lines):
                         if regexes["question"].search(line):
                             lines[i] = regexes["question"].sub("", line, 1)
                     element[1] = SEP.join([x.strip() for x in lines if x.strip()])
+                    before_replacement = None
                 else:
                     before_replacement = element[1]
                     element[1] = regexes[element[0]].sub("", element[1], 1)
                 if element[1].startswith(SEP):
                     element[1] = element[1][len(SEP) :]
                 # TODO: переделать корявую обработку авторки на нормальную
-                if element[0] == "author" and "авторка:" in before_replacement.lower():
+                if (
+                    element[0] == "author"
+                    and before_replacement
+                    and "авторка:" in before_replacement.lower()
+                ):
                     element[1] = "!!Авторка" + element[1]
+            idx += 1
 
         if debug:
             with codecs.open("debug_4.json", "w", "utf8") as f:
@@ -961,6 +984,11 @@ def chgk_parse_docx(docxfile, defaultauthor="", args=None, logger=None):
         else:
             with open(docxfile, "rb") as docx_file:
                 html = mammoth.convert_to_html(docx_file).value
+        if args.debug:
+            with codecs.open(
+                os.path.join(target_dir, "debugdebug.pydocx"), "w", "utf8"
+            ) as dbg:
+                dbg.write(html)
         input_docx = (
             html.replace("</strong><strong>", "")
             .replace("</em><em>", "")
