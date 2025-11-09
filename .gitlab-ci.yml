@@ -1,13 +1,13 @@
-image: python:3.8-buster
+image: python:3.14-trixie
 
 before_script:
-  - pip install mkdocs mkdocs-material
+  - pip install zensical
 
 pages:
   stage: deploy
   script:
   - cd docs
-  - mkdocs build
+  - zensical build
   - mv public ../public
   - cd ..
   artifacts:
