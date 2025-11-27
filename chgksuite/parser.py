@@ -566,8 +566,8 @@ class ChgkParser:
         # hack for https://gitlab.com/peczony/chgksuite/-/issues/23; TODO: make less hacky
         for i, element in enumerate(self.structure):
             if (
-                "дуплет." in element[1].lower().split()
-                or "блиц." in element[1].lower().split()
+                "Дуплет." in element[1].split()
+                or "Блиц." in element[1].split()
                 and element[0] != "question"
                 and (i == 0 or self.structure[i - 1][0] != "question")
             ):

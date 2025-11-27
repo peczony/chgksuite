@@ -35,7 +35,7 @@ ljlogin, ljpassword = open(os.path.join(currentdir, "ljcredentials")).read().spl
 
 def workaround_chgk_parse(filename, **kwargs):
     if filename.endswith(".txt"):
-        return chgk_parse_txt(filename)
+        return chgk_parse_txt(filename,  args=DefaultArgs(**kwargs))
     elif filename.endswith(".docx"):
         return chgk_parse_docx(filename, args=DefaultArgs(**kwargs))
     return
