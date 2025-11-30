@@ -1,0 +1,244 @@
+name: Build Standalone Executables
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux-x64
+          - os: ubuntu-22.04-arm
+            platform: linux-arm64
+          - os: macos-13
+            platform: macos-x64
+          - os: macos-14
+            platform: macos-arm64
+          - os: windows-latest
+            platform: windows-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout chgksuite
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3-tk \
+            libxcb-xinerama0 \
+            libxcb-cursor0 \
+            libxkbcommon-x11-0 \
+            libegl1 \
+            libgl1-mesa-glx \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install .
+          pip install chgksuite-qt chgksuite-tk
+
+      - name: Create build scripts directory
+        shell: bash
+        run: mkdir -p build_specs
+
+      - name: Create Qt spec file
+        shell: bash
+        run: |
+          cat > build_specs/chgkq.spec << 'EOF'
+          import sys
+          import os
+          from PyInstaller.utils.hooks import collect_submodules, exec_statement
+
+          block_cipher = None
+          dateparser_hiddenimports = collect_submodules('dateparser')
+
+          chgksuite_path = exec_statement(
+              "import chgksuite; import os; print(os.path.dirname(chgksuite.__file__))"
+          )
+
+          chgksuite_datas = [(chgksuite_path + '/resources', 'resources')]
+
+          strptime_data_file = exec_statement(
+              "import inspect; import _strptime; print(inspect.getfile(_strptime))"
+          )
+
+          qt_entry = exec_statement(
+              "import chgksuite_qt.gui; import os; print(os.path.dirname(chgksuite_qt.gui.__file__))"
+          )
+
+          a = Analysis(
+              [qt_entry + '/__main__.py'],
+              datas=chgksuite_datas + [(strptime_data_file, '.')],
+              hiddenimports=dateparser_hiddenimports + [
+                  'chgksuite', 'chgksuite.cli', 'chgksuite.parser',
+                  'chgksuite.composer', 'chgksuite.handouter',
+                  'chgksuite_qt', 'chgksuite_qt.gui', 'PyQt6.sip',
+              ],
+              hookspath=[], hooksconfig={}, runtime_hooks=[],
+              excludes=[], cipher=block_cipher, noarchive=False,
+          )
+          pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+          exe = EXE(pyz, a.scripts, [],
+              exclude_binaries=True,
+              name='chgkq',
+              debug=False, strip=False, upx=True,
+              runtime_tmpdir=None, console=False,
+          )
+
+          coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas,
+              strip=False, upx=True, name='chgkq'
+          )
+
+          if sys.platform == 'darwin':
+              app = BUNDLE(coll,
+                  name='chgkq.app',
+                  icon=None,
+                  bundle_identifier='me.pecheny.chgkq',
+              )
+          EOF
+
+      - name: Create Tk spec file
+        shell: bash
+        run: |
+          cat > build_specs/chgkt.spec << 'EOF'
+          import sys
+          import os
+          from PyInstaller.utils.hooks import collect_submodules, exec_statement
+
+          block_cipher = None
+          dateparser_hiddenimports = collect_submodules('dateparser')
+
+          chgksuite_path = exec_statement(
+              "import chgksuite; import os; print(os.path.dirname(chgksuite.__file__))"
+          )
+
+          chgksuite_datas = [(chgksuite_path + '/resources', 'resources')]
+
+          strptime_data_file = exec_statement(
+              "import inspect; import _strptime; print(inspect.getfile(_strptime))"
+          )
+
+          tk_entry = exec_statement(
+              "import chgksuite_tk.gui; import os; print(os.path.dirname(chgksuite_tk.gui.__file__))"
+          )
+
+          a = Analysis(
+              [tk_entry + '/__main__.py'],
+              datas=chgksuite_datas + [(strptime_data_file, '.')],
+              hiddenimports=dateparser_hiddenimports + [
+                  'chgksuite', 'chgksuite.cli', 'chgksuite.parser',
+                  'chgksuite.composer', 'chgksuite.handouter',
+                  'chgksuite_tk', 'chgksuite_tk.gui',
+              ],
+              hookspath=[], hooksconfig={}, runtime_hooks=[],
+              excludes=[], cipher=block_cipher, noarchive=False,
+          )
+          pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+          exe = EXE(pyz, a.scripts, [],
+              exclude_binaries=True,
+              name='chgkt',
+              debug=False, strip=False, upx=True,
+              runtime_tmpdir=None, console=False,
+          )
+
+          coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas,
+              strip=False, upx=True, name='chgkt'
+          )
+
+          if sys.platform == 'darwin':
+              app = BUNDLE(coll,
+                  name='chgkt.app',
+                  icon=None,
+                  bundle_identifier='me.pecheny.chgkt',
+              )
+          EOF
+
+      - name: Build Qt GUI
+        run: pyinstaller build_specs/chgkq.spec --clean --distpath dist/qt
+
+      - name: Build Tk GUI
+        run: pyinstaller build_specs/chgkt.spec --clean --distpath dist/tk
+
+      - name: Fix macOS resource paths
+        if: runner.os == 'macOS'
+        run: |
+          # Create symlinks so code can find resources at expected path
+          ln -s ../Resources/resources dist/qt/chgkq.app/Contents/MacOS/resources
+          ln -s ../Resources/resources dist/tk/chgkt.app/Contents/MacOS/resources
+
+      - name: Package artifacts (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p artifacts
+          cd dist/qt && zip -r ../../artifacts/chgkq-${{ matrix.platform }}.zip chgkq.app && cd ../..
+          cd dist/tk && zip -r ../../artifacts/chgkt-${{ matrix.platform }}.zip chgkt.app
+
+      - name: Package artifacts (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p artifacts
+          cd dist/qt/chgkq && tar -czvf ../../../artifacts/chgkq-${{ matrix.platform }}.tar.gz . && cd ../../..
+          cd dist/tk/chgkt && tar -czvf ../../../artifacts/chgkt-${{ matrix.platform }}.tar.gz .
+
+      - name: Package artifacts (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts
+          Compress-Archive -Path dist/qt/chgkq/* -DestinationPath artifacts/chgkq-${{ matrix.platform }}.zip
+          Compress-Archive -Path dist/tk/chgkt/* -DestinationPath artifacts/chgkt-${{ matrix.platform }}.zip
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: builds-${{ matrix.platform }}
+          path: artifacts/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
