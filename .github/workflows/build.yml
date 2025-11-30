@@ -198,6 +198,23 @@ jobs:
           ln -s ../Resources/resources dist/qt/chgkq.app/Contents/MacOS/resources
           ln -s ../Resources/resources dist/tk/chgkt.app/Contents/MacOS/resources
 
+      - name: Fix Linux resource paths
+        if: runner.os == 'Linux'
+        run: |
+          # Move resources from _internal to where code expects them
+          if [ -d "dist/qt/chgkq/_internal/resources" ]; then
+            mv dist/qt/chgkq/_internal/resources dist/qt/chgkq/resources
+          fi
+          mv dist/tk/chgkt/_internal/resources dist/tk/chgkt/resources
+
+      - name: Fix Windows resource paths
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Move resources from _internal to where code expects them
+          Move-Item dist/qt/chgkq/_internal/resources dist/qt/chgkq/resources
+          Move-Item dist/tk/chgkt/_internal/resources dist/tk/chgkt/resources
+
       - name: Package artifacts (macOS)
         if: runner.os == 'macOS'
         run: |
