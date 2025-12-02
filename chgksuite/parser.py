@@ -46,7 +46,7 @@ from chgksuite.parser_db import chgk_parse_db
 from chgksuite.typotools import re_url
 from chgksuite.typotools import remove_excessive_whitespace as rew
 
-ENC = sys.stdout.encoding or "utf8"
+
 SEP = os.linesep
 EDITORS = {
     "win32": "notepad",
