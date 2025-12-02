@@ -29,7 +29,10 @@ QUESTION_LABELS = [
     "setcounter",
 ]
 SEP = os.linesep
-ENC = sys.stdout.encoding or "utf8"
+try:
+    ENC = sys.stdout.encoding or "utf8"
+except AttributeError:
+    ENC = "utf8"
 
 lastdir = os.path.join(os.path.dirname(os.path.abspath("__file__")), "lastdir")
 
