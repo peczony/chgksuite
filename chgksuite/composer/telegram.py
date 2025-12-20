@@ -6,6 +6,7 @@ import sqlite3
 import tempfile
 import time
 import uuid
+from typing import Optional, Union
 
 import requests
 import toml
@@ -247,7 +248,7 @@ class TelegramExporter(BaseExporter):
                 channel_id_str = channel_id_str[4:]
             return f"https://t.me/c/{channel_id_str}/{message_id}"
 
-    def extract_id_from_link(self, link) -> int | str | None:
+    def extract_id_from_link(self, link) -> Optional[Union[int, str]]:
         """
         Extract channel or chat ID from a Telegram link.
         Examples:
