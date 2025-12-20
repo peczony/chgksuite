@@ -1,0 +1,23 @@
+[question_labels]
+question = "Sual"
+answer = "Cavab"
+zachet = "Sayılma meyarı"
+nezachet = "Sayılmır"
+comment = "Şərh"
+source = "Mənbə"
+sources = "Mənbələr"
+author = "Müəllif"
+authors = "Müəlliflər"
+handout = "Paylama materialı"
+handout_short = "Payl"
+
+[general]
+section = "Tur"
+editor = "Redaktor"
+date = "Tarix"
+questions_in_comments = "Suallar şərh bölməsindədir."
+general_impressions_caption = "Ümumi təəssüratlar"
+handout_for_question = "Paylama materialı sual {} üçün"
+general_impressions_text = "Paket barədə ümumi təəssüratlar — bu posun altına şərh kimi yazın."
+right_answers_for_stats = "Doğru cavablar"
+cf_image = "Şəklə baxın"
