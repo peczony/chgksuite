@@ -54,7 +54,7 @@ def generate_handouts_list(handouts, output_dir, base_name, parsed):
 def generate_handouts(args):
     _, resourcedir = get_source_dirs()
     labels = toml.loads(
-        read_file(os.path.join(resourcedir, f"labels_{args.lang}.toml"))
+        read_file(os.path.join(resourcedir, f"labels_{args.language}.toml"))
     )
     handout_re_text = (
         "\\["

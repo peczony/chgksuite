@@ -5,15 +5,16 @@ import shutil
 import subprocess
 import time
 
+import toml
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+from chgksuite.common import get_source_dirs
 from chgksuite.handouter.gen import generate_handouts
 from chgksuite.handouter.pack import pack_handouts
 from chgksuite.handouter.installer import get_tectonic_path, install_tectonic
 from chgksuite.handouter.tex_internals import (
     GREYTEXT,
-    GREYTEXT_LANGS,
     HEADER,
     IMG,
     IMGWIDTH,
@@ -29,6 +30,10 @@ class HandoutGenerator:
 
     def __init__(self, args):
         self.args = args
+        _, resourcedir = get_source_dirs()
+        self.labels = toml.loads(
+            read_file(os.path.join(resourcedir, f"labels_{args.language}.toml"))
+        )
         self.blocks = [self.get_header()]
 
     def get_header(self):
@@ -51,9 +56,8 @@ class HandoutGenerator:
         return parse_handouts(contents)
 
     def generate_for_question(self, question_num):
-        return GREYTEXT.replace(
-            "<GREYTEXT>", GREYTEXT_LANGS[self.args.lang].format(question_num)
-        )
+        handout_text = self.labels["general"]["handout_for_question"].format(question_num)
+        return GREYTEXT.replace("<GREYTEXT>", handout_text)
 
     def make_tikzbox(self, block):
         if block.get("no_center"):
@@ -141,7 +145,7 @@ class HandoutGenerator:
 
 def process_file(args, file_dir, bn):
     tex_contents = HandoutGenerator(args).generate()
-    tex_path = os.path.join(file_dir, f"{bn}_{args.lang}.tex")
+    tex_path = os.path.join(file_dir, f"{bn}_{args.language}.tex")
     write_file(tex_path, tex_contents)
 
     tectonic_path = get_tectonic_path()
