@@ -56,7 +56,9 @@ class HandoutGenerator:
         return parse_handouts(contents)
 
     def generate_for_question(self, question_num):
-        handout_text = self.labels["general"]["handout_for_question"].format(question_num)
+        handout_text = self.labels["general"]["handout_for_question"].format(
+            question_num
+        )
         return GREYTEXT.replace("<GREYTEXT>", handout_text)
 
     def make_tikzbox(self, block):

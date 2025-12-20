@@ -9,7 +9,6 @@ sources = "Джерела"
 author = "Автор"
 authors = "Автори"
 handout = "Роздатковий матеріал"
-handout_short = "Роздат"
 
 [general]
 section = "Тур"

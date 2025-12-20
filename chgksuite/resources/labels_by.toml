@@ -9,7 +9,6 @@ sources = "Крыніцы"
 author = "Аўтар"
 authors = "Аўтары"
 handout = "Раздаткавы матэрыял"
-handout_short = "Раздат"
 
 [general]
 section = "Тур"

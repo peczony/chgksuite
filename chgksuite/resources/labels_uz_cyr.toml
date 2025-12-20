@@ -9,7 +9,6 @@ sources = "Манбалар"
 author = "Муаллиф"
 authors = "Муаллифлар"
 handout = "Тарқатма материал"
-handout_short = "Тарқат"
 
 [general]
 section = "Тур"

@@ -1088,9 +1088,9 @@ def single_action(args, use_wrapper, resourcedir):
         args.console_mode = True
 
     if args.language in LANGS:
+        args.regexes_file = os.path.join(resourcedir, f"regexes_{args.language}.json")
         if args.action == "parse":
-            regex_lang = "by" if args.language == "by_tar" else args.language
-            args.regexes = os.path.join(resourcedir, f"regexes_{regex_lang}.json")
+            args.regexes = args.regexes_file
         args.labels_file = os.path.join(resourcedir, f"labels_{args.language}.toml")
     if not args.docx_template:
         args.docx_template = os.path.join(resourcedir, "template.docx")

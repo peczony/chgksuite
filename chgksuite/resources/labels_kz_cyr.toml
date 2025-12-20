@@ -9,7 +9,6 @@ sources = "Дереккөздер"
 author = "Автор"
 authors = "Авторлар"
 handout = "Үлестіру материалы"
-handout_short = "Материал"
 
 [general]
 section = "Тур"

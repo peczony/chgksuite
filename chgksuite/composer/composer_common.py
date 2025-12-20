@@ -59,8 +59,8 @@ def backtick_replace(el):
     return el
 
 
-def remove_accents_standalone(s, labels):
-    hs = labels["question_labels"]["handout_short"]
+def remove_accents_standalone(s, regexes):
+    hs = regexes["handout_short"]
     re_hs = re.compile(f"\\[{hs}(.+?)\\]", flags=re.DOTALL)
     replacements = {}
     n_handouts = 0
@@ -413,6 +413,8 @@ class BaseExporter:
         self.dir_kwargs = args[2]
         with open(self.args.labels_file, encoding="utf8") as f:
             self.labels = toml.load(f)
+        with open(self.args.regexes_file, encoding="utf8") as f:
+            self.regexes = json.load(f)
         logger = kwargs.get("logger")
         if logger:
             self.logger = logger
@@ -451,7 +453,7 @@ class BaseExporter:
         return self.labels["question_labels"][field]
 
     def remove_square_brackets(self, s):
-        hs = self.labels["question_labels"]["handout_short"]
+        hs = self.regexes["handout_short"]
         s = s.replace("\\[", "LEFTSQUAREBRACKET")
         s = s.replace("\\]", "RIGHTSQUAREBRACKET")
         s = re.sub(f"\\[{hs}(.+?)\\]", "{" + hs + "\\1}", s, flags=re.DOTALL)

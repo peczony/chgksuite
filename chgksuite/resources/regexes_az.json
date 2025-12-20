@@ -12,5 +12,6 @@
     "editor": "R[Ee][Dd][Aa]([Kk][Tt][Oo][Rr]?\\s*(\\s*[\\.:]|\\s*[\\-–—]+\\s)?)",
     "date": "TT[Aa][Rr][İiİı][Xx]\\s*[\\.:]?",
     "date2": "(^|\\s)[Yy][Aa][Nn][Vv][Aa][Rr]|[Ff][Ee][Vv][Rr][Aa][Ll]|[Mm][Aa][Rr][Tt]|[Aa][Pp][Rr][Ee][Ll]|[Mm][Aa][Yy]|[İi][Yy][Uu][Nn]|[İi][Yy][Uu][Ll]|[Aa][Vv][Qq][Uu][Ss][Tt]|[Ss][Ee][Nn][Tt][Yy][Aa][Bb][Rr]|[Oo][Kk][Tt][Yy][Aa][Bb][Rr]|[Nn][Oo][Yy][Aa][Bb][Rr]|[Dd][Ee][Kk][Aa][Bb][Rr](\\s|$)",
-    "number": "^[0-9]+[\\.\\)]\\s*"
+    "number": "^[0-9]+[\\.\\)]\\s*",
+    "handout_short": "(P[Aa][Yy][Ll]|R[Ee][Kk][Vv][Ii][Zz][Ii][Tt])"
 }

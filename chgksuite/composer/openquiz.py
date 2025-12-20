@@ -71,7 +71,7 @@ class OpenquizExporter(BaseExporter):
                 )
         while res.endswith("\n"):
             res = res[:-1]
-        hs = self.labels["question_labels"]["handout_short"]
+        hs = self.regexes["handout_short"]
         if images:
             res = re.sub("\\[" + hs + "(.+?)\\]", "", s, flags=re.DOTALL)
             res = res.strip()

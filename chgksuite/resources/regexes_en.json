@@ -12,5 +12,6 @@
     "editor": "E[Dd][Ii][Tt]([Oo][Rr][Ss]?|[Ee][Dd]\\s[Bb][Yy])\\s?(\\s?[\\.:]|\\s[\\-–—]+\\s)",
     "date": "D[Aa][Tt][Ee]\\s?[\\.:]",
     "date2": "(^|\\s)Jan(uary)?|Feb(ruary)?|Mar(ch)?|Apr(il)?|May|June?|July?|Aug(ust)?|Sep(tember)?|Oct(ober)?|Nov(ember)?|Dec(ember)?(\\s|$)",
-    "number": "^[0-9]+[\\.\\)]\\s*"
+    "number": "^[0-9]+[\\.\\)]\\s*",
+    "handout_short": "H[Aa][Nn][Dd][Oo][Uu][Tt]"
 }

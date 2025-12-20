@@ -1,6 +1,9 @@
 build
+build_specs
+docs/public
 __pycache__
 dist
 *.egg-info
 *.log
 *.debug
+tmp*

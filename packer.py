@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import argparse
+import json
 import os
+import re
 import shutil
 import sys
+
 import toml
-import re
 
 from chgksuite.composer.chgksuite_parser import parse_4s
 from chgksuite.composer.composer_common import _parse_4s_elem, parseimg
@@ -52,13 +54,13 @@ def get_images_from_element(element):
     return images
 
 
-def get_handout_text(re_, labels, text, number):
+def get_handout_text(re_, regexes, text, number):
     if isinstance(text, list):
         text = "\n".join(straighten(text))
     srch = re_.search(text)
     if srch:
         return srch.group("handout_text")
-    elif labels["question_labels"]["handout_short"] in text:
+    elif regexes["handout_short"] in text:
         print(f"possibly ill-marked handout at question {number} ({text[:100]})")
         return text
 
@@ -98,13 +100,13 @@ def main():
     replacements = []
 
     _, resourcedir = get_source_dirs()
-    labels = toml.loads(
-        read_file(os.path.join(resourcedir, f"labels_{args.lang}.toml"))
-    )
+    toml.loads(read_file(os.path.join(resourcedir, f"labels_{args.lang}.toml")))
+    with open(
+        os.path.join(resourcedir, f"regexes_{args.lang}.json"), encoding="utf8"
+    ) as f:
+        regexes = json.load(f)
     handout_re = re.compile(
-        "\\["
-        + labels["question_labels"]["handout_short"]
-        + ".+?:( |\n)(?P<handout_text>.+?)\\]",
+        "\\[" + regexes["handout_short"] + ".+?:( |\n)(?P<handout_text>.+?)\\]",
         flags=re.DOTALL,
     )
 
@@ -117,7 +119,7 @@ def main():
 
             if not question_images and args.add_hndt:
                 handout_text = get_handout_text(
-                    handout_re, labels, question["question"], number
+                    handout_re, regexes, question["question"], number
                 )
                 if handout_text:
                     add_hndt(

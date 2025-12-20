@@ -9,7 +9,6 @@ sources = "Mənbələr"
 author = "Müəllif"
 authors = "Müəlliflər"
 handout = "Paylama materialı"
-handout_short = "Payl"
 
 [general]
 section = "Tur"

@@ -12,5 +12,6 @@
     "editor": "U[Rr][Ee][Dd][Nn][Ii][Kk][Ii]?\\s?(\\s?[\\.:]|\\s[\\-–—]+\\s)",
     "date": "D[Aa][Tt][Uu][Mm]\\s?[\\.:]",
     "date2": "WILL_FILL_LATER",
-    "number": "^[0-9]+[\\.\\)]\\s*"
+    "number": "^[0-9]+[\\.\\)]\\s*",
+    "handout_short": "P[Oo][Dd][Ee][Ll][Jj][Ee][Nn][Oo]"
 }
