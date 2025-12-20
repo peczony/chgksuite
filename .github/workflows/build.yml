@@ -64,10 +64,19 @@ jobs:
         run: |
           uv pip install --system pyinstaller
           uv pip install --system .
-          uv pip install --system chgksuite-tk
+
+          # Determine if this is a prerelease (contains 'a', 'b', or 'rc')
+          TAG="${{ inputs.tag || github.ref_name }}"
+          if [[ "$TAG" =~ (a|b|rc)[0-9]+ ]]; then
+            PRERELEASE="--prerelease=allow"
+          else
+            PRERELEASE=""
+          fi
+
+          uv pip install --system $PRERELEASE chgksuite-tk
           # PyQt6 has no wheel for Linux ARM64, skip it there
           if [ "${{ matrix.platform }}" != "linux-arm64" ]; then
-            uv pip install --system chgksuite-qt
+            uv pip install --system $PRERELEASE chgksuite-qt
           fi
         shell: bash
 
