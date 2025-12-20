@@ -41,7 +41,9 @@ def init_logger(logger_name, debug=False):
     logger = logging.getLogger(logger_name)
     if not logger.handlers:
         logger.setLevel(logging.DEBUG)
-        fh = logging.FileHandler(f"{logger_name}.log", encoding="utf8")
+        source_dir, _ = get_source_dirs()
+        log_path = os.path.join(source_dir, f"{logger_name}.log")
+        fh = logging.FileHandler(log_path, encoding="utf8")
         fh.setLevel(logging.DEBUG)
         ch = logging.StreamHandler()
         if debug:
