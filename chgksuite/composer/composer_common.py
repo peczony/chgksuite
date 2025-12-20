@@ -59,8 +59,8 @@ def backtick_replace(el):
     return el
 
 
-def remove_accents_standalone(s, labels):
-    hs = labels["question_labels"]["handout_short"]
+def remove_accents_standalone(s, regexes):
+    hs = regexes["handout_short"]
     re_hs = re.compile(f"\\[{hs}(.+?)\\]", flags=re.DOTALL)
     replacements = {}
     n_handouts = 0
@@ -413,6 +413,8 @@ class BaseExporter:
         self.dir_kwargs = args[2]
         with open(self.args.labels_file, encoding="utf8") as f:
             self.labels = toml.load(f)
+        with open(self.args.regexes_file, encoding="utf8") as f:
+            self.regexes = json.load(f)
         logger = kwargs.get("logger")
         if logger:
             self.logger = logger
@@ -451,10 +453,11 @@ class BaseExporter:
         return self.labels["question_labels"][field]
 
     def remove_square_brackets(self, s):
-        hs = self.labels["question_labels"]["handout_short"]
+        hs = self.regexes["handout_short"]
         s = s.replace("\\[", "LEFTSQUAREBRACKET")
         s = s.replace("\\]", "RIGHTSQUAREBRACKET")
-        s = re.sub(f"\\[{hs}(.+?)\\]", "{" + hs + "\\1}", s, flags=re.DOTALL)
+        # Use placeholder to preserve handout brackets during removal
+        s = re.sub(f"\\[{hs}(.+?)\\]", "{HANDOUT_PLACEHOLDER\\1}", s, flags=re.DOTALL)
         i = 0
         while "[" in s and "]" in s and i < 10:
             s = re.sub(" *\\[.+?\\]", "", s, flags=re.DOTALL)
@@ -464,7 +467,13 @@ class BaseExporter:
             sys.stderr.write(
                 f"Error replacing square brackets on question: {s}, retries exceeded\n"
             )
-        s = re.sub("\\{" + hs + "(.+?)\\}", "[" + hs + "\\1]", s, flags=re.DOTALL)
+        # Restore handout brackets - get the original matched text from the placeholder
+        s = re.sub(
+            r"\{HANDOUT_PLACEHOLDER(.+?)\}",
+            lambda m: "[" + m.group(1) + "]",
+            s,
+            flags=re.DOTALL,
+        )
         s = s.replace("LEFTSQUAREBRACKET", "[")
         s = s.replace("RIGHTSQUAREBRACKET", "]")
         return s

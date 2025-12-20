@@ -9,7 +9,6 @@ sources = "Sources"
 author = "Author"
 authors = "Authors"
 handout = "Handout"
-handout_short = "Handout"
 
 [general]
 section = "Block"

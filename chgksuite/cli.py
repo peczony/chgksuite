@@ -13,12 +13,14 @@ from chgksuite.common import (
 )
 from chgksuite.composer import gui_compose
 from chgksuite.handouter.runner import gui_handouter
-from chgksuite.handouter.tex_internals import GREYTEXT_LANGS
 from chgksuite.parser import gui_parse
 from chgksuite.trello import gui_trello
 from chgksuite.version import __version__
 
-LANGS = ["by", "by_tar", "en", "kz_cyr", "ru", "sr", "ua", "uz", "uz_cyr"] + ["custom"]
+LANGS = ["az", "by", "by_tar", "en", "kz_cyr", "ru", "sr", "ua", "uz", "uz_cyr"] + [
+    "custom"
+]
+HANDOUT_LANGS = [lang for lang in LANGS if lang != "custom"]
 
 debug = False
 
@@ -889,10 +891,11 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdhandouts_run,
-            "--lang",
+            "--language",
+            "-lang",
             default="ru",
             argtype="radiobutton",
-            choices=sorted(GREYTEXT_LANGS.keys()),
+            choices=sorted(HANDOUT_LANGS),
             help="language",
             caption="Язык",
             advanced=True,
@@ -1012,12 +1015,13 @@ class ArgparseBuilder:
         )
         self.add_argument(
             cmdhandouts_generate,
-            "--lang",
+            "--language",
+            "-lang",
             default="ru",
             help="language",
             caption="Язык",
             argtype="radiobutton",
-            choices=sorted(GREYTEXT_LANGS.keys()),
+            choices=sorted(HANDOUT_LANGS),
             advanced=True,
         )
         self.add_argument(
@@ -1084,9 +1088,9 @@ def single_action(args, use_wrapper, resourcedir):
         args.console_mode = True
 
     if args.language in LANGS:
+        args.regexes_file = os.path.join(resourcedir, f"regexes_{args.language}.json")
         if args.action == "parse":
-            regex_lang = "by" if args.language == "by_tar" else args.language
-            args.regexes = os.path.join(resourcedir, f"regexes_{regex_lang}.json")
+            args.regexes = args.regexes_file
         args.labels_file = os.path.join(resourcedir, f"labels_{args.language}.toml")
     if not args.docx_template:
         args.docx_template = os.path.join(resourcedir, "template.docx")

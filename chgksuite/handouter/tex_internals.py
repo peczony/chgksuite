@@ -20,17 +20,6 @@ HEADER = r"""
 
 GREYTEXT = r"""{\fontsize{9pt}{11pt}\selectfont \textcolor{gray}{<GREYTEXT>}}"""
 
-GREYTEXT_LANGS = {
-    "by": "Да пытаньня {}",
-    "en": "Handout for question {}",
-    "kz": "{}-сұрақтың үлестіру материалы",
-    "ro": "Material care urmează a fi distribuit pentru întrebarea {}",
-    "ru": "К вопросу {}",
-    "sr": "Materijal za deljenje uz pitanje {}",
-    "ua": "До запитання {}",
-    "uz": "{} саволга тарқатма материал",
-}
-
 TIKZBOX_START = r"""{<CENTERING>
 """
 

@@ -121,13 +121,13 @@ class PptxExporter(BaseExporter):
         replace_spaces=True,
         do_not_remove_accents=False,
     ):
-        hs = self.labels["question_labels"]["handout_short"]
+        hs = self.regexes["handout_short"]
         if isinstance(s, list):
             for i in range(len(s)):
                 s[i] = self.pptx_process_text(s[i], image=image)
             return s
         if not (self.args.do_not_remove_accents or do_not_remove_accents):
-            s = remove_accents_standalone(s, self.labels)
+            s = remove_accents_standalone(s, self.regexes)
         if strip_brackets:
             s = self.remove_square_brackets(s)
             s = s.replace("]\n", "]\n\n")

@@ -9,7 +9,6 @@ sources = "Izvori"
 author = "Autor"
 authors = "Autori"
 handout = "Materijal za deljenje"
-handout_short = "Podeljeno"
 
 [general]
 section = "Runda"

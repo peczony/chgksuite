@@ -1,0 +1,16 @@
+{
+    "tour": "^(#\\s+)?([0-9]+)\\s?[-–—]\\s?[Tt][Uu][Rr]\\s*$",
+    "question": "(?P<number>[0-9]+)\\s?[-–—]\\s?[Ss][Aa][Vv][Oo][Ll]([\\.:]|\n|\r\n|$)",
+    "answer": "[Jj][Aa][Vv][Oo][Bb]\\s?[№N]?([0-9]+)?\\s?[\\.:]",
+    "handout": "[Tt][Aa][Rr][Qq][Aa][Tt][Mm][Aa][\\s\\s][Mm][Aa][Tt][Ee][Rr][Ii][Aa][Ll][\\.:]",
+    "zachet": "[Qq][Aa][Bb][Uu][Ll]\\s?[\\.:]",
+    "nezachet": "[Qq][Aa][Bb][Uu][Ll]\\s[Ee][Mm][Aa][Ss]?[\\.:]",
+    "comment": "[Ii][Zz][Oo][Hh]\\s?[№N]?([0-9]+)?\\s?[\\.:]",
+    "author": "[Mm][Uu][Aa][Ll][Ll][Ii][Ff]([Ll][Aa][Rr])?\\s?[\\.:]",
+    "source": "[Mm][Aa][Nn][Bb][Aa]([Ll][Aa][Rr])?\\s?[\\.:]",
+    "editor": "(M|Tur\\sm)[Uu][Hh][Aa][Rr][Rr][Ii][Rr]([Ll][Aa][Rr][Ii]?)?(\\s?[\\.:]|\\s[\\-–—]+\\s)",
+    "date": "[Ss][Aa][Nn][Aa]\\s?[\\.:]",
+    "date2": "(^|\\s)[Yy]anvar|[Ff]evral|[Mm]art|[Aa]prel|[Mm]ay|[Ii]yun|[Ii]yul|[Aa]vgust|[Ss]entabr|[Oo]ktabr|[Nn]oyabr|[Dd]ekabr(\\s|$)",
+    "number": "^[0-9]+[\\.\\)]\\s*",
+    "handout_short": "T[Aa][Rr][Qq][Aa][Tt]"
+}

@@ -327,7 +327,7 @@ class ChgkParser:
                     regex,
                     regexes[regex].search(self.remove_formatting(st[i][1])).start(0),
                 )
-                for regex in set(regexes) - {"number", "date2"}
+                for regex in set(regexes) - {"number", "date2", "handout_short"}
                 if regexes[regex].search(self.remove_formatting(st[i][1]))
             }
 

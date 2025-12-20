@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import itertools
+import json
 import os
 import re
 from collections import defaultdict
@@ -53,13 +54,13 @@ def generate_handouts_list(handouts, output_dir, base_name, parsed):
 
 def generate_handouts(args):
     _, resourcedir = get_source_dirs()
-    labels = toml.loads(
-        read_file(os.path.join(resourcedir, f"labels_{args.lang}.toml"))
-    )
+    toml.loads(read_file(os.path.join(resourcedir, f"labels_{args.language}.toml")))
+    with open(
+        os.path.join(resourcedir, f"regexes_{args.language}.json"), encoding="utf8"
+    ) as f:
+        regexes = json.load(f)
     handout_re_text = (
-        "\\["
-        + labels["question_labels"]["handout_short"]
-        + ".+?:( |\n)(?P<handout_text>.+?)\\]"
+        "\\[" + regexes["handout_short"] + ".+?:( |\n)(?P<handout_text>.+?)\\]"
     )
     handout_re = re.compile(
         handout_re_text,

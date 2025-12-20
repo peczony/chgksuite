@@ -96,12 +96,13 @@ def get_label_standalone(
     return labels["question_labels"][field]
 
 
-def remove_square_brackets_standalone(s, labels):
+def remove_square_brackets_standalone(s, regexes):
     """Standalone version of remove_square_brackets"""
-    hs = labels["question_labels"]["handout_short"]
+    hs = regexes["handout_short"]
     s = s.replace("\\[", "LEFTSQUAREBRACKET")
     s = s.replace("\\]", "RIGHTSQUAREBRACKET")
-    s = re.sub(f"\\[{hs}(.+?)\\]", "{" + hs + "\\1}", s, flags=re.DOTALL)
+    # Use placeholder to preserve handout brackets during removal
+    s = re.sub(f"\\[{hs}(.+?)\\]", "{HANDOUT_PLACEHOLDER\\1}", s, flags=re.DOTALL)
     i = 0
     while "[" in s and "]" in s and i < 10:
         s = re.sub(" *\\[.+?\\]", "", s, flags=re.DOTALL)
@@ -111,7 +112,13 @@ def remove_square_brackets_standalone(s, labels):
         sys.stderr.write(
             f"Error replacing square brackets on question: {s}, retries exceeded\n"
         )
-    s = re.sub("\\{" + hs + "(.+?)\\}", "[" + hs + "\\1]", s, flags=re.DOTALL)
+    # Restore handout brackets - get the original matched text from the placeholder
+    s = re.sub(
+        r"\{HANDOUT_PLACEHOLDER(.+?)\}",
+        lambda m: "[" + m.group(1) + "]",
+        s,
+        flags=re.DOTALL,
+    )
     s = s.replace("LEFTSQUAREBRACKET", "[")
     s = s.replace("RIGHTSQUAREBRACKET", "]")
     return s
@@ -140,6 +147,7 @@ def format_docx_element(
     spoilers="none",
     logger=None,
     labels=None,
+    regexes=None,
     language="ru",
     remove_accents=False,
     remove_brackets=False,
@@ -157,6 +165,7 @@ def format_docx_element(
         spoilers: Spoiler handling mode ("none", "whiten", "dots", "pagebreak")
         logger: Logger instance
         labels: Labels dictionary
+        regexes: Regexes dictionary (for handout_short)
         language: Language code
         remove_accents: Whether to remove accents
         remove_brackets: Whether to remove square brackets
@@ -176,6 +185,7 @@ def format_docx_element(
                 spoilers,
                 logger,
                 labels,
+                regexes,
                 language,
                 remove_accents,
                 remove_brackets,
@@ -194,6 +204,7 @@ def format_docx_element(
                     spoilers,
                     logger,
                     labels,
+                    regexes,
                     language,
                     remove_accents,
                     remove_brackets,
@@ -213,6 +224,7 @@ def format_docx_element(
                     spoilers,
                     logger,
                     labels,
+                    regexes,
                     language,
                     remove_accents,
                     remove_brackets,
@@ -223,10 +235,10 @@ def format_docx_element(
     if isinstance(el, str):
         logger.debug("parsing element {}:".format(log_wrap(el)))
 
-        if remove_accents and labels:
-            el = remove_accents_standalone(el, labels)
-        if remove_brackets and labels:
-            el = remove_square_brackets_standalone(el, labels)
+        if remove_accents and regexes:
+            el = remove_accents_standalone(el, regexes)
+        if remove_brackets and regexes:
+            el = remove_square_brackets_standalone(el, regexes)
         else:
             el = replace_escaped(el)
 
@@ -309,6 +321,7 @@ def add_question_to_docx(
     doc,
     question_data,
     labels,
+    regexes=None,
     qcount=None,
     skip_qcount=False,
     screen_mode=False,
@@ -329,6 +342,7 @@ def add_question_to_docx(
         doc: docx Document object
         question_data: Dictionary containing question data
         labels: Labels dictionary
+        regexes: Regexes dictionary (for handout_short)
         qcount: Current question count (will be incremented if not skip_qcount)
         skip_qcount: Whether to skip incrementing question count
         screen_mode: Whether to use screen mode formatting
@@ -392,6 +406,7 @@ def add_question_to_docx(
             spoilers,
             logger,
             labels,
+            regexes,
             language,
             remove_accents=screen_mode,
             remove_brackets=screen_mode,
@@ -411,6 +426,7 @@ def add_question_to_docx(
         spoilers,
         logger,
         labels,
+        regexes,
         language,
         remove_accents=screen_mode,
         remove_brackets=screen_mode,
@@ -453,6 +469,7 @@ def add_question_to_docx(
             spoilers,
             logger,
             labels,
+            regexes,
             language,
             remove_accents=screen_mode,
             replace_no_break_spaces=True,
@@ -481,6 +498,7 @@ def add_question_to_docx(
                     spoilers,
                     logger,
                     labels,
+                    regexes,
                     language,
                     remove_accents=screen_mode,
                     remove_brackets=screen_mode,
@@ -514,6 +532,7 @@ class DocxExporter(BaseExporter):
             spoilers=self.args.spoilers,
             logger=self.logger,
             labels=self.labels,
+            regexes=self.regexes,
             language=self.args.language,
             **kwargs,
         )
@@ -528,6 +547,7 @@ class DocxExporter(BaseExporter):
             spoilers=self.args.spoilers,
             logger=self.logger,
             labels=self.labels,
+            regexes=self.regexes,
             language=self.args.language,
             **kwargs,
         )
@@ -542,6 +562,7 @@ class DocxExporter(BaseExporter):
             self.doc,
             element[1],
             self.labels,
+            self.regexes,
             self.qcount,
             skip_qcount,
             screen_mode,
