@@ -61,6 +61,7 @@ setup(
         "python-telegram-bot",
         "requests",
         "toml",
+        "urllib3>=2.6.2",  # fix brotli decoding bug with chunked responses
         "watchdog",
     ]
 )
