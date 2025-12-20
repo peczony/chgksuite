@@ -4,9 +4,9 @@ from PyInstaller.utils.hooks import exec_statement, collect_submodules
 # the official hook in pyinstaller/master doesn't work
 
 strptime_data_file = exec_statement(
-"import inspect; import _strptime; print(inspect.getfile(_strptime))"
+    "import inspect; import _strptime; print(inspect.getfile(_strptime))"
 )
 
-datas = [ (strptime_data_file, ".") ]
+datas = [(strptime_data_file, ".")]
 
-hiddenimports = collect_submodules('dateparser')
+hiddenimports = collect_submodules("dateparser")

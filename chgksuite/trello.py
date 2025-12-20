@@ -421,7 +421,7 @@ def get_board_id(path=None):
     print("                     board_id")
     print()
     board_id = input(
-        "Please paste your board_id " "(or the board link, " "we'll parse it): "
+        "Please paste your board_id (or the board link, we'll parse it): "
     ).rstrip()
     if "trello.com" in board_id:
         board_id = re_bi.search(board_id).group(1)

@@ -7,19 +7,19 @@ from collections import Counter
 from chgksuite.composer import parse_4s
 
 parser = argparse.ArgumentParser()
-parser.add_argument('filename')
+parser.add_argument("filename")
 args = parser.parse_args()
 
 authors = Counter()
 
-with codecs.open(args.filename, 'r', 'utf-8') as f:
-    structure = parse_4s(f.read().replace('\r',''))
+with codecs.open(args.filename, "r", "utf-8") as f:
+    structure = parse_4s(f.read().replace("\r", ""))
 
 for element in structure:
-    if element[0] == 'Question':
-        if 'author' in element[1]:
-            authors[element[1]['author'].replace('`','')] += 1
+    if element[0] == "Question":
+        if "author" in element[1]:
+            authors[element[1]["author"].replace("`", "")] += 1
 
 for au in authors.most_common():
-    print('{}\t{}'.format(au[0],au[1]))
-print('Total: {}'.format(sum(authors.values())))
+    print("{}\t{}".format(au[0], au[1]))
+print("Total: {}".format(sum(authors.values())))

@@ -258,7 +258,9 @@ def replace_no_break(s, spaces=True, hyphens=True):
             r_from = "(^|[ \u00a0]){sp} ".format(sp=sp)
             r_to = "\\g<1>{sp}\u00a0".format(sp=sp)
             s = re.sub(r_from, r_to, s)
-        for sp in NO_BREAK_SEQUENCES_LEFT + [x.title() for x in NO_BREAK_SEQUENCES_LEFT]:
+        for sp in NO_BREAK_SEQUENCES_LEFT + [
+            x.title() for x in NO_BREAK_SEQUENCES_LEFT
+        ]:
             r_from = " {sp}([ \u00a0]|$)".format(sp=sp)
             r_to = "\u00a0{sp}\\g<1>".format(sp=sp)
             s = re.sub(r_from, r_to, s)
@@ -298,8 +300,7 @@ def detect_accent(s):
                     s = s[: s.index(word)] + word_new + s[s.index(word) + len(word) :]
             except Exception as e:
                 sys.stderr.write(
-                    f"exception {type(e)} {e} "
-                    f"while trying to process word {repr(word)}"
+                    f"exception {type(e)} {e} while trying to process word {repr(word)}"
                 )
     return s
 
@@ -313,7 +314,7 @@ def percent_decode(s):
             s = s.replace(gr, unquote(gr.encode("utf8")).decode("utf8"))
         except Exception as e:
             sys.stderr.write(
-                f"exception {type(e)} {e} " f"while trying to replace percents in {gr}"
+                f"exception {type(e)} {e} while trying to replace percents in {gr}"
             )
     return s
 

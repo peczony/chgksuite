@@ -17,7 +17,7 @@ Project home on gitlab: https://gitlab.com/peczony/chgksuite
 
 Documentation (in Russian): https://peczony.gitlab.io/chgksuite
 """, content-type = "text/markdown"}
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",

@@ -21,7 +21,7 @@ def read_file(filepath):
 def write_file(filepath, cnt):
     with open(filepath, "w", encoding="utf8") as f:
         f.write(cnt)
-    
+
 
 def straighten(lst_):
     for element in lst_:
@@ -46,7 +46,9 @@ def get_images_from_element(element):
                     parsed_img = parseimg(tup[1])
                     images.append(parsed_img["imgfile"])
                 except Exception as e:
-                    print(f"couldn't parse img {tup[1]}: {type(e)} {e}", file=sys.stderr)
+                    print(
+                        f"couldn't parse img {tup[1]}: {type(e)} {e}", file=sys.stderr
+                    )
     return images
 
 
@@ -59,15 +61,11 @@ def get_handout_text(re_, labels, text, number):
     elif labels["question_labels"]["handout_short"] in text:
         print(f"possibly ill-marked handout at question {number} ({text[:100]})")
         return text
-    
+
 
 def add_hndt(number, text, file_path, handout_type="text"):
     assert handout_type in ("text", "image")
-    result = [
-        f"for_question: {number}",
-        "columns: 3",
-        "rows: 3"
-    ]
+    result = [f"for_question: {number}", "columns: 3", "rows: 3"]
     if handout_type == "image":
         result.append(f"image: {text}")
     else:
@@ -118,9 +116,16 @@ def main():
             question_images = get_images_from_element(question["question"])
 
             if not question_images and args.add_hndt:
-                handout_text = get_handout_text(handout_re, labels, question["question"], number)
+                handout_text = get_handout_text(
+                    handout_re, labels, question["question"], number
+                )
                 if handout_text:
-                    add_hndt(number, handout_text, os.path.join(hndt_folder, question_prefix + ".txt"), handout_type="text")
+                    add_hndt(
+                        number,
+                        handout_text,
+                        os.path.join(hndt_folder, question_prefix + ".txt"),
+                        handout_type="text",
+                    )
 
             for i, imgfile in enumerate(question_images):
                 _, ext = os.path.splitext(imgfile)

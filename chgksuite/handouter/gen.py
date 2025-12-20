@@ -56,10 +56,13 @@ def generate_handouts(args):
     labels = toml.loads(
         read_file(os.path.join(resourcedir, f"labels_{args.lang}.toml"))
     )
-    handout_re = re.compile(
+    handout_re_text = (
         "\\["
         + labels["question_labels"]["handout_short"]
-        + ".+?:( |\n)(?P<handout_text>.+?)\\]",
+        + ".+?:( |\n)(?P<handout_text>.+?)\\]"
+    )
+    handout_re = re.compile(
+        handout_re_text,
         flags=re.DOTALL,
     )
 
@@ -82,9 +85,9 @@ def generate_handouts(args):
             if img:
                 try:
                     parsed_img = parseimg(img[0][1])
-                except:
+                except Exception as e:
                     print(
-                        f"Image file for question {q['number']} not found, add it by hand"
+                        f"Image file for question {q['number']} not found, add it by hand (exception {type(e)} {e})"
                     )
                     continue
             else:

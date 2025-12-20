@@ -16,10 +16,10 @@ parentdir = os.path.dirname(currentdir)
 with open(os.path.join(currentdir, "settings.json")) as f:
     settings = json.loads(f.read())
 
-from chgksuite.parser import chgk_parse_txt, chgk_parse_docx, compose_4s
+from chgksuite.parser import chgk_parse_txt, chgk_parse_docx, compose_4s  # noqa: E402
 
 
-from chgksuite_test import DefaultArgs
+from chgksuite_test import DefaultArgs  # noqa: E402
 
 
 def workaround_chgk_parse(filename, **kwargs):
@@ -48,9 +48,11 @@ def main():
                 **function_args,
             )
             for filename1 in os.listdir(currentdir):
-                if filename1.endswith(
-                    (".jpg", ".jpeg", ".png", ".gif")
-                ) and not filename1.startswith("ALLOWED") and not filename1 in ALLOWED_IMAGES:
+                if (
+                    filename1.endswith((".jpg", ".jpeg", ".png", ".gif"))
+                    and not filename1.startswith("ALLOWED")
+                    and filename1 not in ALLOWED_IMAGES
+                ):
                     os.remove(os.path.join(currentdir, filename1))
             with codecs.open(
                 os.path.join(currentdir, filename) + ".canon", "w", "utf8"

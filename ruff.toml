@@ -1,1 +1,2 @@
-ignore = ["E501"]
+lint.ignore = ["E501"]
+extend-exclude = ["chgksuite/vulture_whitelist.py"]

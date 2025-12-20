@@ -688,12 +688,9 @@ class ChgkParser:
                     except Exception as e:
                         num = None
                         sys.stderr.write(
-                            f"exception at setting number: {type(e)} {e}\n"
+                            f"exception at setting number: {type(e)} {e}\nQuestion: {element[1]}\n"
                         )
-                    if (
-                        num is None
-                        or num and not num.group("number")
-                    ) and (
+                    if (num is None or num and not num.group("number")) and (
                         ("нулевой вопрос" in element[1].lower())
                         or ("разминочный вопрос" in element[1].lower())
                     ):

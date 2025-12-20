@@ -128,7 +128,7 @@ def t_ANSWER(t):
     t.lexer.text = ""
     if t.lexer.question["answer"]:
         logger.warning(
-            "Bad format: several Answer fields. " "Previous Answer was:" " '%s'",
+            "Bad format: several Answer fields. Previous Answer was: '%s'",
             t.lexer.question["answer"],
         )
 
@@ -151,7 +151,7 @@ def t_COMMENT(t):
     t.lexer.text = ""
     if t.lexer.question["comment"]:
         logger.warning(
-            "Bad format: several Comment fields. " "Previous Comment was:" " '%s'",
+            "Bad format: several Comment fields. Previous Comment was: '%s'",
             t.lexer.question["comment"],
         )
 
@@ -162,7 +162,7 @@ def t_SOURCE(t):
     t.lexer.text = ""
     if t.lexer.question["source"]:
         logger.warning(
-            "Bad format: several Source fields. " "Previous Source was:" " '%s'",
+            "Bad format: several Source fields. Previous Source was: '%s'",
             t.lexer.question["source"],
         )
 
@@ -417,7 +417,6 @@ def replace_handouts(match_handout):
 
 
 def chgk_parse_db(text, debug=False, logger=False):
-
     if not logger:
         logger = init_logger("parser_db", debug=debug)
 
