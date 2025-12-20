@@ -468,7 +468,12 @@ class BaseExporter:
                 f"Error replacing square brackets on question: {s}, retries exceeded\n"
             )
         # Restore handout brackets - get the original matched text from the placeholder
-        s = re.sub(r"\{HANDOUT_PLACEHOLDER(.+?)\}", lambda m: "[" + m.group(1) + "]", s, flags=re.DOTALL)
+        s = re.sub(
+            r"\{HANDOUT_PLACEHOLDER(.+?)\}",
+            lambda m: "[" + m.group(1) + "]",
+            s,
+            flags=re.DOTALL,
+        )
         s = s.replace("LEFTSQUAREBRACKET", "[")
         s = s.replace("RIGHTSQUAREBRACKET", "]")
         return s
