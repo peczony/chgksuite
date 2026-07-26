@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import json
 import os
 import re
@@ -9,10 +6,10 @@ from urllib.request import urlretrieve
 
 from ply import lex
 
-from chgksuite.common import init_logger, DummyLogger
+from chgksuite.common import DummyLogger, init_logger
 from chgksuite.typotools import recursive_typography as rt
 
-re_list = re.compile(r"^\s{3}\d+\.\s(.+)$", re.I | re.U)
+re_list = re.compile(r"^\s{3}\d+\.\s(.+)$", re.IGNORECASE | re.UNICODE)
 
 tokens = (
     "TITLE",
@@ -60,7 +57,7 @@ logger = DummyLogger()
 def append_question(lexer):
     if lexer.question:
         # remove empty values
-        question = dict((k, v) for k, v in iter(lexer.question.items()) if v)
+        question = {k: v for k, v in iter(lexer.question.items()) if v}
         lexer.structure.append(["Question", question])
 
 
@@ -222,7 +219,7 @@ def t_handout_end(t):
 
 def t_question_PIC(t):
     r"(?:\((?:img|aud)\s(?:[\d\.\w]+)\)\s*)+\n"
-    t.lexer.text += "[Раздаточный материал:%s]" % t.value.strip()
+    t.lexer.text += f"[Раздаточный материал:{t.value.strip()}]"
 
 
 def t_question_TEXT(t):
@@ -407,21 +404,21 @@ def replace_handouts(match_handout):
         handout_url = urljoin(db_base_url, handout_name)
         try:
             urlretrieve(handout_url, handout_path)
-        except Exception as e:
-            logger.warning(
-                "Can't get file from %s to %s: %s", handout_url, handout_path, str(e)
+        except Exception:
+            logger.exception(
+                "Can't get file from %s to %s", handout_url, handout_path
             )
-    return "(%s %s)" % (handout_type, handout_name)
+    return f"({handout_type} {handout_name})"
 
 
 def chgk_parse_db(text, debug=False, logger=False):
     if not logger:
         logger = init_logger("parser_db", debug=debug)
 
-    re_handout = re.compile(r"\((pic|aud):\s([\d\.\w]+)\)", re.I | re.U)
+    re_handout = re.compile(r"\((pic|aud):\s([\d\.\w]+)\)", re.IGNORECASE | re.UNICODE)
     text = re_handout.sub(replace_handouts, text)
 
-    lexer = lex.lex(reflags=re.I | re.U)
+    lexer = lex.lex(reflags=re.IGNORECASE | re.UNICODE)
     lexer.text = ""
     lexer.structure = []
     lexer.question_num = 0

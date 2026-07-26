@@ -1,11 +1,7 @@
-#!/usr/bin/env python
-#! -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from __future__ import division
-import os
 import argparse
 import inspect
 import json
+import os
 
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg")
 SKIP_FILES = {"tests_password.txt"}
@@ -16,19 +12,18 @@ parentdir = os.path.dirname(currentdir)
 with open(os.path.join(currentdir, "settings.json")) as f:
     settings = json.loads(f.read())
 
-from chgksuite.parser import (  # noqa: E402
-    chgk_parse_txt,
+from chgksuite_test import DefaultArgs
+
+from chgksuite.common import read_text_file
+from chgksuite.parser import (
     chgk_parse_docx,
+    chgk_parse_txt,
     compose_4s,
     si_parse_docx,
     si_parse_text,
     troika_parse_docx,
     troika_parse_text,
 )
-from chgksuite.common import read_text_file  # noqa: E402
-
-
-from chgksuite_test import DefaultArgs  # noqa: E402
 
 
 def get_image_files():
@@ -78,7 +73,7 @@ def main():
 
     for filename in files:
         if filename.endswith((".docx", ".txt")) and filename not in SKIP_FILES:
-            print("Canonizing {}...".format(filename))
+            print(f"Canonizing {filename}...")
             images_before = get_image_files()
             file_settings = settings.get(filename, {})
             function_args = file_settings.get("function_args") or {}

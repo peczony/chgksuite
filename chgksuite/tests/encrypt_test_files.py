@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Utility to encrypt/decrypt test files for the test suite.
 
 Uses simple XOR encryption - sufficient to prevent casual access to test files.

@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+import logging
 import math
 import os
 import subprocess
@@ -7,6 +6,8 @@ import subprocess
 from pypdf import PdfWriter
 
 from chgksuite.handouter.utils import compress_pdf, parse_handouts
+
+logger = logging.getLogger(__name__)
 
 
 def only_handout_or_skip(filename, parsed):
@@ -63,7 +64,7 @@ def pack_handouts(args):
         try:
             parsed = parse_handouts(contents)
         except Exception:
-            print(f"couldn't parse {fn}, skipping")
+            logger.exception(f"couldn't parse {fn}, skipping")
             continue
         handout = only_handout_or_skip(fn, parsed)
         if handout is None:

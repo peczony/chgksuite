@@ -1,11 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import argparse
 import builtins
 import io
 import json
+import logging
 import os
 import re
 import subprocess
@@ -14,8 +13,8 @@ import threading
 import urllib.request
 
 try:
-    from PyQt6 import QtWidgets, QtGui
-    from PyQt6.QtCore import QTimer, pyqtSignal, QObject, QThread
+    from PyQt6 import QtGui, QtWidgets
+    from PyQt6.QtCore import QObject, QThread, QTimer, pyqtSignal
 
     PYQT = True
 except ImportError:
@@ -23,13 +22,15 @@ except ImportError:
 
 import shlex
 
+from chgksuite.cli import ArgparseBuilder, single_action
 from chgksuite.common import (
     DefaultNamespace,
     get_lastdir,
     get_source_dirs,
 )
 from chgksuite.version import __version__
-from chgksuite.cli import ArgparseBuilder, single_action
+
+logger = logging.getLogger(__name__)
 
 
 def is_app_translocated(path):
@@ -55,6 +56,7 @@ def get_installed_version(package_name):
 
         return version(package_name)
     except Exception:
+        logger.exception(f"could not read installed version of {package_name}")
         return None
 
 
@@ -88,12 +90,13 @@ def check_pypi_version(package_name, channel="beta"):
                     try:
                         versions.append((_parse_pep440(v), v))
                     except Exception:
-                        pass
+                        logger.exception(f"could not parse version {v}")
             if versions:
                 versions.sort(key=lambda x: x[0])
                 return versions[-1][1]
             return data["info"]["version"]
     except Exception:
+        logger.exception(f"could not check PyPI version of {package_name}")
         return None
 
 
@@ -197,7 +200,7 @@ class InputRequester(QObject):
         return self.response
 
 
-class VarWrapper(object):
+class VarWrapper:
     def __init__(self, name, var):
         self.name = name
         self.var = var
@@ -245,7 +248,7 @@ def add_row_spacing(layout, force=False):
     layout.addWidget(spacer)
 
 
-class OpenFileDialog(object):
+class OpenFileDialog:
     def __init__(self, label, var, folder=False, lastdir=None, filetypes=None):
         self.label = label
         self.var = var
@@ -274,7 +277,7 @@ class OpenFileDialog(object):
         self.label.setText(os.path.basename(output or ""))
 
 
-class ParserWrapper(object):
+class ParserWrapper:
     def __init__(self, parser, parent=None, lastdir=None):
         self.parent = parent
         self.lastdir = lastdir if not parent else parent.lastdir
@@ -306,11 +309,11 @@ class ParserWrapper(object):
         if self.subparsers_var:
             chosen_parser_name = self.subparsers_var.get()
 
-            chosen_parser = [
+            chosen_parser = next(
                 x
                 for x in self.subparsers.parsers
                 if x.parser.prog.split()[-1] == chosen_parser_name
-            ][0]
+            )
             result.append(("", chosen_parser_name))
             result.extend(chosen_parser._list_vars())
         return result
@@ -339,9 +342,7 @@ class ParserWrapper(object):
             else:
                 result.append(to_append)
                 result_to_print.append(to_append)
-        self.cmdline_call_display = "Command line call: {}".format(
-            shlex.join(result_to_print)
-        )
+        self.cmdline_call_display = f"Command line call: {shlex.join(result_to_print)}"
         print(self.cmdline_call_display)
         return result
 
@@ -373,8 +374,8 @@ class ParserWrapper(object):
                 _, resourcedir = get_source_dirs()
                 args = DefaultNamespace(self.parser.parse_args(self.cmdline_call))
                 single_action(args, False, resourcedir)
-            except Exception as e:
-                print(f"Error: {e}")
+            except Exception:
+                logger.exception("Error")
             finally:
                 sys.stdout, sys.stderr = old_stdout, old_stderr
                 builtins.input = old_input
@@ -512,6 +513,7 @@ class ParserWrapper(object):
                 )
             self.app.quit()
         except Exception as e:
+            logger.exception("could not launch the updater")
             QtWidgets.QMessageBox.critical(
                 self.window, "Ошибка", f"Не удалось запустить обновление: {e}"
             )
@@ -519,7 +521,7 @@ class ParserWrapper(object):
     def init_qt(self):
         self.app = QtWidgets.QApplication(sys.argv)
         self.window = QtWidgets.QWidget()
-        self.window.setWindowTitle("chgksuite v{}".format(__version__))
+        self.window.setWindowTitle(f"chgksuite v{__version__}")
         self.window_layout = QtWidgets.QVBoxLayout(self.window)
         init_layout(self.window, self.window_layout, spacing=10)
         self.frame = QtWidgets.QWidget()
@@ -558,10 +560,11 @@ class ParserWrapper(object):
             try:
                 r = subprocess.run(
                     [self.pyapp_executable, "self", "python", "--version"],
-                    capture_output=True, timeout=5,
+                    capture_output=True, timeout=5, check=False,
                 )
                 self._has_self_python = r.returncode == 0
             except Exception:
+                logger.exception("could not probe pyapp self python")
                 self._has_self_python = False
             self._target_versions = {}
 
@@ -746,7 +749,7 @@ class ParserWrapper(object):
         return self.parser.parse_args(*args, **kwargs)
 
 
-class SubparsersWrapper(object):
+class SubparsersWrapper:
     def __init__(self, subparsers, parent):
         self.subparsers = subparsers
         self.parent = parent

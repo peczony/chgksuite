@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import os
 import re
 import urllib.parse
@@ -14,9 +12,10 @@ from docx.text.run import Run
 
 from chgksuite.typotools import (
     escape_underscores_except_urls,
+)
+from chgksuite.typotools import (
     remove_excessive_whitespace as rew,
 )
-
 
 _A_BLIP = "{http://schemas.openxmlformats.org/drawingml/2006/main}blip"
 _V_IMAGEDATA = "{urn:schemas-microsoft-com:vml}imagedata"
@@ -40,10 +39,10 @@ _IMAGE_EXTENSIONS = {
 def _generate_imgname(target_dir, ext, prefix=""):
     imgcounter = 1
     while os.path.isfile(
-        os.path.join(target_dir, "{}{:03}.{}".format(prefix, imgcounter, ext))
+        os.path.join(target_dir, f"{prefix}{imgcounter:03}.{ext}")
     ):
         imgcounter += 1
-    return "{}{:03}.{}".format(prefix, imgcounter, ext)
+    return f"{prefix}{imgcounter:03}.{ext}"
 
 
 def _attr(element, name, default=None):

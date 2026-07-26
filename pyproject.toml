@@ -1,7 +1,7 @@
 [project]
 name = "chgksuite-mono"
 version = "0.0.0"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "chgksuite",
     "chgksuite-qt",
@@ -16,7 +16,7 @@ chgksuite-tk = { path = "chgksuite_tk", editable = true }
 [dependency-groups]
 dev = [
     "ipython>=8.18.1",
-    "pytest>=8.4.2",
+    "pytest>=9.0.3",
     "pytest-xdist>=3.6",
     "ruff>=0.14.10",
 ]

@@ -59,7 +59,7 @@ def build_font_table(original_xml, rel_ids):
         ET.SubElement(
             font,
             f"{{{W_NS}}}{EMBED_TAGS[face]}",
-            {f"{{{R_NS}}}id": rel_id, f"{{{W_NS}}}fontKey": "{%s}" % guid.upper()},
+            {f"{{{R_NS}}}id": rel_id, f"{{{W_NS}}}fontKey": f"{{{guid.upper()}}}"},
         )
     return ET.tostring(root, xml_declaration=True, encoding="UTF-8")
 

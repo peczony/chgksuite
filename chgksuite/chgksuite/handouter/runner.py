@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import os
 import subprocess
 import sys
@@ -12,14 +10,14 @@ from pypdf import PdfReader, PdfWriter
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from chgksuite.common import get_source_dirs, set_lastdir
+from chgksuite.common import ChgksuiteError, get_source_dirs, set_lastdir
 from chgksuite.handouter.gen import generate_handouts
-from chgksuite.handouter.pack import pack_handouts
 from chgksuite.handouter.installer import (
     get_bundled_fonts_dir,
     get_typst_path,
     install_typst,
 )
+from chgksuite.handouter.pack import pack_handouts
 from chgksuite.handouter.typst_internals import (
     GREYTEXT,
     HEADER,
@@ -375,7 +373,7 @@ def ensure_typst_path(args):
         install_typst(args)
         typst_path = get_typst_path()
     if not typst_path:
-        raise Exception("typst couldn't be installed successfully :(")
+        raise ChgksuiteError("typst couldn't be installed successfully :(")
     return typst_path
 
 

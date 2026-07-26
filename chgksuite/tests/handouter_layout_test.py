@@ -1,11 +1,10 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """Tests for handouter layout detection algorithm."""
 
 import os
 import random
 import subprocess
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import Mock
 
 import pytest
@@ -591,7 +590,7 @@ def test_process_file_replays_typst_output_on_failure(
     tmp_path, monkeypatch, capsys
 ):
     class FakeGenerator:
-        _temp_files = []
+        _temp_files: ClassVar[list] = []
 
         def __init__(self, args):
             self.args = args

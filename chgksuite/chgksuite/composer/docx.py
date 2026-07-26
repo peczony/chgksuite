@@ -18,11 +18,11 @@ from docx.shared import Inches
 from docx.shared import Pt as DocxPt
 from docx.text.run import Run as DocxRun
 
-import chgksuite.typotools as typotools
+from chgksuite import typotools
 from chgksuite.common import (
-    DummyLogger,
     HYPERLINK_SAFE_CHARS,
     NO_BREAK_HYPHEN_REPLACEMENT,
+    DummyLogger,
     log_wrap,
     optimize_ooxml_images,
     replace_escaped,
@@ -33,6 +33,8 @@ from chgksuite.composer.composer_common import (
     backtick_replace,
     parseimg,
     remove_accents_standalone,
+)
+from chgksuite.composer.composer_common import (
     remove_square_brackets_standalone as _remove_square_brackets_standalone,
 )
 
@@ -313,9 +315,7 @@ def _select_font_faces(font_spec, search_dirs=None):
     for role in ("regular", "bold", "italic", "bold_italic"):
         role_faces = [face for face in faces if face.role == role]
         if role_faces:
-            selected[role] = sorted(
-                role_faces, key=lambda face: (_font_role_priority(face, role), face.path)
-            )[0]
+            selected[role] = min(role_faces, key=lambda face: (_font_role_priority(face, role), face.path))
 
     if "regular" not in selected:
         selected["regular"] = faces[0]
@@ -432,7 +432,7 @@ def get_label_standalone(
             return f"{lbl} {num}"
     if field in (question.get("overrides") or {}):
         return question["overrides"][field]
-    if field == "source" and isinstance(question.get("source" or ""), list):
+    if field == "source" and isinstance(question.get("source"), list):
         return labels["question_labels"]["sources"]
     return labels["question_labels"][field]
 
@@ -564,10 +564,8 @@ def format_docx_element(
                 replace_no_break_spaces,
                 **kwargs,
             )
-            licount = 0
-            for li in el[1]:
-                licount += 1
-                para.add_run("\n{}. ".format(licount))
+            for licount, li in enumerate(el[1], start=1):
+                para.add_run(f"\n{licount}. ")
                 format_docx_element(
                     doc,
                     li,
@@ -584,10 +582,8 @@ def format_docx_element(
                     **kwargs,
                 )
         else:
-            licount = 0
-            for li in el:
-                licount += 1
-                para.add_run("\n{}. ".format(licount))
+            for licount, li in enumerate(el, start=1):
+                para.add_run(f"\n{licount}. ")
                 format_docx_element(
                     doc,
                     li,
@@ -605,7 +601,7 @@ def format_docx_element(
                 )
 
     if isinstance(el, str):
-        logger.debug("parsing element {}:".format(log_wrap(el)))
+        logger.debug(f"parsing element {log_wrap(el)}:")
 
         if remove_accents and regexes:
             el = remove_accents_standalone(el, regexes)
@@ -821,7 +817,7 @@ def add_question_to_docx(
                 labels,
                 language,
                 only_question_number,
-                number=qcount if "number" not in q else q["number"],
+                number=q.get("number", qcount),
             )
             p.add_run(f"{question_label}. ").bold = True
 
@@ -1037,7 +1033,7 @@ class DocxExporter(BaseExporter):
             tcPr = tc.get_or_add_tcPr()
 
             for edge in ["top", "left", "bottom", "right"]:
-                border = OxmlElement("w:{}Border".format(edge))
+                border = OxmlElement(f"w:{edge}Border")
                 border.set(qn("w:val"), "single")
                 border.set(qn("w:sz"), "4")
                 border.set(qn("w:space"), "0")
@@ -1192,7 +1188,7 @@ class DocxExporter(BaseExporter):
         self.doc.save(outfilename)
         if self.optimize_size:
             optimize_docx_images(outfilename, quality=80)
-        self.logger.info("Output: {}".format(outfilename))
+        self.logger.info(f"Output: {outfilename}")
 
 
 # Example usage of the extracted DOCX functions:

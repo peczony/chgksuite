@@ -16,8 +16,9 @@ import requests
 import toml
 from PIL import Image
 
-import chgksuite.typotools as typotools
+from chgksuite import typotools
 from chgksuite.common import (
+    ChgksuiteError,
     DummyLogger,
     get_chgksuite_dir,
     init_logger,
@@ -43,15 +44,7 @@ def backtick_replace(el):
                 el = el[: el.index("`") + 2] + "" + el[el.index("`") + 2 :]
             if el.index("`") + 1 < len(el) and re_lowercase.search(
                 el[el.index("`") + 1]
-            ):
-                el = (
-                    el[: el.index("`") + 1]
-                    + ""
-                    + el[el.index("`") + 1]
-                    + "\u0301"
-                    + el[el.index("`") + 2 :]
-                )
-            elif el.index("`") + 1 < len(el) and re_uppercase.search(
+            ) or el.index("`") + 1 < len(el) and re_uppercase.search(
                 el[el.index("`") + 1]
             ):
                 el = (
@@ -187,7 +180,7 @@ def make_filename(s, ext, args, addsuffix=""):
         bn += addsuffix
     if args.add_ts == "on":
         return "{}_{}.{}".format(
-            bn, datetime.datetime.now().strftime("%Y%m%dT%H%M"), ext
+            bn, datetime.datetime.now().astimezone().strftime("%Y%m%dT%H%M"), ext
         )
     return bn + "." + ext
 
@@ -231,7 +224,7 @@ def search_for_imgfile(imgfile, tmp_dir, targetdir):
         imgfile2 = os.path.join(dirname, os.path.basename(imgfile))
         if os.path.isfile(imgfile2):
             return imgfile2
-    raise Exception("Image file {} not found\n".format(imgfile))
+    raise FileNotFoundError(f"Image file {imgfile} not found\n")
 
 
 def parse_single_size(ssize, dpi=120, emsize=25):
@@ -241,8 +234,7 @@ def parse_single_size(ssize, dpi=120, emsize=25):
     if ssize.endswith("em"):
         ssize = ssize[:-2]
         return float(ssize) * emsize
-    if ssize.endswith("px"):
-        ssize = ssize[:-2]
+    ssize = ssize.removesuffix("px")
     return float(ssize)
 
 
@@ -341,11 +333,10 @@ class Imgur:
                 json.dump(self.cache, f, indent=2, sort_keys=True)
             return json_
         except Exception as e:
-            raise Exception(
+            raise ChgksuiteError(
                 f"Imgur API error code {req.status_code}: "
-                f"{req.content.decode('utf8', errors='replace')}, raw exception data: "
-                f"{type(e)} {e}"
-            )
+                f"{req.content.decode('utf8', errors='replace')}"
+            ) from e
 
 
 def partition(alist, indices):
@@ -397,14 +388,14 @@ def _parse_4s_elem(s, logger=None):
     for gr in grs:
         try:
             s = s.replace(gr, unquote(gr.encode("utf8")).decode("utf8"))
-        except Exception as e:
-            logger.debug(f"error decoding on line {log_wrap(gr)}: {type(e)} {e}\n")
+        except Exception:
+            logger.debug(f"error decoding on line {log_wrap(gr)}", exc_info=True)
 
     i = 0
     topart = []
     while i < len(s):
         if s[i] in ("_", "~"):
-            logger.debug("found {} at {} of line {}".format(s[i], i, s))
+            logger.debug(f"found {s[i]} at {i} of line {s}")
             j = i + 1
             while s[j] == s[i]:
                 j += 1
@@ -503,7 +494,7 @@ def _parse_4s_elem(s, logger=None):
                     part[1] = part[1] + ")"
                 part[1] = part[1][4:-1]
                 part[0] = "img"
-                logger.debug("found img at {}".format(part[1]))
+                logger.debug(f"found img at {part[1]}")
             if len(part[1]) > 7 and part[1][:7] == "(screen":
                 if part[1][-1] != ")":
                     part[1] = part[1] + ")"
@@ -520,10 +511,10 @@ def _parse_4s_elem(s, logger=None):
                     part[1] = part[1] + ")"
                 part[1] = part[1][3:-1]
                 part[0] = "sc"
-                logger.debug("found img at {}".format(log_wrap(part[1])))
+                logger.debug(f"found img at {log_wrap(part[1])}")
             part[1] = _process(part[1])
-        except Exception as e:
-            sys.stderr.write(f"Error on part {log_wrap(part)}: {type(e)} {e}\n")
+        except Exception:
+            logger.exception(f"Error on part {log_wrap(part)}")
 
     return parts
 
@@ -571,7 +562,7 @@ class BaseExporter:
                 return f"{lbl} {num}"
         if field in (question.get("overrides") or {}):
             return question["overrides"][field]
-        if field == "source" and isinstance(question.get("source" or ""), list):
+        if field == "source" and isinstance(question.get("source"), list):
             return self.labels["question_labels"]["sources"]
         return self.labels["question_labels"][field]
 

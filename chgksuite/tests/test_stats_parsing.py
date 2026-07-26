@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """Tests for add_stats results-table parsing (xlsx_to_results / custom_csv_to_results).
 
 The fixtures ``stats_tour.xlsx``, ``stats_full.xlsx`` and ``stats_tour.csv`` are

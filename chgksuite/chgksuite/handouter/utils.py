@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 from io import BytesIO
@@ -17,6 +18,8 @@ from pypdf.generic import (
 
 from chgksuite.common import optimize_raster_image_data, pil_image_to_jpeg_bytes
 from chgksuite.handouter.installer import escape_typst
+
+logger = logging.getLogger(__name__)
 
 RESERVED_WORDS = [
     "image",
@@ -251,6 +254,7 @@ def _pdf_object_fingerprint(obj, cache=None, visiting=None):
         try:
             data = obj.get_data()
         except Exception:
+            logger.exception("could not read PDF stream object data")
             data = getattr(obj, "_data", b"") or b""
         return (
             "stream",

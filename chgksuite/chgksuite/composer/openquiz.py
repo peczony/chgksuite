@@ -1,7 +1,7 @@
 import copy
-import re
 import json
 import os
+import re
 
 from chgksuite.composer.composer_common import (
     IMGUR_CLIENT_ID,
@@ -128,8 +128,7 @@ class OpenquizExporter(BaseExporter):
             answer += "\n" + zachet
         answer = re.sub(", *", "\n", answer)
         answer = answer.replace(".\n", "\n")
-        if answer.endswith("."):
-            answer = answer[:-1]
+        answer = answer.removesuffix(".")
         answer = answer.split("\n")
         answer = [x.strip() for x in answer if x.strip() != "точный ответ"]
         re_brackets = "\\[.+\\]"

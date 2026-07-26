@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import argparse
 import json
 import os
 from pathlib import Path
 
+from chgksuite.board import gui_board
 from chgksuite.common import (
     DefaultNamespace,
     get_source_dirs,
@@ -17,7 +16,6 @@ from chgksuite.composer.composer_common import ext_to_game
 from chgksuite.composer.telegram import get_saved_telegram_targets
 from chgksuite.handouter.runner import gui_handouter
 from chgksuite.parser import gui_parse
-from chgksuite.board import gui_board
 from chgksuite.version import __version__
 
 LANGS = ["az", "by", "by_tar", "en", "kz_cyr", "ru", "sr", "ua", "uz", "uz_cyr"] + [

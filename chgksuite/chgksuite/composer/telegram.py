@@ -1,5 +1,9 @@
-import json
+from __future__ import annotations
+
+import contextlib
 import html
+import json
+import logging
 import os
 import random
 import re
@@ -8,7 +12,6 @@ import tempfile
 import time
 import urllib.parse
 import uuid
-from typing import Optional, Union
 
 import requests
 import toml
@@ -16,6 +19,7 @@ from PIL import Image, ImageOps
 
 from chgksuite.common import (
     HYPERLINK_SAFE_CHARS,
+    ChgksuiteError,
     get_chgksuite_dir,
     init_logger,
     load_settings,
@@ -24,6 +28,8 @@ from chgksuite.common import (
 )
 from chgksuite.composer.composer_common import BaseExporter, parseimg
 from chgksuite.composer.telegram_bot import run_bot_in_thread
+
+logger = logging.getLogger(__name__)
 
 
 def get_saved_telegram_targets():
@@ -45,6 +51,7 @@ def get_saved_telegram_targets():
         conn.close()
         return [row[0] for row in results]
     except Exception:
+        logger.exception("could not list resolved usernames")
         return []
 
 
@@ -182,8 +189,8 @@ class TelegramExporter(BaseExporter):
         if self.bot is not None:
             try:
                 self.bot.stop()
-            except Exception as e:
-                self.logger.warning(f"Error stopping sidecar bot: {e}")
+            except Exception:
+                self.logger.exception("Error stopping sidecar bot")
             self.bot = None
         if self.bot_thread is not None:
             self.bot_thread.join(timeout=30)
@@ -228,7 +235,7 @@ class TelegramExporter(BaseExporter):
 
         if not self.control_chat_id:
             self.logger.error("Authentication timeout. Please try again.")
-            raise Exception("Authentication failed")
+            raise ChgksuiteError("Authentication failed")
 
     def structure_has_stats(self):
         for element in self.structure:
@@ -275,7 +282,7 @@ class TelegramExporter(BaseExporter):
             and not self.structure_has_stats()
             and not os.environ.get("CHGKSUITE_BYPASS_STATS_CHECK")
         ):
-            raise Exception("don't publish questions without stats")
+            raise ChgksuiteError("don't publish questions without stats")
 
         if os.path.exists(self.telegram_toml_path):
             with open(self.telegram_toml_path, "r", encoding="utf8") as f:
@@ -319,7 +326,7 @@ class TelegramExporter(BaseExporter):
                         time.sleep(retry_after + 1)
                         return self.send_api_request(method, data, files)
 
-                    raise Exception(f"Telegram API error: {error_message}")
+                    raise ChgksuiteError(f"Telegram API error: {error_message}")
 
                 return response_data["result"]
             except requests.exceptions.RequestException as e:
@@ -342,11 +349,10 @@ class TelegramExporter(BaseExporter):
             # Private channel, use channel ID
             channel_id_str = str(chat_id)
             # Remove -100 prefix if present
-            if channel_id_str.startswith("-100"):
-                channel_id_str = channel_id_str[4:]
+            channel_id_str = channel_id_str.removeprefix("-100")
             return f"https://t.me/c/{channel_id_str}/{message_id}"
 
-    def extract_id_from_link(self, link) -> Optional[Union[int, str]]:
+    def extract_id_from_link(self, link) -> int | str | None:
         """
         Extract channel or chat ID from a Telegram link.
         Examples:
@@ -468,9 +474,9 @@ class TelegramExporter(BaseExporter):
                         else:
                             image = prepared
                     else:
-                        raise Exception(f"image {run[1]} doesn't exist")
+                        raise FileNotFoundError(f"image {run[1]} doesn't exist")
             else:
-                raise Exception(f"unsupported tag `{run[0]}` in telegram export")
+                raise ChgksuiteError(f"unsupported tag `{run[0]}` in telegram export")
         while res.endswith("\n"):
             res = res[:-1]
         return res, image
@@ -569,7 +575,7 @@ class TelegramExporter(BaseExporter):
             for i, x in enumerate(e):
                 res_, images_ = self.tg_element_layout(x)
                 images.extend(images_)
-                result.append("{}. {}".format(i + 1, res_))
+                result.append(f"{i + 1}. {res_}")
             res = "\n".join(result)
         return res, images
 
@@ -583,10 +589,10 @@ class TelegramExporter(BaseExporter):
         self.logger.info(f"Posting rich message: {html_content[:50]}...")
         media = []
         files = {}
-        try:
+        with contextlib.ExitStack() as stack:
             for media_id, path in payload.get("media_files", []):
                 attach_name = f"f{media_id}"
-                files[attach_name] = open(path, "rb")
+                files[attach_name] = stack.enter_context(open(path, "rb"))
                 media.append(
                     {
                         "id": media_id,
@@ -617,9 +623,6 @@ class TelegramExporter(BaseExporter):
                 if reply_to_message_id:
                     data["reply_parameters"] = {"message_id": reply_to_message_id}
                 result = self.send_api_request("sendRichMessage", data)
-        finally:
-            for f in files.values():
-                f.close()
         return {"message_id": result["message_id"], "chat": {"id": chat_id}}
 
     def _post(self, chat_id, text, photo, reply_to_message_id=None):
@@ -680,7 +683,7 @@ class TelegramExporter(BaseExporter):
                 return {"message_id": result["message_id"], "chat": {"id": chat_id}}
 
         except Exception as e:
-            self.logger.error(f"Error posting message: {str(e)}")
+            self.logger.error(f"Error posting message: {e!s}")
             raise
 
     def post(self, posts):
@@ -801,7 +804,7 @@ class TelegramExporter(BaseExporter):
             q = pair[1]
             if "setcounter" in q:
                 self.qcount = int(q["setcounter"])
-            number = self.qcount if "number" not in q else q["number"]
+            number = q.get("number", self.qcount)
             if not self.si_mode:
                 self.qcount += 1
             self.number = number
@@ -947,7 +950,7 @@ class TelegramExporter(BaseExporter):
         if not texts:
             return "", im, texts, images
         if tg_len(texts[0]) <= threshold:
-            for i in range(0, len(texts)):
+            for i in range(len(texts)):
                 if i:
                     candidate = texts[:-i]
                 else:
@@ -1082,9 +1085,9 @@ class TelegramExporter(BaseExporter):
         # SI's theme-level post concatenates questions with "\n\n" separators,
         # so the extra trailing whitespace ChGK adds isn't needed there.
         txt_q = (
-            "<b>{}:</b> {}".format(q_label, txt_q)
+            f"<b>{q_label}:</b> {txt_q}"
             if self.si_mode
-            else "<b>{}:</b> {}  \n".format(q_label, txt_q)
+            else f"<b>{q_label}:</b> {txt_q}  \n"
         )
         images_a = []
         txt_a, images_ = self.tgyapper(q["answer"])
@@ -1348,8 +1351,8 @@ class TelegramExporter(BaseExporter):
             self.logger.info(f"Posted poll: {question_text}")
             time.sleep(random.randint(2, 4))
             return result
-        except Exception as e:
-            self.logger.error(f"Failed to post poll: {e}")
+        except Exception:
+            self.logger.exception("Failed to post poll")
             return None
 
     def _disable_reactions(self, channel_id):
@@ -1363,9 +1366,9 @@ class TelegramExporter(BaseExporter):
                 {"chat_id": channel_id, "available_reactions": json.dumps([])},
             )
             self.logger.info("Disabled emoji reactions on channel")
-        except Exception as e:
-            self.logger.warning(
-                f"Could not disable reactions (bot may lack permissions): {e}"
+        except Exception:
+            self.logger.exception(
+                "Could not disable reactions (bot may lack permissions)"
             )
 
     def _post_question_poll(self, number):
@@ -1435,7 +1438,7 @@ class TelegramExporter(BaseExporter):
         self.poll_mode = "comment"
 
         if not self.args.tgchannel or not self.args.tgchat:
-            raise Exception("Please provide channel and chat links or IDs.")
+            raise ChgksuiteError("Please provide channel and chat links or IDs.")
 
         # Try to extract IDs from links or direct ID inputs
         channel_result = self.extract_id_from_link(self.args.tgchannel)
@@ -1454,7 +1457,7 @@ class TelegramExporter(BaseExporter):
             if not channel_id:
                 needs_channel_interaction = True
         else:
-            raise Exception("Channel ID is undefined")
+            raise TypeError("Channel ID is undefined")
 
         if isinstance(chat_result, int):
             chat_id = chat_result
@@ -1463,7 +1466,7 @@ class TelegramExporter(BaseExporter):
             if not chat_id:
                 needs_chat_interaction = True
         else:
-            raise Exception("Chat ID is undefined")
+            raise TypeError("Chat ID is undefined")
 
         # Only authenticate if we need user interaction
         if needs_channel_interaction or needs_chat_interaction:
@@ -1483,7 +1486,7 @@ class TelegramExporter(BaseExporter):
             if channel_id:
                 self.save_username(channel_result, channel_id)
             else:
-                raise Exception("Failed to get channel ID from forwarded message")
+                raise ChgksuiteError("Failed to get channel ID from forwarded message")
 
         # Handle chat resolution with user interaction if needed
         if needs_chat_interaction:
@@ -1519,9 +1522,9 @@ class TelegramExporter(BaseExporter):
                 self.save_username(chat_result, chat_id)
 
         if not channel_id:
-            raise Exception("Channel ID is undefined")
+            raise ChgksuiteError("Channel ID is undefined")
         if not chat_id:
-            raise Exception("Chat ID is undefined")
+            raise ChgksuiteError("Chat ID is undefined")
 
         self.channel_id = f"-100{channel_id}"
         if not str(chat_id).startswith("-100"):
@@ -1541,7 +1544,7 @@ class TelegramExporter(BaseExporter):
                 bad.append("channel")
             if not chat_access:
                 bad.append("discussion group")
-            raise Exception(f"The bot doesn't have access to {' and '.join(bad)}")
+            raise ChgksuiteError(f"The bot doesn't have access to {' and '.join(bad)}")
 
         # Load poll config if polls are enabled
         if self._polls_enabled:
@@ -1682,8 +1685,8 @@ class TelegramExporter(BaseExporter):
                             "disable_notification": True,
                         },
                     )
-                except Exception as e:
-                    self.logger.error(f"Failed to pin message: {str(e)}")
+                except Exception:
+                    self.logger.exception("Failed to pin message")
         return True
 
     def init_resolve_db(self):
@@ -1776,8 +1779,8 @@ class TelegramExporter(BaseExporter):
                                 f"Found discussion message {discussion_msg_id} for channel post {message_id}"
                             )
                             return discussion_msg_id
-                except Exception as e:
-                    self.logger.error(f"Error parsing message: {e}")
+                except Exception:
+                    self.logger.exception("Error parsing message")
                     continue
 
             retry_count += 1
@@ -1835,9 +1838,12 @@ class TelegramExporter(BaseExporter):
 
         # Extract channel ID for comparison if we're looking for a discussion group
         channel_numeric_id = None
-        if entity_type == "chat" and self.channel_id:
-            if str(self.channel_id).startswith("-100"):
-                channel_numeric_id = int(str(self.channel_id)[4:])
+        if (
+            entity_type == "chat"
+            and self.channel_id
+            and str(self.channel_id).startswith("-100")
+        ):
+            channel_numeric_id = int(str(self.channel_id)[4:])
 
         while not resolved and retry_count < max_retries:
             time.sleep(10)  # Check every 10 seconds
@@ -1950,4 +1956,4 @@ class TelegramExporter(BaseExporter):
             admin_ids = {x["user"]["id"] for x in result}
             return self.bot_id in admin_ids
         except Exception as e:
-            raise Exception(f"Bot isn't added to {hr_type}: {e}")
+            raise ChgksuiteError(f"Bot isn't added to {hr_type}") from e

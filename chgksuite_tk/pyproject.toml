@@ -10,7 +10,7 @@ authors = [
 ]
 description = "A GUI wrapper for chgksuite using tkinter"
 readme = {text = "**chgksuite-tk** is a GUI wrapper around https://gitlab.com/peczony/chgksuite", content-type = "text/markdown"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",

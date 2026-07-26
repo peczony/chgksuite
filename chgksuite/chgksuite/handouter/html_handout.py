@@ -1,6 +1,9 @@
+import logging
 import os
 import subprocess
 import sys
+
+logger = logging.getLogger(__name__)
 
 A4_WIDTH_MM = 210
 DEFAULT_MARGIN_MM = 5
@@ -46,7 +49,7 @@ def _ensure_playwright_browser():
         with sync_playwright() as p:
             p.chromium.launch(headless=True).close()
     except Exception:
-        print("Installing Playwright Chromium browser...")
+        logger.exception("Playwright Chromium is unusable, installing it...")
         subprocess.check_call(
             [sys.executable, "-m", "playwright", "install", "chromium"]
         )

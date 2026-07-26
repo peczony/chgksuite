@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import base64
 import datetime
 import hashlib
@@ -12,21 +10,21 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import urllib
 import time
+import urllib
+from typing import ClassVar
 
 import bs4
 import chardet
 import mammoth
-
-from chgksuite._html2md import html2md
 import pypandoc
 import requests
 import toml
 from bs4 import BeautifulSoup
 from parse import parse
 
-import chgksuite.typotools as typotools
+from chgksuite import typotools
+from chgksuite._html2md import html2md
 from chgksuite.common import (
     QUESTION_LABELS,
     DefaultNamespace,
@@ -41,12 +39,11 @@ from chgksuite.common import (
     set_lastdir,
 )
 from chgksuite.composer import gui_compose
-from chgksuite.composer.composer_common import make_filename, game_to_ext
-from chgksuite.parsing_engine import python_docx_to_text
+from chgksuite.composer.composer_common import game_to_ext, make_filename
 from chgksuite.parser_db import chgk_parse_db
+from chgksuite.parsing_engine import python_docx_to_text
 from chgksuite.typotools import escape_underscores_except_urls, re_url
 from chgksuite.typotools import remove_excessive_whitespace as rew
-
 
 SEP = "\n"
 PANDOC_NOT_FOUND_MESSAGE = "pandoc not found, installing..."
@@ -97,12 +94,13 @@ DATE_RE2 = re.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 def check_date(match, parse_string):
     try:
-        parsed = datetime.datetime.strptime(match.group(0), parse_string).date()
-        today = datetime.date.today()
-        if parsed.year >= 1980 and (parsed < today or (parsed - today).days <= 365):
-            return True
-        else:
-            return False
+        parsed = (
+            datetime.datetime.strptime(match.group(0), parse_string)
+            .replace(tzinfo=datetime.timezone.utc)
+            .date()
+        )
+        today = datetime.datetime.now().astimezone().date()
+        return bool(parsed.year >= 1980 and (parsed < today or (parsed - today).days <= 365))
     except (TypeError, ValueError):
         return False
 
@@ -117,7 +115,7 @@ def search_for_date(str_):
 
 
 class ChgkParser:
-    BADNEXTFIELDS = set(["question", "answer"])
+    BADNEXTFIELDS: ClassVar[set] = {"question", "answer"}
     RE_NUM = re.compile("^([0-9]+)\\.?$")
     RE_NUM_START = re.compile("^([0-9]+)\\.")
     ZERO_PREFIXES = ("Нулевой вопрос", "Разминочный вопрос")
@@ -239,8 +237,7 @@ class ChgkParser:
             time.sleep(0.5)  # rate limiting
 
             with open(filepath, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
+                f.writelines(response.iter_content(chunk_size=8192))
 
             # Update cache
             self._image_cache[url_hash] = filename
@@ -249,8 +246,8 @@ class ChgkParser:
 
             return filepath
 
-        except Exception as e:
-            self.logger.warning(f"Failed to download image from {url}: {e}")
+        except Exception:
+            self.logger.exception(f"Failed to download image from {url}")
             return None
 
     def _process_images_in_text(self, text):
@@ -577,10 +574,8 @@ class ChgkParser:
 
         if self.defaultauthor:
             logger.info(
-                "The default author is {}. "
-                "Missing authors will be substituted with them".format(
-                    log_wrap(self.defaultauthor)
-                )
+                f"The default author is {log_wrap(self.defaultauthor)}. "
+                "Missing authors will be substituted with them"
             )
 
         if debug:
@@ -678,10 +673,8 @@ class ChgkParser:
                                     int(num.group(0)),
                                 ],
                             )
-                    except Exception as e:
-                        sys.stderr.write(
-                            f"exception at line 399 of parser: {type(e)} {e}\n"
-                        )
+                    except Exception:
+                        logger.exception("exception while renumbering questions")
                 i = 0
             i += 1
 
@@ -744,10 +737,10 @@ class ChgkParser:
                         if num and num.group("number"):
                             self.structure.insert(idx, ["number", num.group("number")])
                             idx += 1
-                    except Exception as e:
+                    except Exception:
                         num = None
-                        sys.stderr.write(
-                            f"exception at setting number: {type(e)} {e}\nQuestion: {element[1]}\n"
+                        logger.exception(
+                            f"exception at setting number\nQuestion: {element[1]}"
                         )
                     if (num is None or num and not num.group("number")) and (
                         ("нулевой вопрос" in element[1].lower())
@@ -765,8 +758,7 @@ class ChgkParser:
                 else:
                     before_replacement = element[1]
                     element[1] = regexes[element[0]].sub("", element[1], 1)
-                if element[1].startswith(SEP):
-                    element[1] = element[1][len(SEP) :]
+                element[1] = element[1].removeprefix(SEP)
                 # TODO: переделать корявую обработку авторки на нормальную
                 if (
                     element[0] == "author"
@@ -790,15 +782,13 @@ class ChgkParser:
                     num = regexes["question"].search(element[1])
                     if num:
                         self.structure.insert(_id, ["number", num.group("number")])
-                except Exception as e:
-                    sys.stderr.write(
-                        f"exception at line 470 of parser: {type(e)} {e}\n"
-                    )
+                except Exception:
+                    logger.exception("exception while extracting question number")
                 element[1] = regexes["question"].sub("", element[1])
 
             # detect inner lists
             mo = {
-                m for m in re.finditer(r"(\s+|^)(\d+)[\.\)]\s*(?!\d)", element[1], re.U)
+                m for m in re.finditer(r"(\s+|^)(\d+)[\.\)]\s*(?!\d)", element[1], re.UNICODE)
             }
             if len(mo) > 1:
                 sorted_up = sorted(mo, key=lambda m: int(m.group(2)))
@@ -875,7 +865,7 @@ class ChgkParser:
         for element in self.structure:
             if (
                 element[0]
-                in set(["number", "tour", "tourrev", "question", "meta", "editor"])
+                in {"number", "tour", "tourrev", "question", "meta", "editor"}
                 and "question" in current_question
             ):
                 if self.defaultauthor and "author" not in current_question:
@@ -887,9 +877,7 @@ class ChgkParser:
             if element[0] in QUESTION_LABELS:
                 if element[0] in current_question:
                     logger.warning(
-                        "Warning: question {} has multiple {}s.".format(
-                            log_wrap(current_question), element[0]
-                        )
+                        f"Warning: question {log_wrap(current_question)} has multiple {element[0]}s."
                     )
                     if isinstance(element[1], list) and isinstance(
                         current_question[element[0]], str
@@ -989,7 +977,8 @@ class UnknownEncodingException(Exception):
 
 
 def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", args=None, logger=None):
-    raw = open(txtfile, "rb").read()
+    with open(txtfile, "rb") as f:
+        raw = f.read()
     # Fix corrupted line endings at byte level before decoding
     if b"\r\r\n" in raw:
         raw = raw.replace(b"\r\r\n", b"\n")
@@ -998,9 +987,9 @@ def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", args=None, logger=N
             encoding = chardet.detect(raw)["encoding"]
         else:
             raise UnknownEncodingException(
-                "Encoding of file {} cannot be verified, "
+                f"Encoding of file {txtfile} cannot be verified, "
                 "please pass encoding directly via command line "
-                "or resave with a less exotic encoding".format(txtfile)
+                "or resave with a less exotic encoding"
             )
     text = raw.decode(encoding)
     # Normalize any remaining line endings
@@ -1017,10 +1006,10 @@ def chgk_parse_txt(txtfile, encoding=None, defaultauthor="", args=None, logger=N
 def generate_imgname(target_dir, ext, prefix=""):
     imgcounter = 1
     while os.path.isfile(
-        os.path.join(target_dir, "{}{:03}.{}".format(prefix, imgcounter, ext))
+        os.path.join(target_dir, f"{prefix}{imgcounter:03}.{ext}")
     ):
         imgcounter += 1
-    return "{}{:03}.{}".format(prefix, imgcounter, ext)
+    return f"{prefix}{imgcounter:03}.{ext}"
 
 
 def ensure_line_breaks(tag):
@@ -1846,7 +1835,7 @@ def docx_to_text(docxfile, args=None, logger=None, inject_heading_markers=False)
                 else:
                     imgpath = "BROKEN_IMAGE"
             tag.insert_before(f"IMGPATH({len(imgpaths)})")
-            imgpath_formatted = "(img {})".format(imgpath)
+            imgpath_formatted = f"(img {imgpath})"
             imgpaths.append(imgpath_formatted)
             tag.extract()
         for node in bsoup.find_all(string=True):
@@ -1906,7 +1895,7 @@ def docx_to_text(docxfile, args=None, logger=None, inject_heading_markers=False)
                 table = html2md(str(tag))
                 tag.insert_before(table)
             except (TypeError, ValueError):
-                logger.error(f"couldn't parse html table: {str(tag)}")
+                logger.error(f"couldn't parse html table: {tag!s}")
             tag.extract()
         for tag in bsoup.find_all("hr"):
             tag.extract()
@@ -2089,7 +2078,7 @@ def parse_wrapper(path, args, logger=None):
 
     ext = game_to_ext(game)
     outfilename = os.path.join(target_dir, make_filename(abspath, ext, args))
-    logger.info("Output: {}".format(os.path.abspath(outfilename)))
+    logger.info(f"Output: {os.path.abspath(outfilename)}")
     with open(outfilename, "w", encoding="utf-8") as output_file:
         output_file.write(compose_4s(final_structure, args=args))
     return outfilename
@@ -2114,7 +2103,7 @@ def gui_parse(args):
                         logger=logger,
                     )
                     logger.info(
-                        "{} -> {}".format(filename, os.path.basename(outfilename))
+                        f"{filename} -> {os.path.basename(outfilename)}"
                     )
 
         else:
@@ -2140,7 +2129,7 @@ def gui_parse(args):
                 )
             )
             texteditor = load_settings().get("editor") or EDITORS[sys.platform]
-            subprocess.call(shlex.split('{} "{}"'.format(texteditor, outfilename)))
+            subprocess.call(shlex.split(f'{texteditor} "{outfilename}"'))
         if args.passthrough:
             cargs = DefaultNamespace()
             cargs.action = "compose"

@@ -1,25 +1,23 @@
-from io import BytesIO
-from pathlib import Path
 import random
 import urllib.parse
 import zipfile
+from io import BytesIO
+from pathlib import Path
 
 import toml
 from PIL import Image
 from pptx import Presentation
 from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN
-from pptx.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR
+from pptx.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR, PP_ALIGN
 from pptx.util import Inches as PptxInches
 from pptx.util import Pt as PptxPt
 
 from chgksuite.common import (
-    DefaultArgs,
     HYPERLINK_SAFE_CHARS,
     NO_BREAK_HYPHEN_REPLACEMENT,
+    DefaultArgs,
 )
 from chgksuite.composer.pptx import PptxExporter, optimize_pptx_images
-
 
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ROOT / "chgksuite" / "resources"
@@ -637,12 +635,12 @@ def test_pptx_textboxes_shrink_text_and_stamp_run_sizes(tmp_path):
             ("section", "Тур 2"),
             (
                 "editor",
-                "Редакторы: Александр Сновский, Артём Сапожников, "
-                "Александр Зайцев, Ольга Шиншинова, Мария Аристова.",
+                ("Редакторы: Александр Сновский, Артём Сапожников, "
+                "Александр Зайцев, Ольга Шиншинова, Мария Аристова."),
             ),
             (
                 "meta",
-                "Редакторы благодарят за тестирование вопросов и очень ценные "
+                ("Редакторы благодарят за тестирование вопросов и очень ценные "
                 "замечания: Андрея Багдуева, Дмитрия Батова, Марию Богуш, "
                 "Виталия Буковского, Михаила Гриценко, Дарью Жукову, "
                 "Фёдора Журавлёва, Григория Зырянова, Алексея Ковбу, "
@@ -650,7 +648,7 @@ def test_pptx_textboxes_shrink_text_and_stamp_run_sizes(tmp_path):
                 "Михаила Малкина, Веру Монину, Ерлана Мухамеджанова, "
                 "Илью Орлова, Никиту Пеговса, Кирилла Платонова, "
                 "Юрия Разумова, Дмитрия Селянина, Дмитрия Слободянюка, "
-                "Наиля Фарукшина, Ксению и Эдуарда Шагалов и Максима Шиловского.",
+                "Наиля Фарукшина, Ксению и Эдуарда Шагалов и Максима Шиловского."),
             ),
             ("Question", {"question": "Вопрос.", "answer": "Ответ."}),
         ],

@@ -6,7 +6,7 @@ import sys
 
 import toml
 
-from chgksuite.common import get_source_dirs, replace_escaped
+from chgksuite.common import ChgksuiteError, get_source_dirs, replace_escaped
 from chgksuite.composer.composer_common import (
     BaseExporter,
     backtick_replace,
@@ -62,7 +62,7 @@ def typst_string(s):
         elif c == "\t":
             out.append("\\t")
         elif ord(c) < 0x20 or ord(c) == 0x7F:
-            out.append("\\u{{{:x}}}".format(ord(c)))
+            out.append(f"\\u{{{ord(c):x}}}")
         else:
             out.append(c)
     out.append('"')
@@ -70,11 +70,11 @@ def typst_string(s):
 
 
 def pt(v):
-    return "{:g}pt".format(round(v, 2))
+    return f"{round(v, 2):g}pt"
 
 
 def mm(v):
-    return "{:g}mm".format(round(v, 2))
+    return f"{round(v, 2):g}mm"
 
 
 def wrap_text(s, params):
@@ -97,7 +97,7 @@ def sc_expr(s, params):
             return
         if cur_lower:
             p = params + ", " if params else ""
-            p += "size: {:g}em".format(scale)
+            p += f"size: {scale:g}em"
             parts.append(wrap_text("".join(cur).upper(), p))
         else:
             parts.append(wrap_text("".join(cur), params))
@@ -219,9 +219,7 @@ class Para:
     def add_link(self, url):
         self.add(
             self.sized(
-                "link({}, underline(text(fill: rgb({}), {})))".format(
-                    typst_string(url), typst_string(LINK_COLOR), typst_string(url)
-                )
+                f"link({typst_string(url)}, underline(text(fill: rgb({typst_string(LINK_COLOR)}), {typst_string(url)})))"
             )
         )
 
@@ -255,7 +253,7 @@ class Para:
             body = " + ".join(chunk) or "[]"
             params = self.text_params()
             if params:
-                body = "text({}, {})".format(params, body)
+                body = f"text({params}, {body})"
             out.append(
                 "#block(above: {}, below: {}, breakable: {}, sticky: {}, {})\n".format(
                     pt(above),
@@ -442,11 +440,11 @@ class TypstExporter(BaseExporter):
             if len(v) > 1 and isinstance(v[1], list):
                 self.add_runs(p, str(v[0]), nbsp)
                 for i, item in enumerate(v[1], 1):
-                    p.add_styled("\n{}. ".format(i))
+                    p.add_styled(f"\n{i}. ")
                     self.add_runs(p, str(item), nbsp)
             else:
                 for i, item in enumerate(v, 1):
-                    p.add_styled("\n{}. ".format(i))
+                    p.add_styled(f"\n{i}. ")
                     self.add_runs(p, str(item), nbsp)
 
     def add_runs(self, p, text, nbsp):
@@ -493,20 +491,14 @@ class TypstExporter(BaseExporter):
             raise
         imgfile = os.path.abspath(parsed["imgfile"]).replace("\\", "/")
         if parsed["inline"]:
-            expr = "box(image({}, height: {}))".format(
-                typst_string(imgfile), mm(25.4 / 6)
-            )
+            expr = f"box(image({typst_string(imgfile)}, height: {mm(25.4 / 6)}))"
             p.add(expr)
             return
         width, height = parsed["width"], parsed["height"]
         max_w = self.text_width_inches()
         if width > max_w:
             width, height = max_w, height * max_w / width
-        expr = "box(image({}, width: {}, height: {}))".format(
-            typst_string(imgfile),
-            mm(width * 25.4),
-            mm(height * 25.4),
-        )
+        expr = f"box(image({typst_string(imgfile)}, width: {mm(width * 25.4)}, height: {mm(height * 25.4)}))"
         p.add_break()
         p.add(expr)
         p.add_break()
@@ -534,9 +526,10 @@ class TypstExporter(BaseExporter):
                 pdf_filename,
             ],
             capture_output=True,
+            check=False,
         )
         if proc.returncode != 0:
-            raise Exception(
+            raise ChgksuiteError(
                 "typst compile failed: {}".format(
                     proc.stderr.decode("utf8", errors="replace")
                 )
@@ -546,7 +539,5 @@ class TypstExporter(BaseExporter):
         if getattr(self.args, "rawtypst", False):
             shutil.copy(outfilename, targetdir)
         self.logger.info(
-            "Output: {}".format(
-                os.path.join(targetdir, os.path.basename(pdf_filename))
-            )
+            f"Output: {os.path.join(targetdir, os.path.basename(pdf_filename))}"
         )

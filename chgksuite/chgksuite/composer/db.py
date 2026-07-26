@@ -1,6 +1,7 @@
 import datetime
 import os
 import re
+from typing import ClassVar
 
 import dateparser
 import pyperclip
@@ -19,7 +20,7 @@ re_editors = re.compile(r"^[рР]едакторы? *(пакета|тура)? *[�
 
 
 class DbExporter(BaseExporter):
-    BASE_MAPPING = {
+    BASE_MAPPING: ClassVar[dict] = {
         "section": "Тур",
         "heading": "Чемпионат",
         "editor": "Редактор",
@@ -54,18 +55,18 @@ class DbExporter(BaseExporter):
         pil_image = Image.open(imgfile)
         w_orig, h_orig = pil_image.size
         if w_orig != w or h_orig != h:
-            self.logger.info("resizing image {}".format(imgfile))
+            self.logger.info(f"resizing image {imgfile}")
             pil_image = pil_image.resize((int(w), int(h)), resample=Image.LANCZOS)
             bn, _ = os.path.splitext(imgfile)
-            resized_fn = "{}_resized.png".format(bn)
+            resized_fn = f"{bn}_resized.png"
             pil_image.save(resized_fn, "PNG")
             to_upload = resized_fn
         else:
             to_upload = imgfile
-        self.logger.info("uploading {}...".format(to_upload))
+        self.logger.info(f"uploading {to_upload}...")
         uploaded_image = self.im.upload_image(to_upload, title=to_upload)
         imglink = uploaded_image["data"]["link"]
-        self.logger.info("the link for {} is {}...".format(to_upload, imglink))
+        self.logger.info(f"the link for {to_upload} is {imglink}...")
         return imglink
 
     def baseformat(self, s):
@@ -82,7 +83,7 @@ class DbExporter(BaseExporter):
                     imglink = run[1]
                 else:
                     imglink = self.parse_and_upload_image(run[1])
-                res += "(pic: {})".format(imglink)
+                res += f"(pic: {imglink})"
         while res.endswith("\n"):
             res = res[:-1]
         res = replace_escaped(res)
@@ -100,7 +101,7 @@ class DbExporter(BaseExporter):
         if isinstance(e, list):
             res = "\n".join(
                 [
-                    "   {}. {}".format(i + 1, self.base_element_layout(x))
+                    f"   {i + 1}. {self.base_element_layout(x)}"
                     for i, x in enumerate(e)
                 ]
             )
@@ -113,10 +114,10 @@ class DbExporter(BaseExporter):
             parsed = parsed.date()
         if not parsed:
             self.logger.error(
-                "unable to parse date {}, setting to default 2010-01-01".format(s)
+                f"unable to parse date {s}, setting to default 2010-01-01"
             )
             return datetime.date(2010, 1, 1).strftime("%d-%b-%Y")
-        if parsed > datetime.date.today():
+        if parsed > datetime.datetime.now().astimezone().date():
             parsed = parsed.replace(year=parsed.year - 1)
         formatted = parsed.strftime("%d-%b-%Y")
         return formatted
@@ -125,19 +126,15 @@ class DbExporter(BaseExporter):
         if pair[0] == "Question":
             return self.base_format_question(pair[1])
         if pair[0] in self.BASE_MAPPING:
-            return "{}:\n{}\n\n".format(
-                self.BASE_MAPPING[pair[0]], self.baseyapper(pair[1])
-            )
+            return f"{self.BASE_MAPPING[pair[0]]}:\n{self.baseyapper(pair[1])}\n\n"
         elif pair[0] == "date":
             re_search = self.re_date_sep.search(pair[1])
             if re_search:
                 gr0 = re_search.group(0)
                 dates = pair[1].split(gr0)
-                return "Дата:\n{} - {}\n\n".format(
-                    self.wrap_date(dates[0]), self.wrap_date(dates[-1])
-                )
+                return f"Дата:\n{self.wrap_date(dates[0])} - {self.wrap_date(dates[-1])}\n\n"
             else:
-                return "Дата:\n{}\n\n".format(self.wrap_date(pair[1]))
+                return f"Дата:\n{self.wrap_date(pair[1])}\n\n"
 
     @staticmethod
     def _get_last_value(dct, key):
@@ -156,7 +153,7 @@ class DbExporter(BaseExporter):
         if "setcounter" in q:
             self.qcount = int(q["setcounter"])
         res = "Вопрос {}:\n{}\n\n".format(
-            self.qcount if "number" not in q else q["number"],
+            q.get("number", self.qcount),
             self.baseyapper(q["question"]),
         )
         if "number" not in q:
@@ -186,10 +183,10 @@ class DbExporter(BaseExporter):
                 and (i + 1) < len(self.structure)
                 and self.structure[i + 1][0] == "meta"
             ):
-                pair[1] += "\n{}".format(self.structure[i + 1][1])
+                pair[1] += f"\n{self.structure[i + 1][1]}"
                 self.structure.pop(i + 1)
             if pair[0] == "Question" and check_if_zero(pair[1]):
-                tourheader = "Нулевой вопрос {}".format(zeroq)
+                tourheader = f"Нулевой вопрос {zeroq}"
                 zeroq += 1
                 pair[1]["number"] = 1
                 self.structure.insert(lasttour, self.structure.pop(i))
@@ -212,6 +209,6 @@ class DbExporter(BaseExporter):
         text = "".join(result)
         with open(outfilename, "w", encoding="utf-8") as f:
             f.write(text)
-        self.logger.info("Output: {}".format(outfilename))
+        self.logger.info(f"Output: {outfilename}")
         if self.args.clipboard:
             pyperclip.copy(text)

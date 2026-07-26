@@ -23,7 +23,7 @@ APPS = [("chgkq", "Версия Qt"), ("chgkt", "Версия Tk")]
 def main():
     result = subprocess.run(
         ["gh", "release", "view", "--repo", REPO, "--json", "assets"],
-        capture_output=True, text=True,
+        capture_output=True, text=True, check=False,
     )
     if result.returncode != 0:
         print(result.stderr, file=sys.stderr)

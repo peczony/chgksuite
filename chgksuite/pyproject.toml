@@ -17,7 +17,7 @@ Project home on gitlab: https://gitlab.com/peczony/chgksuite
 
 Documentation (in Russian): https://peczony.gitlab.io/chgksuite
 """, content-type = "text/markdown"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -26,23 +26,23 @@ classifiers = [
 dependencies = [
     "beautifulsoup4",
     "chardet==5.2.0",
-    "cryptography",
+    "cryptography>=48.0.1",
     "dateparser",
     "mammoth",
     "openpyxl",
     "parse",
-    "Pillow",
+    "Pillow>=12.1.1",
     "playwright",
     "ply",
     "pypandoc",
-    "pypdf",
+    "pypdf>=6.7.1",
     "pyperclip",
     "python-docx",
     "python-pptx",
     "python-telegram-bot",
-    "requests",
+    "requests>=2.33.0",
     "toml",
-    "urllib3>=2.6.2",
+    "urllib3>=2.7.0",
     "watchdog",
 ]
 
@@ -68,7 +68,7 @@ packages = ["chgksuite"]
 [dependency-groups]
 dev = [
     "ipython>=8.18.1",
-    "pytest>=8.4.2",
+    "pytest>=9.0.3",
     "ruff>=0.14.10",
 ]
 

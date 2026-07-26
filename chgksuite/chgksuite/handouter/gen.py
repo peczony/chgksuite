@@ -1,12 +1,13 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import itertools
 import json
+import logging
 import os
 import re
 from collections import defaultdict
 
 import toml
+
+logger = logging.getLogger(__name__)
 
 from chgksuite.common import get_source_dirs
 from chgksuite.composer.chgksuite_parser import parse_4s
@@ -87,9 +88,9 @@ def generate_handouts(args):
             if img:
                 try:
                     parsed_img = parseimg(img[0][1], targetdir=targetdir)
-                except Exception as e:
-                    print(
-                        f"Image file for question {q['number']} not found, add it by hand (exception {type(e)} {e})"
+                except Exception:
+                    logger.exception(
+                        f"Image file for question {q['number']} not found, add it by hand"
                     )
                     continue
             else:

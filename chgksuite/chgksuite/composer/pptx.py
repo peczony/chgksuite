@@ -6,8 +6,15 @@ import re
 import urllib.parse
 
 import toml
+from pptx import Presentation
+from pptx.dml.color import RGBColor
+from pptx.enum.lang import MSO_LANGUAGE_ID
+from pptx.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR, PP_ALIGN
+from pptx.oxml.xmlchemy import OxmlElement
+from pptx.util import Inches as PptxInches
+from pptx.util import Pt as PptxPt
 
-import chgksuite.typotools as typotools
+from chgksuite import typotools
 from chgksuite.common import (
     HYPERLINK_SAFE_CHARS,
     NO_BREAK_HYPHEN_REPLACEMENT,
@@ -28,14 +35,6 @@ from chgksuite.composer.docx import (
     _docx_font_spec,
     _select_font_faces,
 )
-from pptx import Presentation
-from pptx.dml.color import RGBColor
-from pptx.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR, PP_ALIGN
-from pptx.enum.lang import MSO_LANGUAGE_ID
-from pptx.oxml.xmlchemy import OxmlElement
-from pptx.util import Inches as PptxInches
-from pptx.util import Pt as PptxPt
-
 
 _PPTX_HYPERLINK_COLOR = (0x05, 0x63, 0xC1)
 _EMU_PER_INCH = 914400
@@ -100,6 +99,7 @@ class PptxExporter(BaseExporter):
             font_cfg = self.c.get("font", {})
             return font_cfg.get("heading_name") or font_cfg.get("name")
         except Exception:
+            self.logger.exception("could not read heading font config")
             return None
 
     def _get_font_size(self, key, fallback):
@@ -735,8 +735,7 @@ class PptxExporter(BaseExporter):
         def append_text(value):
             parts = str(value).split("\n")
             lines[-1] += parts[0]
-            for part in parts[1:]:
-                lines.append(part)
+            lines.extend(parts[1:])
 
         for run in self.parse_4s_elem(backtick_replace(text)):
             if run[0] == "screen":
@@ -1031,7 +1030,7 @@ class PptxExporter(BaseExporter):
                     )
 
         if isinstance(el, str):
-            self.logger.debug("parsing element {}:".format(log_wrap(el)))
+            self.logger.debug(f"parsing element {log_wrap(el)}:")
             el = backtick_replace(el)
 
             for run in self.parse_4s_elem(el):
@@ -1660,7 +1659,7 @@ class PptxExporter(BaseExporter):
             self.qcount += 1
         if "setcounter" in q:
             self.qcount = int(q["setcounter"])
-        self.number = str(self.qcount if "number" not in q else q["number"])
+        self.number = str(q.get("number", self.qcount))
 
         if isinstance(q["question"], list):
             for i in range(len(q["question"][1])):
@@ -1722,4 +1721,4 @@ class PptxExporter(BaseExporter):
         self.prs.save(outfilename)
         if self.optimize_size:
             optimize_pptx_images(outfilename, quality=80)
-        self.logger.info("Output: {}".format(outfilename))
+        self.logger.info(f"Output: {outfilename}")

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#! -*- coding: utf-8 -*-
 import contextlib
 import inspect
 import json
@@ -14,6 +12,8 @@ import zipfile
 from io import BytesIO
 
 import pytest
+from PIL import Image
+
 import chgksuite.parser as parser_module
 from chgksuite.common import (
     DefaultArgs,
@@ -46,7 +46,6 @@ from chgksuite.parser import (
     troika_parse_text,
 )
 from chgksuite.typotools import cyr_lat_check_word, get_quotes_right, replace_no_break
-from PIL import Image
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -78,7 +77,8 @@ with open(os.path.join(currentdir, "settings.json")) as f:
     settings = json.loads(f.read())
 
 
-ljlogin, ljpassword = open(os.path.join(currentdir, "ljcredentials")).read().split("\t")
+with open(os.path.join(currentdir, "ljcredentials")) as f:
+    ljlogin, ljpassword = f.read().split("\t")
 
 
 def workaround_chgk_parse(filename, game=None, **kwargs):
@@ -732,7 +732,7 @@ def test_chgk_parse_txt_keeps_url_underscores_unescaped(tmp_path):
     )
 
     parsed = chgk_parse_txt(str(filename), encoding="utf-8", args=DefaultArgs())
-    question = [element[1] for element in parsed if element[0] == "Question"][0]
+    question = next(element[1] for element in parsed if element[0] == "Question")
 
     assert question["source"] == r"file\_name https://example.com/path_with_under"
 
@@ -932,7 +932,7 @@ def test_canonical_equality(parsing_engine, filename):
             shutil.copy(os.path.join(currentdir, filename), temp_dir)
             shutil.copy(os.path.join(currentdir, to_parse_fn), temp_dir)
 
-        print("Testing {}...".format(to_parse_fn))
+        print(f"Testing {to_parse_fn}...")
         bn, _ = os.path.splitext(to_parse_fn)
         file_settings = settings.get(to_parse_fn, {})
         game = file_settings.get("game")
@@ -981,7 +981,7 @@ TO_DOCX_FILENAMES.remove("balt09-1.txt")  # TODO: rm this line once dns is fixed
 
 @pytest.mark.parametrize("filename", TO_DOCX_FILENAMES)
 def test_docx_composition(filename):
-    print("Testing {}...".format(filename))
+    print(f"Testing {filename}...")
     with make_temp_directory(dir=".") as temp_dir:
         shutil.copy(os.path.join(currentdir, filename), temp_dir)
         temp_dir_filename = os.path.join(temp_dir, filename)
@@ -1011,7 +1011,7 @@ def test_pdf_composition():
             filename.endswith((".docx", ".txt"))
             and filename == "Kubok_knyagini_Olgi-2015.docx"
         ):
-            print("Testing {}...".format(filename))
+            print(f"Testing {filename}...")
             with make_temp_directory(dir=".") as temp_dir:
                 shutil.copy(os.path.join(currentdir, filename), temp_dir)
                 temp_dir_filename = os.path.join(temp_dir, filename)

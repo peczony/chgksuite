@@ -45,7 +45,7 @@ UI_SETTLE = 0.6
 def osascript(script: str) -> str:
     """Run an AppleScript snippet.  Returns stdout; raises on failure."""
     r = subprocess.run(
-        ["osascript", "-e", script], capture_output=True, text=True
+        ["osascript", "-e", script], capture_output=True, text=True, check=False
     )
     if r.returncode != 0:
         raise RuntimeError(f"osascript failed: {r.stderr.strip()}")
@@ -56,7 +56,7 @@ def jxa(script: str) -> str:
     """Run a JXA (JavaScript for Automation) snippet. Returns stdout."""
     r = subprocess.run(
         ["osascript", "-l", "JavaScript", "-e", script],
-        capture_output=True, text=True,
+        capture_output=True, text=True, check=False,
     )
     if r.returncode != 0:
         raise RuntimeError(f"JXA failed: {r.stderr.strip()}")

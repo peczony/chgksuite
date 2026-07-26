@@ -12,7 +12,7 @@ from chgksuite.common import (
 )
 from chgksuite.typotools import remove_excessive_whitespace as rew
 
-REQUIRED_LABELS = set(["question", "answer"])
+REQUIRED_LABELS = {"question", "answer"}
 OVERRIDE_PREFIX = "!!"
 
 
@@ -41,9 +41,7 @@ def check_if_zero(Question):
         return False
     if isinstance(number, int) and number == 0:
         return True
-    if isinstance(number, str) and number.startswith(("0", "Размин")):
-        return True
-    return False
+    return bool(isinstance(number, str) and number.startswith(("0", "Размин")))
 
 
 def process_list(element):
@@ -205,15 +203,15 @@ def parse_4s(
             }:
                 try:
                     assert all(
-                        (True if label in current_question else False)
+                        (label in current_question)
                         for label in REQUIRED_LABELS
                     )
                 except AssertionError:
                     logger.error(
-                        "Question {} misses "
+                        f"Question {log_wrap(current_question)} misses "
                         "some of the required fields "
                         "and will therefore "
-                        "be omitted.".format(log_wrap(current_question))
+                        "be omitted."
                     )
                     continue
                 if "setcounter" in current_question:
@@ -235,7 +233,7 @@ def parse_4s(
     if current_question != {}:
         try:
             assert all(
-                (True if label in current_question else False)
+                (label in current_question)
                 for label in REQUIRED_LABELS
             )
             if "setcounter" in current_question:
@@ -246,9 +244,9 @@ def parse_4s(
             final_structure.append(["Question", current_question])
         except AssertionError:
             logger.error(
-                "Question {} misses "
+                f"Question {log_wrap(current_question)} misses "
                 "some of the required fields and will therefore "
-                "be omitted.".format(log_wrap(current_question))
+                "be omitted."
             )
 
     # Number SI/Troika themes inline so every consumer can rely on the same numbering.

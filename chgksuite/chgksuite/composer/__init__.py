@@ -1,5 +1,3 @@
-#!usr/bin/env python
-# -*- coding: utf-8 -*-
 import json
 import os
 import shutil
@@ -16,16 +14,20 @@ from chgksuite.common import (
     set_lastdir,
 )
 from chgksuite.composer.chgksuite_parser import parse_4s
-from chgksuite.composer.composer_common import ext_to_game, make_filename, make_temp_directory
+from chgksuite.composer.composer_common import (
+    ext_to_game,
+    make_filename,
+    make_temp_directory,
+)
 from chgksuite.composer.db import DbExporter
 from chgksuite.composer.docx import DocxExporter
-from chgksuite.composer.typst import TypstExporter
 from chgksuite.composer.lj import LjExporter
-from chgksuite.composer.pptx import PptxExporter
 from chgksuite.composer.markdown import MarkdownExporter
+from chgksuite.composer.openquiz import OpenquizExporter
+from chgksuite.composer.pptx import PptxExporter
 from chgksuite.composer.stats import StatsAdder
 from chgksuite.composer.telegram import TelegramExporter
-from chgksuite.composer.openquiz import OpenquizExporter
+from chgksuite.composer.typst import TypstExporter
 
 
 def gui_compose(args, logger=None):
@@ -86,7 +88,7 @@ def make_merged_filename(filelist):
 
 
 def process_file(filename, tmp_dir, targetdir, args=None, logger=None):
-    dir_kwargs = dict(tmp_dir=tmp_dir, targetdir=targetdir)
+    dir_kwargs = {"tmp_dir": tmp_dir, "targetdir": targetdir}
     logger = logger or init_logger("composer")
 
     if isinstance(filename, list):
@@ -112,7 +114,7 @@ def process_file(filename, tmp_dir, targetdir, args=None, logger=None):
         spoilers = args.spoilers
     else:
         spoilers = "off" if args.nospoilers else "on"
-    logger.info("Exporting to {}, spoilers are {}...\n".format(args.filetype, spoilers))
+    logger.info(f"Exporting to {args.filetype}, spoilers are {spoilers}...\n")
 
     if args.filetype == "docx":
         if args.screen_mode == "off":

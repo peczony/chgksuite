@@ -10,7 +10,7 @@ import toml
 from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
-from chgksuite.common import get_chgksuite_dir
+from chgksuite.common import ChgksuiteError, get_chgksuite_dir
 
 
 class TelegramSidecarBot:
@@ -36,7 +36,7 @@ class TelegramSidecarBot:
         raw_data = json.dumps(update.to_dict(), ensure_ascii=False)
         cursor.execute(
             "INSERT INTO messages (raw_data, chat_id, created_at) VALUES (?, ?, ?)",
-            (raw_data, message.chat.id, datetime.now().isoformat()),
+            (raw_data, message.chat.id, datetime.now().astimezone().isoformat()),
         )
         self.conn.commit()
 
@@ -45,12 +45,12 @@ class TelegramSidecarBot:
 
     async def check_connectivity(self):
         url = f"https://api.telegram.org/bot{self.token}/getMe"
-        req = requests.get(url)
+        req = await asyncio.to_thread(requests.get, url)
         cursor = self.conn.cursor()
         if req.status_code == 200 and "ok" in req.json():
             cursor.execute(
                 "INSERT INTO bot_status (raw_data, created_at) VALUES (?, ?)",
-                (json.dumps({"status": "ok"}), datetime.now().isoformat()),
+                (json.dumps({"status": "ok"}), datetime.now().astimezone().isoformat()),
             )
             self.conn.commit()
         else:
@@ -65,7 +65,7 @@ class TelegramSidecarBot:
                             "status_code": req.status_code,
                         }
                     ),
-                    datetime.now().isoformat(),
+                    datetime.now().astimezone().isoformat(),
                 ),
             )
             self.conn.commit()
@@ -128,7 +128,7 @@ def run_bot_in_thread(bot_token, db_path):
         asyncio.set_event_loop(loop)
         connectivity_ok = loop.run_until_complete(bot.check_connectivity())
         if not connectivity_ok:
-            raise Exception("bot couldn't connect")
+            raise ChgksuiteError("bot couldn't connect")
         bot.run()
 
     bot_thread = threading.Thread(target=thread_function, daemon=True)

@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
 from types import SimpleNamespace
-from typing import Callable
 
 from chgksuite.handouter.installer import get_typst_path, install_typst
 from chgksuite.handouter.runner import (
@@ -23,6 +24,8 @@ from chgksuite.handouter.runner import (
     typst_query_command,
 )
 from chgksuite.handouter.utils import compress_pdf
+
+logger = logging.getLogger(__name__)
 
 RESERVED_WORDS = {
     "image",
@@ -452,6 +455,7 @@ def render_handout_pdf(
         try:
             compress_pdf(str(pdf_path))
         except Exception as exc:
+            logger.exception("Could not compress %s", pdf_path)
             return ProbeResult(
                 rows=-1,
                 ok=False,
@@ -876,6 +880,7 @@ def fit_block(
             logs=logs,
         )
     except Exception as exc:
+        logger.exception("Could not fit block %s", block.ordinal)
         return BlockFitResult(
             ordinal=block.ordinal,
             output_path=output_path,
@@ -1087,8 +1092,8 @@ def run_split_fit(args) -> int:
         try:
             if update_source_resizes(source, source_contents, blocks, resize_by_ordinal):
                 print(f"Updated resize_image values in {source}")
-        except Exception as exc:
-            print(f"Could not update source resize_image values: {exc}", file=sys.stderr)
+        except Exception:
+            logger.exception("Could not update source resize_image values")
             return 1
 
     if not args.no_all_q_pdf:
@@ -1101,7 +1106,7 @@ def run_split_fit(args) -> int:
                 args=args,
             )
             print(f"All-questions PDF: {all_q_pdf}")
-        except Exception as exc:
-            print(f"Could not create all-questions PDF: {exc}", file=sys.stderr)
+        except Exception:
+            logger.exception("Could not create all-questions PDF")
             return 1
     return 0

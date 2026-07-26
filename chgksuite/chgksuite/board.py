@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import json
 import os
-import pdb
 import re
 import sys
 import webbrowser
@@ -21,6 +18,7 @@ from chgksuite.board_config import (
     write_board_metadata,
 )
 from chgksuite.common import (
+    ChgksuiteError,
     get_source_dirs,
     log_wrap,
     read_text_file,
@@ -52,7 +50,7 @@ def _board_lists(board):
         url = "{}/boards/{}/lists".format(API, board["board_id"])
         req = requests.get(url, params={"token": board["token"], "key": board["key"]})
     if req.status_code != 200:
-        print("Error: {}".format(req.text))
+        print(f"Error: {req.text}")
         sys.exit(1)
     lists = json.loads(req.content.decode("utf8"))
     if board["service"] == "xy":
@@ -69,7 +67,7 @@ def _post_card(board, lid, name, desc):
             url,
             {"token": board["token"], "name": name, "desc": xy_crypto.encrypt_field(board["dk"], desc)},
         )
-    url = "{}/lists/{}/cards".format(API, lid)
+    url = f"{API}/lists/{lid}/cards"
     return requests.post(
         url, {"key": board["key"], "token": board["token"], "desc": desc, "name": name}
     )
@@ -87,7 +85,7 @@ def upload_file(filepath, board, list_name=None):
                 lid = list_["id"]
                 break
         if lid is None:
-            raise Exception(f"list '{list_name}' not found")
+            raise ChgksuiteError(f"list '{list_name}' not found")
     assert lid is not None
     print(f"uploading to list '{list_['name']}'")
     content = read_text_file(filepath)
@@ -102,9 +100,9 @@ def upload_file(filepath, board, list_name=None):
 
         req = _post_card(board, lid, caption, card)
         if req.status_code == 200:
-            print("Successfully sent {}".format(log_wrap(caption)))
+            print(f"Successfully sent {log_wrap(caption)}")
         else:
-            print("Error {}: {}".format(req.status_code, req.content))
+            print(f"Error {req.status_code}: {req.content}")
 
 
 def gui_board_upload(args):
@@ -262,7 +260,7 @@ def add_themes_list(group):
 
 def get_style(doc_, name):
     try:
-        return [x for x in doc_.styles if x.name == name][0]
+        return next(x for x in doc_.styles if x.name == name)
     except IndexError:
         sys.stderr.write(f"Style {name} not found in doc template\n")
         return
@@ -283,9 +281,9 @@ def gui_board_download(args):
     if args.si or args.qb:
         from docx import Document
 
-    json_ = fetch_board_json(board, args)
+    json_ = fetch_board_json(board)
 
-    _lists = defaultdict(lambda: [])
+    _lists = defaultdict(list)
     _list_counters = defaultdict(lambda: 0)
     _names = defaultdict(lambda: None)
     open_lists = list(filter(lambda x: not x["closed"], json_["lists"]))
@@ -383,19 +381,19 @@ def gui_board_download(args):
             # add remaining themes when we know we're done with the doc
             add_themes_list(_groups[list_name])
         for list_name in _docs:
-            _docs[list_name].save("{}.docx".format(list_name))
+            _docs[list_name].save(f"{list_name}.docx")
 
     if args.qb:
         first, second = _lists[args.qb[0]], _lists[args.qb[1]]
         for i, pair in enumerate(zip(first, second)):
             p = qb_doc.add_paragraph()
-            p.add_run("Тоссап {}.".format(i + 1)).bold = True
+            p.add_run(f"Тоссап {i + 1}.").bold = True
             p = qb_doc.add_paragraph()
             p = qb_doc.add_paragraph()
             p.add_run(pair[0])
             p = qb_doc.add_paragraph()
             p = qb_doc.add_paragraph()
-            p.add_run("Бонус {}.".format(i + 1)).bold = True
+            p.add_run(f"Бонус {i + 1}.").bold = True
             p = qb_doc.add_paragraph()
             p = qb_doc.add_paragraph()
             p.add_run(pair[1])
@@ -408,17 +406,15 @@ def gui_board_download(args):
         for _list in open_lists:
             result.extend(_lists[_list["name"]])
         filename = "singlefile.4s"
-        print("outputting {}".format(filename))
+        print(f"outputting {filename}")
         with open(filename, "w", encoding="utf-8") as f:
-            for item in result:
-                f.write("\n" + item + "\n")
+            f.writelines("\n" + item + "\n" for item in result)
     else:
         for _list in _lists:
-            filename = "{}.4s".format(_list)
-            print("outputting {}".format(filename))
+            filename = f"{_list}.4s"
+            print(f"outputting {filename}")
             with open(filename, "w", encoding="utf-8") as f:
-                for item in _lists[_list]:
-                    f.write("\n" + item + "\n")
+                f.writelines("\n" + item + "\n" for item in _lists[_list])
 
 
 def get_board_url():
@@ -483,7 +479,7 @@ def _fetch_xy_keymeta(board):
     url = "{}/1/boards/{}".format(board["base_url"], board["board_id"])
     req = requests.get(url, params={"token": board["token"]})
     if req.status_code != 200:
-        print("Error: {}".format(req.text))
+        print(f"Error: {req.text}")
         sys.exit(1)
     return json.loads(req.content.decode("utf8"))
 
@@ -506,7 +502,7 @@ def _fetch_xy_board(board):
     return data
 
 
-def fetch_board_json(board, args):
+def fetch_board_json(board):
     """Return the board as a Trello-shaped, plaintext dict (decrypting xy)."""
     if board["service"] == "xy":
         return _fetch_xy_board(board)
@@ -514,9 +510,7 @@ def fetch_board_json(board, args):
     params["token"] = board["token"]
     req = requests.get("{}/boards/{}".format(API, board["board_id"]), params=params)
     if req.status_code != 200:
-        print("Error: {}".format(req.text))
-        if getattr(args, "debug", False):
-            pdb.set_trace()
+        print(f"Error: {req.text}")
         sys.exit(1)
     return json.loads(req.content.decode("utf8"))
 
@@ -561,7 +555,7 @@ def gui_board(args):
     elif subcommand == "upload":
         gui_board_upload(args)
     else:
-        print("Unknown board subcommand: {}".format(subcommand))
+        print(f"Unknown board subcommand: {subcommand}")
         sys.exit(1)
 
 

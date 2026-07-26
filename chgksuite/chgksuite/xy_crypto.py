@@ -85,16 +85,16 @@ def derive_dk(passphrase, keymeta):
     kek = _derive_kek(passphrase, salt, params)
     try:
         dk_raw = _open(kek, _b64d(keymeta["wrapped_key"]))
-    except Exception:
-        raise WrongPassphrase("Неверный пароль доски")
+    except Exception as e:
+        raise WrongPassphrase("Неверный пароль доски") from e
     try:
         verify = _open(dk_raw, _b64d(keymeta["verify_token"]))
         if verify.decode("utf-8") != VERIFY_PLAINTEXT:
             raise ValueError("verify mismatch")
     except WrongPassphrase:
         raise
-    except Exception:
-        raise WrongPassphrase("Неверный пароль доски")
+    except Exception as e:
+        raise WrongPassphrase("Неверный пароль доски") from e
     return dk_raw
 
 

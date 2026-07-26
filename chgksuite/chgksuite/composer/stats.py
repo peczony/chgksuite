@@ -69,7 +69,7 @@ class StatsAdder(BaseExporter):
             filenames = self.args.custom_csv
             if "," not in filenames:
                 filenames = [filenames]
-            elif all([os.path.isfile(x) for x in filenames.split(",")]):
+            elif all(os.path.isfile(x) for x in filenames.split(",")):
                 filenames = filenames.split(",")
             else:
                 filenames = [filenames]

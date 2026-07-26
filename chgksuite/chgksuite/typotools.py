@@ -1,23 +1,21 @@
-#!usr/bin/env python
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
 import functools
+import logging
 import re
-import sys
 import unicodedata
 import urllib.parse
 
 unquote = urllib.parse.unquote_to_bytes
 
-WHITESPACE = set([" ", " ", "\n"])
-PUNCTUATION = set([",", ".", ":", ";", "?", "!"])
+logger = logging.getLogger(__name__)
+
+WHITESPACE = {" ", " ", "\n"}
+PUNCTUATION = {",", ".", ":", ";", "?", "!"}
 OPENING_BRACKETS = ["[", "(", "{"]
 CLOSING_BRACKETS = ["]", ")", "}"]
-LOWERCASE_RUSSIAN = set(list("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"))
-UPPERCASE_RUSSIAN = set(list("АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"))
-POTENTIAL_ACCENTS = set(list("АОУЫЭЯЕЮИ"))
-BAD_BEGINNINGS = set(["Мак", "мак", "О'", "о’", "О’", "о'"])
+LOWERCASE_RUSSIAN = set("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
+UPPERCASE_RUSSIAN = set("АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ")
+POTENTIAL_ACCENTS = set("АОУЫЭЯЕЮИ")
+BAD_BEGINNINGS = {"Мак", "мак", "О'", "о’", "О’", "о'"}
 NO_BREAK_SEQUENCES = [
     "а",
     "без",
@@ -61,13 +59,13 @@ re_bad_wsp_start = re.compile(r"^[{}]+".format("".join(WHITESPACE)))
 re_bad_wsp_end = re.compile(r"[{}]+$".format("".join(WHITESPACE)))
 re_url = re.compile(
     r"""((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]"""
-    """|[a-z0-9.\\-]+[.‌​][a-z]{2,4}/)(?:[^\\s()<>]+|(([^\\s()<>]+|(([^\\s()<>]+)))*))+"""
-    """(?:(([^\\s()<>]+|(‌​([^\\s()<>]+)))*)|[^\\s`!()[]{};:'".,<>?«»“”‘’]))""",
+    """|[a-z0-9.\\-]+[.‌\u200b][a-z]{2,4}/)(?:[^\\s()<>]+|(([^\\s()<>]+|(([^\\s()<>]+)))*))+"""
+    """(?:(([^\\s()<>]+|(‌\u200b([^\\s()<>]+)))*)|[^\\s`!()[]{};:'".,<>?«»“”‘’]))""",
     re.DOTALL,
 )
 re_percent = re.compile(r"(%[0-9a-fA-F]{2})+")
 re_nbh = re.compile(
-    "(^|[^а-яё])(?P<word>[а-яё]{0,3}\\-[а-яё]{0,3})([^а-яё]|$)", flags=re.I
+    "(^|[^а-яё])(?P<word>[а-яё]{0,3}\\-[а-яё]{0,3})([^а-яё]|$)", flags=re.IGNORECASE
 )
 re_lowercase = re.compile(r"[а-яё]")
 re_uppercase = re.compile(r"[А-ЯЁ]")
@@ -179,8 +177,8 @@ def cyr_lat_check_word(word):
         ):
             replacements[char + word[i + 1]] = char + "\u0301"
     if replacements:
-        for k in replacements:
-            word = word.replace(k, replacements[k])
+        for k, v in replacements.items():
+            word = word.replace(k, v)
         return word
     return
 
@@ -192,8 +190,8 @@ def fix_accents_func(str_, mode="on"):
     for word in str_.split():
         if check := cyr_lat_check_word(word):
             replacements[word] = check
-    for rep in replacements:
-        str_ = str_.replace(rep, replacements[rep])
+    for rep, value in replacements.items():
+        str_ = str_.replace(rep, value)
     return str_
 
 
@@ -217,14 +215,14 @@ class QuoteFixer:
 
     def prev(self, c, i):
         if i < 0:
-            raise Exception("not allowed")
+            raise IndexError("not allowed")
         if i == 0:
             return None
         return c[i - 1]
 
     def next(self, c, i):
         if i >= len(c):
-            raise Exception("not allowed")
+            raise IndexError("not allowed")
         if i + 1 == len(c):
             return None
         return c[i + 1]
@@ -282,7 +280,7 @@ class QuoteFixer:
                 else:
                     self.new_s[qc] = "“"
             else:
-                raise Exception("not allowed")
+                raise ValueError(f"unexpected quote kind {tup[0]}")
         return "".join(self.new_s)
 
 
@@ -292,8 +290,8 @@ def get_quotes_right(s_in):
     if '"' in s or ("“" in s and "„" not in s):
         s = QuoteFixer(s).fix()
 
-    s = re.sub(r"(\w)'", r"\1’", s, flags=re.U)
-    s = re.sub(r"'(\w)", r"‘\1", s, flags=re.U)
+    s = re.sub(r"(\w)'", r"\1’", s, flags=re.UNICODE)
+    s = re.sub(r"'(\w)", r"‘\1", s, flags=re.UNICODE)
 
     return s
 
@@ -307,14 +305,14 @@ def get_dashes_right(s):
 def _replace_no_break_segment(s, spaces=True, hyphens=True):
     if spaces:
         for sp in NO_BREAK_SEQUENCES + [x.title() for x in NO_BREAK_SEQUENCES]:
-            r_from = "(^|[ \u00a0]){sp} ".format(sp=sp)
-            r_to = "\\g<1>{sp}\u00a0".format(sp=sp)
+            r_from = f"(^|[ \u00a0]){sp} "
+            r_to = f"\\g<1>{sp}\u00a0"
             s = re.sub(r_from, r_to, s)
         for sp in NO_BREAK_SEQUENCES_LEFT + [
             x.title() for x in NO_BREAK_SEQUENCES_LEFT
         ]:
-            r_from = " {sp}([ \u00a0]|$)".format(sp=sp)
-            r_to = "\u00a0{sp}\\g<1>".format(sp=sp)
+            r_from = f" {sp}([ \u00a0]|$)"
+            r_to = f"\u00a0{sp}\\g<1>"
             s = re.sub(r_from, r_to, s)
     if hyphens:
         srch = re_nbh.search(s)
@@ -367,10 +365,8 @@ def detect_accent(s):
                     i += 1
                 if word != word_new:
                     s = s[: s.index(word)] + word_new + s[s.index(word) + len(word) :]
-            except Exception as e:
-                sys.stderr.write(
-                    f"exception {type(e)} {e} while trying to process word {repr(word)}"
-                )
+            except Exception:
+                logger.exception(f"error while trying to process word {word!r}")
     return s
 
 
@@ -381,10 +377,8 @@ def percent_decode(s):
     for gr in grs:
         try:
             s = s.replace(gr, unquote(gr.encode("utf8")).decode("utf8"))
-        except Exception as e:
-            sys.stderr.write(
-                f"exception {type(e)} {e} while trying to replace percents in {gr}"
-            )
+        except Exception:
+            logger.exception(f"error while trying to replace percents in {gr}")
     return s
 
 

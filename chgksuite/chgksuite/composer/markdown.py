@@ -42,20 +42,20 @@ class MarkdownExporter(BaseExporter):
             if run[0] == "":
                 res += run[1]
             if run[0] == "hyperlink":
-                res += "<{}>".format(run[1])
+                res += f"<{run[1]}>"
             if run[0] == "screen":
                 res += run[1]["for_screen"]
             if run[0] == "italic":
-                res += "_{}_".format(run[1])
+                res += f"_{run[1]}_"
             if run[0] == "img":
                 if run[1].startswith(("http://", "https://")):
                     imglink = run[1]
                 else:
                     imglink = self.parse_and_upload_image(run[1])
                 if self.args.filetype == "redditmd":
-                    res += "[картинка]({})".format(imglink)
+                    res += f"[картинка]({imglink})"
                 else:
-                    res += "![]({})".format(imglink)
+                    res += f"![]({imglink})"
         while res.endswith("\n"):
             res = res[:-1]
         res = res.replace("\n", "  \n")
@@ -69,7 +69,7 @@ class MarkdownExporter(BaseExporter):
         if isinstance(e, list):
             res = "  \n".join(
                 [
-                    "{}\\. {}".format(i + 1, self.markdown_element_layout(x))
+                    f"{i + 1}\\. {self.markdown_element_layout(x)}"
                     for i, x in enumerate(e)
                 ]
             )
@@ -83,7 +83,7 @@ class MarkdownExporter(BaseExporter):
         if "setcounter" in q:
             self.qcount = int(q["setcounter"])
         res = "__Вопрос {}__: {}  \n".format(
-            self.qcount if "number" not in q else q["number"],
+            q.get("number", self.qcount),
             self.markdownyapper(q["question"]),
         )
         if "number" not in q:
@@ -118,4 +118,4 @@ class MarkdownExporter(BaseExporter):
         text = "\n\n".join(result)
         with open(outfile, "w", encoding="utf-8") as f:
             f.write(text)
-        self.logger.info("Output: {}".format(outfile))
+        self.logger.info(f"Output: {outfile}")

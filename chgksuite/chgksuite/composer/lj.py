@@ -4,7 +4,6 @@ import random
 import re
 import sys
 import time
-import traceback
 from xmlrpc.client import ServerProxy
 
 from chgksuite.common import log_wrap, retry_wrapper_factory
@@ -68,9 +67,7 @@ class LjExporter(BaseExporter):
                     0,
                     [
                         "ljheading",
-                        "{}{} {}".format(
-                            globalheading, globalsep, find_tour(tour)[1][1]
-                        ),
+                        f"{globalheading}{globalsep} {find_tour(tour)[1][1]}",
                     ],
                 )
         if general_impression:
@@ -90,7 +87,7 @@ class LjExporter(BaseExporter):
         return result
 
     def _lj_post(self, stru, edit=False, add_params=None):
-        now = datetime.datetime.now()
+        now = datetime.datetime.now().astimezone()
         year = now.strftime("%Y")
         month = now.strftime("%m")
         day = now.strftime("%d")
@@ -124,10 +121,8 @@ class LjExporter(BaseExporter):
             self.logger.info("Edited a post" if edit else "Created a post")
             self.logger.debug(log_wrap(post))
             time.sleep(5)
-        except Exception as e:
-            sys.stderr.write(
-                "Error issued by LJ API: {}".format(traceback.format_exc(e))
-            )
+        except Exception:
+            self.logger.exception("Error issued by LJ API")
             sys.exit(1)
         return post
 
@@ -146,10 +141,8 @@ class LjExporter(BaseExporter):
         }
         try:
             comment = self.retry_wrapper(self.lj.addcomment, [params])
-        except Exception as e:
-            sys.stderr.write(
-                "Error issued by LJ API: {}".format(traceback.format_exc(e))
-            )
+        except Exception:
+            self.logger.exception("Error issued by LJ API")
             sys.exit(1)
         self.logger.info("Added a comment")
         self.logger.debug(log_wrap(comment))
@@ -197,23 +190,17 @@ class LjExporter(BaseExporter):
 
         while i < len(structure) and structure[i][0] != "Question":
             if structure[i][0] == "heading":
-                final_structure[0]["content"] += "<center>{}</center>".format(
-                    yapper(structure[i][1])
-                )
+                final_structure[0]["content"] += f"<center>{yapper(structure[i][1])}</center>"
                 heading = yapper(structure[i][1])
             if structure[i][0] == "ljheading":
                 # final_structure[0]['header'] = structure[i][1]
                 ljheading = yapper(structure[i][1])
             if structure[i][0] == "date":
-                final_structure[0]["content"] += "\n<center>{}</center>".format(
-                    yapper(structure[i][1])
-                )
+                final_structure[0]["content"] += f"\n<center>{yapper(structure[i][1])}</center>"
             if structure[i][0] == "editor":
-                final_structure[0]["content"] += "\n<center>{}</center>".format(
-                    yapper(structure[i][1])
-                )
+                final_structure[0]["content"] += f"\n<center>{yapper(structure[i][1])}</center>"
             if structure[i][0] == "meta":
-                final_structure[0]["content"] += "\n{}".format(yapper(structure[i][1]))
+                final_structure[0]["content"] += f"\n{yapper(structure[i][1])}"
             i += 1
 
         if ljheading != "":
@@ -265,10 +252,7 @@ class LjExporter(BaseExporter):
         if isinstance(e, list):
             res = "\n".join(
                 [
-                    "{}. {}".format(
-                        en + 1,
-                        self.html_element_layout(x, replace_spaces=replace_spaces),
-                    )
+                    f"{en + 1}. {self.html_element_layout(x, replace_spaces=replace_spaces)}"
                     for en, x in enumerate(e)
                 ]
             )
@@ -313,15 +297,7 @@ class LjExporter(BaseExporter):
                     zz = zz[: zz.index("`") + 2] + "" + zz[zz.index("`") + 2 :]
                 if zz.index("`") + 1 < len(zz) and re_lowercase.search(
                     zz[zz.index("`") + 1]
-                ):
-                    zz = (
-                        zz[: zz.index("`") + 1]
-                        + ""
-                        + zz[zz.index("`") + 1]
-                        + "&#x0301;"
-                        + zz[zz.index("`") + 2 :]
-                    )
-                elif zz.index("`") + 1 < len(zz) and re_uppercase.search(
+                ) or zz.index("`") + 1 < len(zz) and re_uppercase.search(
                     zz[zz.index("`") + 1]
                 ):
                     zz = (
@@ -367,8 +343,8 @@ class LjExporter(BaseExporter):
                     imgfile = uploaded_image["data"]["link"]
 
                 res += '<img{}{} src="{}"/>'.format(
-                    "" if w == -1 else " width={}".format(w),
-                    "" if h == -1 else " height={}".format(h),
+                    "" if w == -1 else f" width={w}",
+                    "" if h == -1 else f" height={h}",
                     imgfile,
                 )
             else:
@@ -388,7 +364,7 @@ class LjExporter(BaseExporter):
                 inner.append(
                     titles[j]
                     if j == i
-                    else '<a href="{}">{}</a>'.format(urls[j], titles[j])
+                    else f'<a href="{urls[j]}">{titles[j]}</a>'
                 )
             result.append(" | ".join(inner))
         return result

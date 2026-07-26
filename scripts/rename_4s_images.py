@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import argparse
@@ -9,8 +8,6 @@ import shutil
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Union
-
 
 FIELD_BY_MARKER = {
     "?": "question",
@@ -50,20 +47,20 @@ class ImageOccurrence:
     inner: str
     image_ref: str
     line_number: int
-    field_name: Optional[str] = None
-    side: Optional[str] = None
-    question_number: Optional[int] = None
-    source_path: Optional[Path] = None
-    target_path: Optional[Path] = None
-    new_ref: Optional[str] = None
+    field_name: str | None = None
+    side: str | None = None
+    question_number: int | None = None
+    source_path: Path | None = None
+    target_path: Path | None = None
+    new_ref: str | None = None
 
 
 @dataclass
 class QuestionBlock:
-    number_text: Optional[str] = None
-    setcounter_text: Optional[str] = None
+    number_text: str | None = None
+    setcounter_text: str | None = None
     occurrences: list[ImageOccurrence] = field(default_factory=list)
-    question_number: Optional[int] = None
+    question_number: int | None = None
 
 
 @dataclass(frozen=True)
@@ -81,7 +78,7 @@ class RenameResult:
     dry_run: bool = False
 
 
-def find_matching_closing_paren(text: str, index: int) -> Optional[int]:
+def find_matching_closing_paren(text: str, index: int) -> int | None:
     level = 0
     for current_index in range(index, len(text)):
         if text[current_index] == "(":
@@ -97,7 +94,7 @@ def _line_without_eol(line: str) -> str:
     return line.rstrip("\r\n")
 
 
-def _line_marker(line: str) -> tuple[Optional[str], str]:
+def _line_marker(line: str) -> tuple[str | None, str]:
     line = _line_without_eol(line)
     stripped = line.lstrip()
     if not stripped:
@@ -161,7 +158,7 @@ def _replace_img_ref(inner: str, new_ref: str, line_number: int) -> str:
     return f"(img {shlex.join(parts)})"
 
 
-def _parse_int(text: Optional[str], context: str) -> Optional[int]:
+def _parse_int(text: str | None, context: str) -> int | None:
     if text is None:
         return None
     try:
@@ -173,8 +170,8 @@ def _parse_int(text: Optional[str], context: str) -> Optional[int]:
 def _scan_4s(text: str) -> tuple[list[QuestionBlock], list[ImageOccurrence]]:
     blocks: list[QuestionBlock] = []
     orphan_occurrences: list[ImageOccurrence] = []
-    current_block: Optional[QuestionBlock] = None
-    current_field: Optional[str] = None
+    current_block: QuestionBlock | None = None
+    current_field: str | None = None
     offset = 0
 
     def finish_block():
@@ -288,7 +285,7 @@ def _apply_width_to_stem(stem: str, question_number: int, width: int) -> str:
 
 
 def _build_plan(
-    blocks: list[QuestionBlock], file_dir: Path, width: Optional[int]
+    blocks: list[QuestionBlock], file_dir: Path, width: int | None
 ) -> tuple[list[ImageOccurrence], list[RenamePlanItem]]:
     occurrences = [occurrence for block in blocks for occurrence in block.occurrences]
     if not occurrences:
@@ -424,7 +421,7 @@ def _rollback_file_renames(tmp_by_item: list[tuple[RenamePlanItem, Path]]) -> No
 
 
 def rename_4s_images(
-    file_path: Union[str, Path], *, dry_run: bool = False, width: Optional[int] = None
+    file_path: str | Path, *, dry_run: bool = False, width: int | None = None
 ) -> RenameResult:
     path = Path(file_path).resolve()
     if width is not None and width < 1:
@@ -477,7 +474,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
     try:

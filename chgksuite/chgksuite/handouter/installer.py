@@ -9,6 +9,8 @@ import zipfile
 
 import requests
 
+from chgksuite.common import ChgksuiteError
+
 
 def get_utils_dir():
     path = os.path.join(os.path.expanduser("~"), ".pecheny_utils")
@@ -141,8 +143,8 @@ def extract_zip(zip_file, dirname=None):
 def extract_tar(tar_file, dirname=None):
     if dirname is None:
         dirname = tar_file[: tar_file.lower().index(".tar")]
-    tf = tarfile.open(tar_file)
-    tf.extractall(dirname)
+    with tarfile.open(tar_file) as tf:
+        tf.extractall(dirname)
     os.remove(tar_file)
 
 
@@ -177,7 +179,7 @@ def guess_archive_url(assets):
         arch = _machine_arch() or "x86_64"
         target_system, toolchain = "linux", "musl"
     else:
-        raise Exception(f"Unsupported system {system}")
+        raise ChgksuiteError(f"Unsupported system {system}")
 
     for k, v in assets.items():
         parsed = parse_typst_archive_name(k)
@@ -188,21 +190,21 @@ def guess_archive_url(assets):
         if toolchain and parsed.get("toolchain") != toolchain:
             continue
         return v
-    raise Exception(f"typst archive for system {system} arch {arch} not found")
+    raise ChgksuiteError(f"typst archive for system {system} arch {arch} not found")
 
 
 def archive_url_from_regex(assets, regex):
     for k, v in assets.items():
         if re.match(regex, k):
             return v
-    raise Exception(f"Archive for regex {regex} not found")
+    raise ChgksuiteError(f"Archive for regex {regex} not found")
 
 
 def _find_binary(root_dir, filename):
     for dir_, _, files in os.walk(root_dir):
         if filename in files:
             return os.path.join(dir_, filename)
-    raise Exception(f"{filename} not found in extracted archive {root_dir}")
+    raise FileNotFoundError(f"{filename} not found in extracted archive {root_dir}")
 
 
 def install_typst(args):
@@ -260,7 +262,7 @@ def find_font(file_name, root_dir=None):
         for fn in files:
             if fn == file_name:
                 return os.path.join(dir_, fn)
-    raise Exception(f"{file_name} not found")
+    raise FileNotFoundError(f"{file_name} not found")
 
 
 def install_font_from_github_wrapper(repo):

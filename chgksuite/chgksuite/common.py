@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import argparse
 import csv
 import json
@@ -10,14 +8,19 @@ import re
 import sys
 import tempfile
 import time
+import xml.etree.ElementTree as ET
 import zipfile
 from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
-import xml.etree.ElementTree as ET
 
 import openpyxl
 import toml
+
+
+class ChgksuiteError(Exception):
+    """Base class for errors chgksuite raises on its own."""
+
 
 HYPERLINK_SAFE_CHARS = "%/:?#[]@!$&'()*+,;="
 NO_BREAK_HYPHEN_REPLACEMENT = "\u2060-\u2060"
@@ -145,8 +148,8 @@ def retry_wrapper_factory(logger):
         while not ret and cntr < retries:
             try:
                 ret = func(*args, **kwargs)
-            except Exception as e:
-                logger.error(f"exception {type(e)} {e}")
+            except Exception:
+                logger.exception("exception in retried call")
                 time.sleep(5)
                 cntr += 1
         return ret
@@ -512,7 +515,7 @@ def optimize_ooxml_images(package_path, media_prefix, rels_prefix, quality=80):
     return optimized_parts
 
 
-class DummyLogger(object):
+class DummyLogger:
     def info(self, *args, **kwargs):
         pass
 
@@ -525,6 +528,9 @@ class DummyLogger(object):
     def warning(self, *args, **kwargs):
         pass
 
+    def exception(self, *args, **kwargs):
+        pass
+
 
 class DefaultNamespace(argparse.Namespace):
     def __init__(self, *args, **kwargs):
@@ -532,9 +538,8 @@ class DefaultNamespace(argparse.Namespace):
             if isinstance(ns, argparse.Namespace):
                 for name in vars(ns):
                     setattr(self, name, vars(ns)[name])
-        else:
-            for name in kwargs:
-                setattr(self, name, kwargs[name])
+        for name, value in kwargs.items():
+            setattr(self, name, value)
 
     def __getattribute__(self, name):
         try:
@@ -573,7 +578,7 @@ def check_question(question, logger=None, required_fields=None):
 
 
 def remove_double_separators(s):
-    return re.sub(r"({})+".format(SEP), SEP, s)
+    return re.sub(rf"({SEP})+", SEP, s)
 
 
 def tryint(s):
@@ -724,15 +729,15 @@ def compose_4s(structure, args=None):
                     remove_double_separators(z[0])
                     + SEP
                     + "- "
-                    + ("{}- ".format(SEP)).join(
-                        ([remove_double_separators(x) for x in z[1]])
+                    + (f"{SEP}- ").join(
+                        [remove_double_separators(x) for x in z[1]]
                     )
                 )
             else:
                 return (
                     SEP
                     + "- "
-                    + ("{}- ".format(SEP)).join(
+                    + (f"{SEP}- ").join(
                         [remove_double_separators(x) for x in z]
                     )
                 )
@@ -763,7 +768,7 @@ def compose_4s(structure, args=None):
                     first_number = False
             for label in QUESTION_LABELS:
                 override_label = (
-                    "" if label not in overrides else ("!!{} ".format(overrides[label]))
+                    "" if label not in overrides else (f"!!{overrides[label]} ")
                 )
                 if label in element[1] and label in types_mapping:
                     tmp += (
@@ -772,6 +777,6 @@ def compose_4s(structure, args=None):
                         + format_element(element[1][label])
                         + SEP
                     )
-            tmp = re.sub(r"{}+".format(SEP), SEP, tmp)
+            tmp = re.sub(rf"{SEP}+", SEP, tmp)
             result += tmp + SEP
     return result
