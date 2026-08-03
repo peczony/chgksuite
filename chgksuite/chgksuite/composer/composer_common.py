@@ -361,7 +361,32 @@ def find_next_unescaped(ss, index, length=1):
     return -1
 
 
-def _parse_4s_elem(s, logger=None):
+HIDDEN_COMMENT = "(hidden-comment"
+
+
+def starts_hidden_comment(s, i):
+    if s[i : i + len(HIDDEN_COMMENT)] != HIDDEN_COMMENT:
+        return False
+    nxt = s[i + len(HIDDEN_COMMENT) : i + len(HIDDEN_COMMENT) + 1]
+    return nxt in ("", ")") or nxt.isspace()
+
+
+def drop_hidden_comments(parts):
+    result = []
+    just_dropped = False
+    for part in parts:
+        if part[0] == "hidden-comment":
+            just_dropped = True
+            continue
+        if just_dropped and part[0] == "" and result and result[-1][0] == "":
+            result[-1][1] += part[1]
+        else:
+            result.append(part)
+        just_dropped = False
+    return result
+
+
+def _parse_4s_elem(s, logger=None, keep_hidden_comments=False):
     logger = logger or DummyLogger()
 
     underscore_placeholder = "$$$$UNDERSCORE$$$$"
@@ -393,6 +418,7 @@ def _parse_4s_elem(s, logger=None):
 
     i = 0
     topart = []
+    hidden_comment_starts = set()
     while i < len(s):
         if s[i] in ("_", "~"):
             logger.debug(f"found {s[i]} at {i} of line {s}")
@@ -423,6 +449,20 @@ def _parse_4s_elem(s, logger=None):
             if typotools.find_matching_closing_bracket(s, i) is not None:
                 topart.append(typotools.find_matching_closing_bracket(s, i) + 1)
                 i = typotools.find_matching_closing_bracket(s, i)
+        if starts_hidden_comment(s, i):
+            closing = typotools.find_matching_closing_bracket(s, i)
+            if closing is None:
+                logger.warning(f"unterminated {HIDDEN_COMMENT} in line {log_wrap(s)}")
+            else:
+                start, end = i, closing + 1
+                if start > 0 and s[start - 1].isspace():
+                    start -= 1
+                elif end < len(s) and s[end].isspace():
+                    end += 1
+                hidden_comment_starts.add(start)
+                topart.append(start)
+                topart.append(end)
+                i = closing
         if s[i : i + len("(PAGEBREAK)")] == "(PAGEBREAK)":
             topart.append(i)
             topart.append(i + len("(PAGEBREAK)"))
@@ -450,7 +490,10 @@ def _parse_4s_elem(s, logger=None):
 
     topart = sorted(topart)
 
-    parts = [["", "".join(x.replace("\u6565", ""))] for x in partition(s, topart)]
+    parts = [
+        ["hidden-comment" if start in hidden_comment_starts else "", x.replace("\u6565", "")]
+        for start, x in zip([0] + topart, partition(s, topart))
+    ]
 
     def _process(s):
         s = s.replace("\\_", "_")
@@ -463,6 +506,10 @@ def _parse_4s_elem(s, logger=None):
         if not part[1]:
             continue
         try:
+            if part[0] == "hidden-comment":
+                body = part[1].strip()
+                part[1] = _process(body[len(HIDDEN_COMMENT) : -1].strip())
+                continue
             if part[1].startswith("_") and part[1].endswith("_"):
                 j = 1
                 while j < len(part[1]) and part[1][j] == "_" and part[1][-j - 1] == "_":
@@ -515,6 +562,9 @@ def _parse_4s_elem(s, logger=None):
             part[1] = _process(part[1])
         except Exception:
             logger.exception(f"Error on part {log_wrap(part)}")
+
+    if not keep_hidden_comments:
+        parts = drop_hidden_comments(parts)
 
     return parts
 

@@ -17,6 +17,7 @@ from PIL import Image
 import chgksuite.parser as parser_module
 from chgksuite.common import (
     DefaultArgs,
+    DummyLogger,
     image_data_to_jpeg_bytes,
     optimize_raster_image_data,
     read_text_file,
@@ -1070,6 +1071,95 @@ def test_parse_4s_elem_does_not_parse_url_underscores_as_italic():
     assert ["hyperlink", "https://example.com/path_with_under"] in parsed
     assert ["hyperlink", url] in parsed
     assert [run for run in parsed if run[0] == "italic"] == [["italic", "italic"]]
+
+
+def test_hidden_comment_dropped_by_default():
+    parsed = _parse_4s_elem("Текст (hidden-comment проверить у Ани) дальше.")
+
+    assert parsed == [["", "Текст дальше."]]
+
+
+def test_hidden_comment_kept_with_flag():
+    parsed = _parse_4s_elem(
+        "Текст (hidden-comment typst: pagebreak) дальше.", keep_hidden_comments=True
+    )
+
+    assert ["hidden-comment", "typst: pagebreak"] in parsed
+    assert "".join(run[1] for run in parsed if run[0] == "") == "Текст дальше."
+
+
+def test_hidden_comment_takes_its_own_newline():
+    parsed = _parse_4s_elem("Ответ\n(hidden-comment записка)\nещё")
+
+    assert parsed == [["", "Ответ\nещё"]]
+
+
+class RecordingLogger(DummyLogger):
+    def __init__(self):
+        self.warnings = []
+
+    def warning(self, message, *args, **kwargs):
+        self.warnings.append(message)
+
+
+UNTERMINATED_HIDDEN_COMMENTS = [
+    "Текст (hidden-comment забыл скобку",
+    "Текст (hidden-comment спросить у Ани (см. письмо)",
+    "Текст (hidden-comment",
+]
+
+
+@pytest.mark.parametrize("text", UNTERMINATED_HIDDEN_COMMENTS)
+def test_hidden_comment_unterminated_stays_literal(text):
+    logger = RecordingLogger()
+    parsed = _parse_4s_elem(text, logger=logger)
+
+    assert "".join(run[1] for run in parsed) == text
+    assert logger.warnings
+
+
+def test_hidden_comment_at_field_start_takes_following_whitespace():
+    assert _parse_4s_elem("(hidden-comment записка) Текст") == [["", "Текст"]]
+    assert _parse_4s_elem("(hidden-comment записка)\nТекст") == [["", "Текст"]]
+
+
+def test_hidden_comment_swallows_nested_directives():
+    parsed = _parse_4s_elem(
+        "Текст (hidden-comment см. (img foo.jpg)) дальше.", keep_hidden_comments=True
+    )
+
+    assert ["hidden-comment", "см. (img foo.jpg)"] in parsed
+    assert not [run for run in parsed if run[0] == "img"]
+
+
+def test_docx_export_omits_hidden_comment(tmp_path):
+    from docx import Document
+
+    output_path = tmp_path / "hidden.docx"
+    args = DefaultArgs(
+        docx_template=os.path.join(parentdir, "chgksuite", "resources", "template.docx"),
+        game="chgk",
+        regexes_file=os.path.join(parentdir, "chgksuite", "resources", "regexes_ru.json"),
+        optimize_size="off",
+        spoilers="off",
+        screen_mode="off",
+    )
+    exporter = DocxExporter(
+        parse_4s(
+            "? Вопрос (hidden-comment вырезать это) дальше.\n"
+            "! Ответ (hidden-comment и это).",
+            game="chgk",
+        ),
+        args,
+        {"tmp_dir": str(tmp_path), "targetdir": str(tmp_path)},
+    )
+    exporter.export(output_path)
+
+    text = "\n".join(paragraph.text for paragraph in Document(output_path).paragraphs)
+
+    assert "Вопрос дальше." in text
+    assert "hidden-comment" not in text
+    assert "вырезать это" not in text
 
 
 def test_docx_hyperlink_targets_percent_encode_non_ascii_url(tmp_path):
