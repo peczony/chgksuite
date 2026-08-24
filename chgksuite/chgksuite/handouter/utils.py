@@ -39,6 +39,7 @@ RESERVED_WORDS = [
     "hspace",
     "vspace",
     "max_width",
+    "question_label",
 ]
 
 
