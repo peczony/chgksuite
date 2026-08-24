@@ -19,6 +19,7 @@ from chgksuite.handouter.installer import (
 )
 from chgksuite.handouter.pack import pack_handouts
 from chgksuite.handouter.typst_internals import (
+    CELLLABEL,
     GREYTEXT,
     HEADER,
     IMG,
@@ -134,6 +135,16 @@ class HandoutGenerator:
         )
         return GREYTEXT.replace("<GREYTEXT>", handout_text)
 
+    def inside_label(self, block):
+        """The grey «Вопрос N» printed inside every cell of a block, for
+        `question_label: inside`; None unless that block asked for it."""
+        if block.get("question_label") != "inside" or not block.get("for_question"):
+            return None
+        question = self.labels["question_labels"]["question"]
+        return CELLLABEL.replace(
+            "<CELLLABEL>", f"{question} {block['for_question']}"
+        )
+
     def wrap_question_block(self, label, grid):
         """Join a question's grey label and its handout block.
 
@@ -239,13 +250,17 @@ class HandoutGenerator:
         text_expr = wrap_text(block["text"]) if block.get("text") else None
 
         if img_expr and text_expr:
-            return (
+            body = (
                 f"stack(dir: ttb, spacing: 1mm, {img_expr}, "
                 f"align(center, {text_expr}))"
             )
-        if img_expr:
-            return img_expr
-        return text_expr or wrap_text("")
+        else:
+            body = img_expr or text_expr or wrap_text("")
+
+        label = self.inside_label(block)
+        if label:
+            return f"stack(dir: ttb, spacing: 1mm, {label}, {body})"
+        return body
 
     def generate_regular_block(self, block_):
         block = block_.copy()
@@ -302,7 +317,7 @@ class HandoutGenerator:
                 print(block)
             label = None
             grid = None
-            if block.get("for_question"):
+            if block.get("for_question") and block.get("question_label") != "inside":
                 label = self.generate_for_question(block["for_question"])
             if block.get("columns"):
                 grid = self.generate_regular_block(block)

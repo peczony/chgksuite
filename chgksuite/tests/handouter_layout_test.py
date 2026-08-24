@@ -355,6 +355,24 @@ class TestMaxWidthLayout:
         # The sticky label keeps glued to its block across page breaks.
         assert "sticky: true" in typst
 
+    def test_question_label_inside_moves_the_number_into_the_cells(self, generator):
+        generator.args.filename = "handouts.hndt"
+        generator.parse_input = lambda filename: [
+            {
+                "for_question": 18,
+                "columns": 3,
+                "text": "test",
+                "question_label": "inside",
+            }
+        ]
+
+        typst = generator.generate()
+
+        # The number rides inside every cut-out handout, not above the block.
+        assert "#qlabel[" not in typst
+        assert "clabel[Вопрос 18]" in typst
+        assert typst.index("clabel[") < typst.index("[test]")
+
     def test_generate_keeps_question_label_without_handout_grid(self, generator):
         generator.args.filename = "handouts.hndt"
         generator.parse_input = lambda filename: [{"for_question": 18}]

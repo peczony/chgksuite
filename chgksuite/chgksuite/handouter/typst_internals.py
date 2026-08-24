@@ -51,6 +51,24 @@ HEADER = r"""
   ),
 )
 
+// Text is laid out between the font's ascender and descender lines, but its ink
+// is not: a capital falls short of the ascender while a descender nearly reaches
+// the descender line, so a metrically centred cell reads bottom-heavy. Measuring
+// the body again with ink-tight edges gives the slack on each side (summed over
+// its lines); half their difference is what centres the ink the eye sees.
+#let _ink_shift(body, w) = {
+  let h(top, bottom, lead) = measure(box(width: w, {
+    set text(top-edge: top, bottom-edge: bottom)
+    set par(leading: lead)
+    body
+  })).height
+  let lead = par.leading.to-absolute()
+  let lines = if lead == 0pt { 1 } else {
+    calc.round((h("ascender", "descender", lead) - h("ascender", "descender", 0pt)) / lead) + 1
+  }
+  (h("ascender", "bounds", lead) - h("bounds", "descender", lead)) / (2 * lines)
+}
+
 // A question block: ncols x nrows cells grouped into (tcols x trows) teams,
 // tiled with gaps. Every cell holds the same `cellbody`; a single measurement
 // fixes the shared row height to max(content height, strut) + padding. `pad`
@@ -61,7 +79,8 @@ HEADER = r"""
   let ntr = int(nrows / trows)
   let border = if teamed { _solid } else { _dashed }
   let rowh = calc.max(measure(box(width: cellw - 2 * pad, cellbody)).height, strut) + 2 * pad
-  let one = _team(border, tcols, trows, cellw, rowh, pad, centered, (cellbody,) * (tcols * trows))
+  let cell = move(dy: -_ink_shift(cellbody, cellw - 2 * pad), cellbody)
+  let one = _team(border, tcols, trows, cellw, rowh, pad, centered, (cell,) * (tcols * trows))
   // Left-aligned so the block's left edge lines up with the grey label above it;
   // gaps separate the teams (cells within a team stay flush).
   align(left, grid(
@@ -76,10 +95,17 @@ HEADER = r"""
 // sticky so a page break never orphans it from the handout beneath it.
 #let qlabel(body) = block(above: <LABEL_ABOVE>mm, below: <LABEL_BELOW>mm,
   sticky: true, text(fill: gray, size: 9pt, body))
+
+// The same caption printed inside each cell instead (`question_label: inside`),
+// so a handout carries its question number after it is cut out.
+#let clabel(body) = text(fill: gray, size: 9pt, body)
 """.strip()
 
 # Grey caption text, left-aligned directly atop a block.
 GREYTEXT = r"""#qlabel[<GREYTEXT>]"""
+
+# The same caption inside every cell of a block (`question_label: inside`).
+CELLLABEL = r"""clabel[<CELLLABEL>]"""
 
 # Image inside a cell, scaled relative to the cell's inner content width.
 IMG = r"""image("<IMGPATH>", width: <IMGWIDTH>)"""
