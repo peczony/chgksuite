@@ -24,6 +24,7 @@ from chgksuite.handouter.typst_internals import (
     HEADER,
     IMG,
     IMGWIDTH,
+    QGAP,
 )
 from chgksuite.handouter.utils import (
     compress_pdf,
@@ -317,8 +318,12 @@ class HandoutGenerator:
                 print(block)
             label = None
             grid = None
-            if block.get("for_question") and block.get("question_label") != "inside":
-                label = self.generate_for_question(block["for_question"])
+            if block.get("for_question"):
+                label = (
+                    QGAP
+                    if block.get("question_label") == "inside"
+                    else self.generate_for_question(block["for_question"])
+                )
             if block.get("columns"):
                 grid = self.generate_regular_block(block)
             if label or grid:

@@ -372,6 +372,9 @@ class TestMaxWidthLayout:
         assert "#qlabel[" not in typst
         assert "clabel[Вопрос 18]" in typst
         assert typst.index("clabel[") < typst.index("[test]")
+        # Without a caption above it the block still keeps the caption's air.
+        assert "#qgap()" in typst
+        assert typst.index("#qgap()") < typst.index("#handout(")
 
     def test_generate_keeps_question_label_without_handout_grid(self, generator):
         generator.args.filename = "handouts.hndt"
