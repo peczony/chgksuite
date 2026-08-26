@@ -99,6 +99,11 @@ HEADER = r"""
 // The same caption printed inside each cell instead (`question_label: inside`),
 // so a handout carries its question number after it is cut out.
 #let clabel(body) = text(fill: gray, size: 9pt, body)
+
+// A block with its number inside prints no caption above it, so nothing would
+// keep it off the block before it; this leaves the caption's air instead, and
+// drops away at the top of a page like the caption's own spacing.
+#let qgap() = v(<LABEL_ABOVE>mm, weak: true)
 """.strip()
 
 # Grey caption text, left-aligned directly atop a block.
@@ -106,6 +111,9 @@ GREYTEXT = r"""#qlabel[<GREYTEXT>]"""
 
 # The same caption inside every cell of a block (`question_label: inside`).
 CELLLABEL = r"""clabel[<CELLLABEL>]"""
+
+# What stands in for the caption above a block that carries its number inside.
+QGAP = r"""#qgap()"""
 
 # Image inside a cell, scaled relative to the cell's inner content width.
 IMG = r"""image("<IMGPATH>", width: <IMGWIDTH>)"""
