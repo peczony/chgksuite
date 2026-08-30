@@ -97,8 +97,11 @@ HEADER = r"""
   sticky: true, text(fill: gray, size: 9pt, body))
 
 // The same caption printed inside each cell instead (`question_label: inside`),
-// so a handout carries its question number after it is cut out.
-#let clabel(body) = text(fill: gray, size: 9pt, body)
+// so a handout carries its question number after it is cut out. It is left in
+// its cell whatever the handout does: the cell centres its content when the
+// block is centred, and a centred «Вопрос N» reads as part of the раздатка
+// rather than as the label of it. Full width, so align has something to bite.
+#let clabel(body) = block(width: 100%, align(left, text(fill: gray, size: 9pt, body)))
 
 // A block with its number inside prints no caption above it, so nothing would
 // keep it off the block before it; this leaves the caption's air instead, and

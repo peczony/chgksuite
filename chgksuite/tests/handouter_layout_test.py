@@ -375,6 +375,12 @@ class TestMaxWidthLayout:
         # Without a caption above it the block still keeps the caption's air.
         assert "#qgap()" in typst
         assert typst.index("#qgap()") < typst.index("#handout(")
+        # A centred block centres everything in its cells, and a centred
+        # «Вопрос N» reads as part of the раздатка rather than as its label.
+        assert (
+            "#let clabel(body) = block(width: 100%, "
+            "align(left, text(fill: gray, size: 9pt, body)))"
+        ) in typst
 
     def test_generate_keeps_question_label_without_handout_grid(self, generator):
         generator.args.filename = "handouts.hndt"
